@@ -1,0 +1,25 @@
+{
+  "name": "psych",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Psych: a gamified self-tracking app",
+  "scripts": {
+    "setup": "cap add android && node scripts/android-setup.js && capacitor-assets generate --android && cap sync android",
+    "sync": "cap sync android",
+    "open": "cap open android",
+    "icons": "capacitor-assets generate --android",
+    "apk": "cap sync android && cd android && gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3",
+    "@capgo/capacitor-health": "^8.11.12"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/assets": "^3.0.5"
+  }
+}

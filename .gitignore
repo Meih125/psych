@@ -1,0 +1,17 @@
+# Made by "npm install" (rebuilt from package.json)
+node_modules/
+# Made by "npm run setup" (rebuilt from www/, assets/ and scripts/)
+android/
+# Build outputs, signing keys, editor and OS files
+*.apk
+*.aab
+*.jks
+*.keystore
+.idea/
+.vscode/
+local.properties
+Thumbs.db
+desktop.ini
+.DS_Store
+# Your personal backup files, if you ever copy one in here
+Psych-*backup*.json

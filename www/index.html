@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#04070f">
+<title>Psych</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="bg"></div>
+
+<!-- All artwork is drawn here in code -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="gGold" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#ead39a"/><stop offset=".5" stop-color="#a98139"/><stop offset="1" stop-color="#4f3614"/></radialGradient>
+    <linearGradient id="gGem" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e6fbf7"/><stop offset=".5" stop-color="#8fd9cf"/><stop offset="1" stop-color="#2c6f6a"/></linearGradient>
+    <linearGradient id="gBronze" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd2b0"/><stop offset=".5" stop-color="#ff6b1a"/><stop offset="1" stop-color="#b8430f"/></linearGradient>
+    <linearGradient id="gDawn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ddd3ff"/><stop offset=".5" stop-color="#7c5cff"/><stop offset="1" stop-color="#3b4bd8"/></linearGradient>
+    <linearGradient id="gBronzeV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd2b0"/><stop offset=".55" stop-color="#ff6b1a"/><stop offset="1" stop-color="#b8430f"/></linearGradient>
+    <linearGradient id="gFadeL" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#d2f0ec" stop-opacity="0"/><stop offset="1" stop-color="#d2f0ec"/></linearGradient>
+    <linearGradient id="gFadeR" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#d2f0ec" stop-opacity="0"/><stop offset="1" stop-color="#d2f0ec"/></linearGradient>
+    <linearGradient id="gSteel" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5c6268"/><stop offset=".5" stop-color="#d9dde0"/><stop offset="1" stop-color="#4a4f54"/></linearGradient>
+    <linearGradient id="gMark" gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="52"><stop offset="0" stop-color="#ffc49a"/><stop offset=".5" stop-color="#b8924f"/><stop offset="1" stop-color="#6b4e24"/></linearGradient>
+    <linearGradient id="gWing" x1="1" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#8d949a"/><stop offset=".6" stop-color="#d7dbde"/><stop offset="1" stop-color="#f4f2ec"/></linearGradient>
+    <linearGradient id="gBone" x1="1" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#5a5248"/><stop offset="1" stop-color="#cfc6b4"/></linearGradient>
+    <linearGradient id="gDragon" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4b5a3a"/><stop offset=".5" stop-color="#26301d"/><stop offset="1" stop-color="#0f140b"/></linearGradient>
+    <linearGradient id="gFlame" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#5a120c"/><stop offset=".55" stop-color="#c4561c"/><stop offset="1" stop-color="#ff6b1a"/></linearGradient>
+    <linearGradient id="gF0" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#651c15"/><stop offset="1" stop-color="#220806"/></linearGradient>
+    <linearGradient id="gF1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1f3a5a"/><stop offset="1" stop-color="#08121d"/></linearGradient>
+    <linearGradient id="gF2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a2263"/><stop offset="1" stop-color="#160820"/></linearGradient>
+    <linearGradient id="gF3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c2c2e"/><stop offset="1" stop-color="#060606"/></linearGradient>
+    <linearGradient id="gF4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6e5216"/><stop offset="1" stop-color="#231804"/></linearGradient>
+    <linearGradient id="gIron" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9ccce"/><stop offset=".45" stop-color="#7b8084"/><stop offset="1" stop-color="#2c2f32"/></linearGradient>
+    <linearGradient id="gLinkRing" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4d4cf"/><stop offset=".35" stop-color="#8c8f91"/><stop offset=".7" stop-color="#4b4d50"/><stop offset="1" stop-color="#232427"/></linearGradient>
+    <linearGradient id="gLinkBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3c3f"/><stop offset=".3" stop-color="#b9bab6"/><stop offset=".55" stop-color="#7f8285"/><stop offset="1" stop-color="#26282a"/></linearGradient>
+    <linearGradient id="gShackle" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3c3e41"/><stop offset=".3" stop-color="#c9cac5"/><stop offset=".55" stop-color="#7e8184"/><stop offset="1" stop-color="#2a2c2e"/></linearGradient>
+    <radialGradient id="gLockBody" cx="38%" cy="28%" r="80%"><stop offset="0" stop-color="#5d5f5f"/><stop offset=".45" stop-color="#34352f"/><stop offset="1" stop-color="#121310"/></radialGradient>
+    <radialGradient id="gRivet" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#f3dca4"/><stop offset=".6" stop-color="#a7803f"/><stop offset="1" stop-color="#4f3818"/></radialGradient>
+    <radialGradient id="gGarnet" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#ff7a63"/><stop offset=".5" stop-color="#9c1d12"/><stop offset="1" stop-color="#3d0805"/></radialGradient>
+    <filter id="softBlur" x="-20%" y="-20%" width="140%" height="160%"><feGaussianBlur stdDeviation="1.2"/></filter>
+    <filter id="chainShadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.2" flood-color="#000" flood-opacity=".85"/></filter>
+    <linearGradient id="gBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5c7a78"/><stop offset="1" stop-color="#24393a"/></linearGradient>
+    <linearGradient id="gBarHi" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb07a"/><stop offset="1" stop-color="#e0561a"/></linearGradient>
+  </defs>
+  <symbol id="i-cal" viewBox="0 0 24 24"><path d="M4 6.5h16V20H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 10.5h16M8.5 3.5v5M15.5 3.5v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 14h2.5v2.5H8z" fill="currentColor"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.4 15.4L21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 32 32"><path d="M16 2.5l11.7 6.75v13.5L16 29.5 4.3 22.75V9.25z" fill="rgba(255,201,74,.16)" stroke="#ffc94a" stroke-width="2" stroke-linejoin="round"/><path d="M7 10l9-5.2 9 5.2" fill="none" stroke="rgba(255,240,200,.55)" stroke-width="1"/><path d="M20.6 12.3A6 6 0 1 0 21.6 17h-5" fill="none" stroke="#ffd76a" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-gem" viewBox="0 0 32 32"><path d="M16 2.5l11 6.8v13.4L16 29.5 5 22.7V9.3z" fill="rgba(143,217,207,.12)" stroke="#8fd9cf" stroke-width="1.8" stroke-linejoin="round"/><path d="M5 9.3l11 6.7 11-6.7M16 16v13.5" fill="none" stroke="#8fd9cf" stroke-width="1.4" stroke-linejoin="round" opacity=".85"/></symbol>
+  <symbol id="i-corner" viewBox="0 0 40 40"><path d="M2 30A28 28 0 0 1 30 2" fill="none" stroke="#22d3ee" stroke-width="7" stroke-linecap="round" opacity=".18"/><path d="M2 30A28 28 0 0 1 30 2" fill="none" stroke="url(#gBronze)" stroke-width="2.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-flourish" viewBox="0 0 240 20"><path d="M14 10H104" stroke="url(#gFadeL)" stroke-width="1.2"/><path d="M226 10H136" stroke="url(#gFadeR)" stroke-width="1.2"/><path d="M96 6h6l4 4-4 4h-6M144 6h-6l-4 4 4 4h6" fill="none" stroke="url(#gBronzeV)" stroke-width="1.2" stroke-linejoin="round"/><path d="M120 3.5l6 3.25v6.5L120 16.5l-6-3.25v-6.5z" fill="rgba(34,211,238,.15)" stroke="url(#gBronzeV)" stroke-width="1.3"/><circle cx="120" cy="10" r="1.8" fill="#a5f3fc"/></symbol>
+  <!-- two-chamber hourglass -->
+  <symbol id="i-hourglass" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.6V8l2.4 1.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 14 22">
+    <g fill="currentColor"><circle cx="4" cy="4" r="1.8"/><circle cx="10" cy="4" r="1.8"/><circle cx="4" cy="11" r="1.8"/><circle cx="10" cy="11" r="1.8"/><circle cx="4" cy="18" r="1.8"/><circle cx="10" cy="18" r="1.8"/></g>
+  </symbol>
+  <symbol id="i-cog" viewBox="0 0 24 24"><path d="M10.31 2.14L13.69 2.14L13.77 4.20L16.27 5.23L17.77 3.83L20.17 6.23L18.77 7.73L19.80 10.23L21.86 10.31L21.86 13.69L19.80 13.77L18.77 16.27L20.17 17.77L17.77 20.17L16.27 18.77L13.77 19.80L13.69 21.86L10.31 21.86L10.23 19.80L7.73 18.77L6.23 20.17L3.83 17.77L5.23 16.27L4.20 13.77L2.14 13.69L2.14 10.31L4.20 10.23L5.23 7.73L3.83 6.23L6.23 3.83L7.73 5.23L10.23 4.20Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="i-swords" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="3"/><path d="M12 1.8v4M12 18.2v4M1.8 12h4M18.2 12h4"/></g></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20.5h18"/><path d="M4 16l5-5.5 4 3.5 7-8"/></g><circle cx="9" cy="10.5" r="1.6" fill="currentColor"/><circle cx="13" cy="14" r="1.6" fill="currentColor"/><circle cx="20" cy="6" r="1.8" fill="currentColor"/></symbol>
+  <symbol id="i-chest" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.8l8.5 4.6v9.2L12 21.2l-8.5-4.6V7.4z"/><path d="M3.5 7.4L12 12l8.5-4.6M12 12v9.2"/></g><path d="M7.8 5.1l8.5 4.6" stroke="currentColor" stroke-width="1.4" opacity=".6"/></symbol>
+  <symbol id="i-cards" viewBox="0 0 24 24"><rect x="3.2" y="6" width="10.5" height="14.5" rx="2" transform="rotate(-10 8.5 13.2)" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="9.5" y="3.5" width="10.5" height="14.5" rx="2" transform="rotate(8 14.7 10.7)" fill="currentColor" fill-opacity=".2" stroke="currentColor" stroke-width="1.7"/><path d="M14.7 7.6l2.4 3.1-2.4 3.1-2.4-3.1z" fill="currentColor" transform="rotate(8 14.7 10.7)"/></symbol>
+  <symbol id="i-pouch" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M4.5 8h15l-1.2 12.2a1 1 0 0 1-1 .8H6.7a1 1 0 0 1-1-.8z"/><path d="M8.5 10.5V7a3.5 3.5 0 0 1 7 0v3.5"/></g></symbol>
+</svg>
+
+<header class="top">
+  <div class="top-in">
+    <div class="hd-row">
+      <div class="brand">PSYCH</div>
+      <div class="hd-right">
+        <div class="purse" id="purse" aria-label="Gold"><svg viewBox="0 0 32 32"><use href="#i-coin"/></svg><span id="gold">0</span></div>
+        <button class="gear" id="gearBtn" aria-label="Settings"><svg viewBox="0 0 24 24"><use href="#i-cog"/></svg></button>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="lvl" id="lvlEmblem" aria-label="Level emblem" role="button" tabindex="0"></div>
+      <div class="lvl-pop" id="lvlPop"></div>
+      <div class="hd-xp">
+        <div class="xplabel"><span id="lvlText">Rookie</span></div>
+        <div class="xpbar seg"><div class="xpfill" id="xpFill"></div><span class="xpnum" hidden></span></div>
+        <div class="hd-lab"><b id="lvA">Lv 1</b><span id="xpText">0 / 100 XP</span><b id="lvB">Lv 2</b></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+  <section class="board-head">
+    <h2 id="boardTitle">Quests</h2>
+    <button class="open-all" id="openAllBtn" hidden>Open all</button>
+    <div class="cc-search" id="colSearchBox" hidden><svg viewBox="0 0 24 24"><use href="#i-search"/></svg><input id="ccQ" type="search" maxlength="60" placeholder="Card, hero, set, words" autocomplete="off"><button class="cc-sx" id="ccClear" hidden aria-label="Clear">×</button></div>
+    <button class="col-search" id="colSearchBtn" hidden aria-label="Search cards"><svg viewBox="0 0 24 24"><use href="#i-search"/></svg></button>
+    <button class="prog-menu" id="progMenu" hidden aria-label="Choose what Progress shows"><svg viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <div class="prog-pop" id="progPop"></div>
+    <p id="boardSub"></p>
+    <svg class="flourish" viewBox="0 0 240 20"><use href="#i-flourish"/></svg>
+  </section>
+  <div id="panel"></div>
+</div>
+
+<nav class="tabs">
+  <div class="tabs-inner">
+    <button class="tab" data-tab="quests"><svg viewBox="0 0 24 24"><use href="#i-swords"/></svg>Quests<span class="badge" hidden></span></button>
+    <button class="tab" data-tab="progress"><svg viewBox="0 0 24 24"><use href="#i-chart"/></svg>Progress<span class="badge" hidden></span></button>
+    <button class="tab" data-tab="inventory"><svg viewBox="0 0 24 24"><use href="#i-chest"/></svg>Pack<span class="badge" hidden></span></button>
+    <button class="tab" data-tab="collection"><svg viewBox="0 0 24 24"><use href="#i-cards"/></svg>Collection<span class="badge" hidden></span></button>
+    <button class="tab" data-tab="shop"><svg viewBox="0 0 24 24"><use href="#i-pouch"/></svg>Shop<span class="badge" hidden></span></button>
+  </div>
+</nav>
+
+<!-- ===== Post / edit quest sheet ===== -->
+<div class="modal" id="modal">
+  <form class="sheet" id="form" autocomplete="off" novalidate>
+    <h2 id="formTitle">Post a Quest</h2>
+    <p class="meta-line" id="formMeta"></p>
+
+    <div class="field">
+      <span class="lbl">Kind</span>
+      <div class="seg s5">
+        <label><input type="radio" name="kind" value="standard"><span>Quest</span></label>
+        <label><input type="radio" name="kind" value="pair"><span>Pair</span></label>
+        <label><input type="radio" name="kind" value="scaling"><span>Recurring</span></label>
+        <label><input type="radio" name="kind" value="target"><span>Target</span></label>
+        <label><input type="radio" name="kind" value="steps"><span>Steps</span></label>
+        <label><input type="radio" name="kind" value="bounty"><span>Bounty</span></label>
+        <label><input type="radio" name="kind" value="avoid"><span>Avoid</span></label>
+        <label><input type="radio" name="kind" value="record"><span>Record</span></label>
+        <label><input type="radio" name="kind" value="tally"><span>Tally</span></label>
+      </div>
+      <p class="help" id="kindHelp"></p>
+      <div class="pick-actions"><button type="button" class="btn-main" id="pickNext">Next ›</button><button type="button" class="btn-plain" id="pickCancel">Cancel</button></div>
+    </div>
+    <div class="kind-head" id="kindHead"><button type="button" class="kh-back" id="kindBack" aria-label="Back">‹</button><span class="kh-ic" id="kindHeadIc"></span><div><b id="kindHeadT"></b><small id="kindHeadS"></small></div></div>
+
+    <div class="field">
+      <label for="fName" id="nameLbl">Title</label>
+      <input type="text" id="fName" maxlength="80">
+    </div>
+    <div class="field">
+      <label for="fNote">Note (optional)</label>
+      <input type="text" id="fNote" maxlength="120" placeholder="A short detail">
+    </div>
+
+    <div class="field" data-show="standard record">
+      <label for="fParent">Appears after</label>
+      <select id="fParent"></select>
+      <p class="help">Hidden until that quest is claimed. It resets together with it.</p>
+    </div>
+
+    <div class="field" data-show="target">
+      <span class="lbl">Times to hit</span>
+      <div class="days-pick" id="needPick">
+        <button type="button" class="dp-step" data-dn="-1" aria-label="Fewer">−</button>
+        <div class="dp-val"><input type="number" id="fNeed" min="1" max="999" inputmode="numeric" value="5"><span id="fNeedUnit">times</span></div>
+        <button type="button" class="dp-step" data-dn="1" aria-label="More">+</button>
+      </div>
+    </div>
+    <div class="field" data-show="bounty">
+      <span class="lbl">Due date</span>
+      <button type="button" class="date-btn" id="fDueBtn"><span></span><small></small><svg viewBox="0 0 24 24"><use href="#i-cal"/></svg></button>
+      <input type="hidden" id="fDue">
+    </div>
+    <div class="field" data-show="avoid">
+      <span class="lbl">Clean since</span>
+      <button type="button" class="date-btn" id="fSinceBtn"><span></span><small></small><svg viewBox="0 0 24 24"><use href="#i-cal"/></svg></button>
+      <input type="hidden" id="fSince">
+    </div>
+
+    <div class="field" id="daysField" data-show="standard pair record scaling target">
+      <span class="lbl">Resets every</span>
+      <div class="days-pick">
+        <button type="button" class="dp-step" data-dd="-1" aria-label="Fewer days">−</button>
+        <div class="dp-val"><input type="number" id="fDays" min="1" max="60" inputmode="numeric" value="1"><span id="fDaysUnit">day</span></div>
+        <button type="button" class="dp-step" data-dd="1" aria-label="More days">+</button>
+      </div>
+      <div class="dp-quick"><button type="button" data-days="1">Daily</button><button type="button" data-days="2">2</button><button type="button" data-days="3">3</button><button type="button" data-days="7">Weekly</button><button type="button" data-days="14">14</button><button type="button" data-days="30">30</button></div>
+      <p class="help">Counts from the day you claim it. Resets at midnight.</p>
+    </div>
+
+    <div class="field row2" data-show="standard scaling target bounty avoid">
+      <div><label for="fXp" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-gem"/></svg><span id="xpLbl">XP</span></label><input type="number" id="fXp" min="0" max="9999" inputmode="numeric"></div>
+      <div><label for="fGold" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-coin"/></svg><span id="goldLbl">Gold</span></label><input type="number" id="fGold" min="0" max="9999" inputmode="numeric"></div>
+    </div>
+    <div class="field" data-show="scaling">
+      <label for="fGrowth">Each extra claim pays more by (%)</label>
+      <input type="number" id="fGrowth" min="0" max="500" inputmode="numeric">
+      <p class="help" id="growthPreview"></p>
+    </div>
+
+    <div class="group" data-show="pair">
+      <div class="group-title">First quest</div>
+      <div class="field"><input type="text" id="fAName" maxlength="80" placeholder="Quest A"></div>
+      <div class="field row2">
+        <div><label for="fAXp" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-gem"/></svg>XP</label><input type="number" id="fAXp" min="0" max="9999" inputmode="numeric"></div>
+        <div><label for="fAGold" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-coin"/></svg>Gold</label><input type="number" id="fAGold" min="0" max="9999" inputmode="numeric"></div>
+      </div>
+    </div>
+    <div class="group" data-show="pair">
+      <div class="group-title">Second quest</div>
+      <div class="field"><input type="text" id="fBName" maxlength="80" placeholder="Quest B"></div>
+      <div class="field row2">
+        <div><label for="fBXp" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-gem"/></svg>XP</label><input type="number" id="fBXp" min="0" max="9999" inputmode="numeric"></div>
+        <div><label for="fBGold" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-coin"/></svg>Gold</label><input type="number" id="fBGold" min="0" max="9999" inputmode="numeric"></div>
+      </div>
+    </div>
+    <div class="group" data-show="pair">
+      <div class="group-title">Bonus for doing both</div>
+      <div class="field row2">
+        <div><label for="fBonusXp" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-gem"/></svg>XP</label><input type="number" id="fBonusXp" min="0" max="9999" inputmode="numeric"></div>
+        <div><label for="fBonusGold" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-coin"/></svg>Gold</label><input type="number" id="fBonusGold" min="0" max="9999" inputmode="numeric"></div>
+      </div>
+    </div>
+
+    <div class="field row2" data-show="record">
+      <div><label for="fUnit">Unit</label><input type="text" id="fUnit" maxlength="12"><p class="help">What you measure in, like kg, lb, min or km.</p></div>
+      <div><span class="lbl">Better is</span>
+        <div class="seg s2">
+          <label><input type="radio" name="better" value="lower"><span>Lower</span></label>
+          <label><input type="radio" name="better" value="higher"><span>Higher</span></label>
+        </div>
+      </div>
+    </div>
+    <div class="field row3f" data-show="record">
+      <div><label for="fStep">Every</label><div class="unit-in"><input type="number" id="fStep" min="0.01" step="0.1" inputmode="decimal"><span id="fStepUnit">unit</span></div></div>
+      <div><label for="fXpPer" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-gem"/></svg>XP</label><input type="number" id="fXpPer" min="0" max="9999" inputmode="numeric"></div>
+      <div><label for="fGoldPer" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-coin"/></svg>Gold</label><input type="number" id="fGoldPer" min="0" max="9999" inputmode="numeric"></div>
+    </div>
+    <p class="help" data-show="record" id="stepHelp"></p>
+    <div class="field" data-show="record" id="startField">
+      <label for="fStart">Starting value (optional)</label>
+      <input type="number" id="fStart" step="0.1" inputmode="decimal" placeholder="Leave empty to use your first entry">
+    </div>
+
+    <div class="field" data-show="tally">
+      <label for="fTUnit">Unit</label>
+      <input type="text" id="fTUnit" maxlength="12" placeholder="$, pages, pushups…">
+      <p class="help">What you're counting, like pages, km or pushups. For money, type a currency symbol such as $, £, € or CA$ and it's shown in front: $25, £25, CA$25.</p>
+    </div>
+    <div class="field row3f" data-show="steps tally">
+      <div><label for="fChunk" id="chunkLbl">Every</label><div class="unit-in"><input type="number" id="fChunk" min="0.01" step="any" inputmode="decimal"><span id="fChunkUnit">steps</span></div></div>
+      <div><label for="fStXp" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-gem"/></svg>XP</label><input type="number" id="fStXp" min="0" max="9999" inputmode="numeric"></div>
+      <div><label for="fStGold" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-coin"/></svg>Gold</label><input type="number" id="fStGold" min="0" max="9999" inputmode="numeric"></div>
+    </div>
+    <p class="help" data-show="steps tally" id="chunkHelp"></p>
+    <div class="field row3f" data-show="steps">
+      <div><label for="fGoal">Daily goal</label><input type="number" id="fGoal" min="0" max="200000" step="any" inputmode="decimal"></div>
+      <div><label for="fGoalXp" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-gem"/></svg>XP</label><input type="number" id="fGoalXp" min="0" max="9999" inputmode="numeric"></div>
+      <div><label for="fGoalGold" class="inlabel"><svg viewBox="0 0 32 32"><use href="#i-coin"/></svg>Gold</label><input type="number" id="fGoalGold" min="0" max="9999" inputmode="numeric"></div>
+    </div>
+    <p class="help" data-show="steps" id="goalHelp">Bonus for reaching your daily goal. Days that hit it get a gold coin under the Progress chart: tap it to claim.</p>
+    <input type="hidden" id="fShowDays">
+
+    <div class="field" data-show="standard pair target avoid">
+      <label class="toggle"><span>Enable streak reward<span id="fStreakInfo" class="sk-host"></span></span><input type="checkbox" id="fShowCount"><i></i></label>
+    </div>
+    <div class="field" style="display:none">
+      <label class="toggle"><span>Track in Progress</span><input type="checkbox" id="fTracked"><i></i></label>
+      <p class="help">Gives this quest its own history page in the Progress tab. Leave it off for everyday habits you don’t need to review.</p>
+    </div>
+
+    <div class="field" data-show="record" id="histField">
+      <span class="lbl">History</span>
+      <div class="hist" id="hist"></div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn-main" id="saveBtn">Post Quest</button>
+      <div class="btn-row">
+        <button type="button" class="btn-plain" id="cancelBtn">Cancel</button>
+        <button type="button" class="btn-plain btn-danger" id="deleteBtn">Remove</button>
+      </div>
+      <button type="button" class="btn-plain" id="histBtn">View history</button>
+    </div>
+  </form>
+</div>
+
+<!-- ===== Settings sheet ===== -->
+<div class="modal" id="settings">
+  <div class="sheet">
+    <h2>Settings</h2>
+    <div class="group">
+      <div class="group-title">Step sync</div>
+      <div class="sync-status"><span class="st-sync" id="syncDot" style="width:auto"><i></i></span><span id="syncState"></span></div>
+      <p class="help" id="syncHelp"></p>
+      <ol class="steps-list">
+        <li>Open <b>Samsung Health</b> › Settings › <b>Health Connect</b> and allow it to share <b>Steps</b>.</li>
+        <li>Tap <b>Connect</b> below and allow Psych to read steps.</li>
+        <li>Psych then syncs whenever you open it, every few minutes while it’s open, and when you tap <b>Sync now</b>.</li>
+      </ol>
+      <div class="field btn-row"><button type="button" class="btn-plain" id="syncConnect">Connect</button><button type="button" class="btn-plain" id="syncNowBtn">Sync now</button></div>
+    </div>
+    <div class="group">
+      <div class="group-title">Backup</div>
+      <p class="help" id="backupInfo"></p>
+      <p class="help" id="autoBackupInfo"></p>
+      <div class="field btn-row"><button type="button" class="btn-plain" id="exportBtn">Save backup</button><button type="button" class="btn-plain" id="importBtn">Restore backup</button></div>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+    </div>
+    <div class="group">
+      <div class="group-title">General</div>
+      <div class="field"><label class="toggle"><span>Vacation mode</span><input type="checkbox" id="vacation"><i></i></label></div>
+      <p class="help" id="vacInfo">Streaks pause while it's on, so days away don't break them.</p>
+      <div class="field"><label class="toggle"><span>Reduce effects</span><input type="checkbox" id="reduceFx"><i></i></label></div>
+      <p class="help">Fewer sparks and no looping glows. Handy when the phone is warm or the battery is low.</p>
+    </div>
+    <div class="danger-block">
+      <div class="group-title">Reset progress</div>
+      <p class="help">Keeps your quests. Sets gold to 0 and level to 1, marks every quest as not done, and clears counts, records and step history.</p>
+      <div class="field"><button type="button" class="btn-plain btn-danger" id="resetProgress">Reset progress</button></div>
+    </div>
+    <div class="danger-block" style="display:none">
+      <div class="group-title">Start over</div>
+      <p class="help">Deletes all your quests and progress, and puts back the original example quests.</p>
+      <div class="field"><button type="button" class="btn-plain btn-danger" id="resetAll">Restore starter quests</button></div>
+    </div>
+    <div class="actions"><button type="button" class="btn-plain" id="closeSettings">Close</button></div>
+  </div>
+</div>
+
+<div class="modal center" id="datePick"><div class="dpk" id="dpk"></div></div>
+<div class="modal center" id="ask">
+  <div class="dialog">
+    <div id="askArt"></div>
+    <h3 id="askTitle"></h3>
+    <p id="askText"></p>
+    <div class="btn-row"><button type="button" class="btn-plain" id="askNo">Cancel</button><button type="button" class="btn-plain btn-danger" id="askYes">Confirm</button></div>
+  </div>
+</div>
+
+<div class="pack" id="pack"></div>
+<div class="inspect" id="inspect"></div>
+<div class="toast" id="toast"><span id="toastText"></span><button id="toastUndo">Undo</button></div>
+
+<div class="levelup" id="levelup">
+  <div class="lu-bloom"></div>
+  <div class="rays"></div>
+  <div class="lu-wave"></div><div class="lu-wave w2"></div><div class="lu-wave w3"></div>
+  <div class="lu-card">
+    <div class="lu-emblem" id="luEmblem"></div>
+    <div class="lu-title" id="luTitle">Level Up</div>
+    <div class="lu-level" id="luLevel"></div>
+    <div class="lu-rank" id="luRank"></div>
+    <div class="lu-reward" id="luReward"></div>
+    <div class="lu-sub">Tap to continue</div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
