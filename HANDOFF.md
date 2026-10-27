@@ -22,6 +22,10 @@ Capacitor 8 (appId com.cat.psych, appName Psych). No bundler, no build step for 
 - `www/privacypolicy.html`: the privacy page Health Connect opens (the Health plugin looks for this exact name). Keep it.
 - `assets/`: app icon sources (hex shield with three chevrons). `npm run icons` makes the Android icons.
 - `scripts/android-setup.js`: sets minSdkVersion 26 after `cap add android` (Health Connect needs it).
+- `scripts/android-widget.js` + `scripts/android-widget/`: the home-screen widgets (native Android). Copies the Java
+  (widget providers Widget4x1/4x2/2x2, PsychWidgetPlugin, and a MainActivity that registers the plugin) and res files
+  into android/app/src/main and adds three <receiver>s to AndroidManifest.xml. Part of `npm run setup`; `npm run widget`
+  for an android folder made before widgets existed.
 - Not in git (see `.gitignore`): `node_modules/` (made by `npm install`) and `android/` (made by `npm run setup`).
 
 ## Data
@@ -34,13 +38,20 @@ Native bridge: window.PsychNative, steps callback window.psychReceiveSteps(days,
   period, each claim pays more), Record (log a number, reward for beating your best), Tally (add amounts,
   reward per step, remainder carries over), Steps (Health Connect, one Steps quest only; daily goal bonus),
   Target (hit N times before its own countdown ends: orbs up to 10, ring + 10 segments and +1/+5/+10/type above 10;
-  pays when every orb is lit), Bounty (one-off with a due date, no progress; from 1 day before it sits on top in red
+  pays when every orb is lit; tap the orb bar, or −1 on big targets, to take a hit back), Bounty (one-off with a due date, no progress; from 1 day before it sits on top in red
   "Due soon"; gone after midnight once claimed), Avoid (counts days clean; tap = claim today; SLIP resets the count
-  from tomorrow, keeps the best, takes back today's reward if claimed; undo in the toast).
+  from tomorrow, keeps the best, takes back today's reward if claimed; undo the same day by tapping SLIPPED or Undo in
+  Progress > Recent; slipped days show red in the Progress calendar).
 - Post a Quest is two steps: a 3x3 kind grid (Steps in the centre) > Next > that kind's setup page (back arrow).
   Dates use the themed calendar (calendar icon button): Bounty due (today or later), Avoid clean since (default today).
 - Quests tab: summary card (done ring, earned today, steps + last Health Connect sync + Claim, reset clock), tiles grouped by reset.
-  Tap a tile to claim (tap again to reopen with undo), press-and-hold 500 ms to edit. Hold anywhere on the summary
+  Tap a tile to claim (tap again to reopen with undo), press-and-hold 500 ms to edit.
+  Arrange = the board in outline, same groups, placed freely like home-screen widgets: S.layout[groupKey] is a list of
+  rows ([id] full, [idL, idR] halves, null = empty spot; groupRows/moveTile). Drag the orange dots onto any spot in the
+  group (a half on a half swaps; the dashed row at the end makes a new row); HALF / FULL picks
+  the tile size for quests that can be half (q.size 'half' / 'full'). Untouched quests are half but a lone one stretches
+  (shows FULL); one set to HALF stays half even alone.
+  Due-soon bounties are pinned (red, can't move). Kind words use each kind's icon colour. Hold anywhere on the summary
   card to edit the Steps quest. Progress > Recent has a pink Undo on every row, faded when there's nothing to undo (live on: claims that can still be reopened, the latest Recurring claim this period, the latest Tally entry, the latest Record entry; the pair
   bonus row undoes the half claimed last). Steps > Daily rewards: gem/coin rewards and an Undo per claimed day (it can be claimed again).
   The (i) by "Current streak" shows the streak bonus (+10% every 5, +200% at 100, +250% at 200) with matching flames.
@@ -73,6 +84,19 @@ Native bridge: window.PsychNative, steps callback window.psychReceiveSteps(days,
 - Backups (Documents/Psych on the phone): Save backup = new dated file Psych-MANUAL-backup-YYYY-MM-DD_HHMM.json;
   automatic = one file Psych-AUTO-backup.json, replaced at midnight (or the moment the app opens next, before
   anything changes, if it was closed at midnight). The JSON says kind "manual"/"auto"; restore shows which.
+- Widgets (button next to the Quests title, hidden in Arrange): S.widgets = [{id, name, size, rows}]. Every row is one
+  home-screen cell high: [id] = one full quest (or one half quest in a 2-wide widget), [a, b] = two half quests.
+  Shapes: 2x1 [[h]] · 4x1 [[f]] / [[h,h]] · 2x2 [[h],[h]] · 4x2 [[f],[f]] / [[f],[h,h]] / [[h,h],[h,h]] (W_SHAPES).
+  Half spots take canHalf quests only; Steps, Tally, Record, Pair go in full spots.
+  On the phone: tap anywhere on a quest = its main action (claim, +1 orb, Steps claim; Tally/Record open a small box to
+  type the amount, WidgetInputActivity); tap the icon or a finished quest to open the app; SLIP and the Pair halves are
+  their own buttons. Target orbs are drawn as a picture sized to the space. Taps are queued (shown at once) and applied
+  by applyWidgetActions when the app opens or resumes, at the time they were tapped (NOW_AT). The app sends a snapshot
+  (widgetSnapshot) on every save; the in-app preview (wTileHTML) is drawn from that same data in the widget's layout.
+  Recurring shows its claims this week as red segments; Tally's number box shows what the amount will pay as you type,
+  and the widget keeps the waiting reward on the tile until the app opens. Half tiles put rewards and buttons on one line.
+  Cut corners on the phone come from 9-patch images (res/drawable-xxhdpi/*.9.png); the Steps bar is a ProgressBar.
+  The list shows each widget as it looks with "on home screen / not placed".
 - Settings > General > Vacation mode: pauses streaks (days on vacation don't break them; S.vacation = start,
   S.vacations = past ranges). Reduce effects (off by default): fewer particles, no looping glows, simpler reveals.
 

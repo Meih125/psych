@@ -25,6 +25,14 @@
   <a href="BUILD.md">Build it yourself</a>
 </p>
 
+<div align="center">
+
+| Latest update | Released | What changed |
+|:---:|:---:|:---:|
+| **[v1.1.0](https://github.com/Meih125/psych/releases/tag/v1.1.0)** | Oct 27, 2026 | **[Patch notes](docs/patch-notes/v1.1.0.md)** |
+
+</div>
+
 <p align="center">
   <img src="docs/screenshots/quests.jpg" width="200" alt="Quests">
   <img src="docs/screenshots/streaks.jpg" width="200" alt="Streaks">
@@ -38,6 +46,8 @@
 - **Streaks** add a bonus to a quest's rewards the longer you keep them going.
 - **XP and gold.** Level up, and spend gold on card packs.
 - **Cards.** Two packs to collect, with rarities from C to UR. Finished sets pay a reward.
+- **Home-screen widgets** in four sizes. Claim quests without opening the app.
+- **Arrange** your board: move quests around and make them half or full width.
 - **Steps** sync from Health Connect (Samsung Health works through it).
 - **Backups** are plain JSON files on your phone: manual ones whenever you like, plus an automatic one every night.
 
@@ -66,7 +76,7 @@ npm run open
 ```
 www/            the app itself (index.html, app.css, app.js, fonts, images)
 assets/         app icon sources
-scripts/        build helper (sets the minimum Android version)
+scripts/        build helpers (minimum Android version, widgets, version number)
 docs/           images for this page
 BUILD.md        how to build the APK
 HANDOFF.md      notes on how the code is organised

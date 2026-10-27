@@ -3,6 +3,7 @@
 // XP needed to go from level L to L+1: starts at 100 and rises 25 per level.
 // The step into every 10th level is a rank promotion trial: it costs 1.5× (8→9 = 275, 9→10 = 450, 10→11 = 325).
 const isBossStep = L => L % 10 === 9;
+const WSIZES_OK = ['2x1', '4x1', '2x2', '4x2'];
 const XP_CAP = 1e9, GOLD_CAP = 1e12, REWARD_CAP = 1e6, VALUE_CAP = 1e7;
 const xpToNext = L => { const base = 100 + 25 * (L - 1); return isBossStep(L) ? Math.round(base * 1.5 / 5) * 5 : base; };
 // gold for reaching level L: 10 × its place in the band of 10, +5 per band;
@@ -28,12 +29,19 @@ const KIND_HELP = {
 };
 
 /* ================= Time ================= */
-const now = () => Date.now();
+let NOW_AT = 0;   // set while applying a claim made earlier on a home-screen widget, so it counts for the day it was made
+const now = () => NOW_AT || Date.now();
 const startOfDay = (t = now()) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
 const addDays = (t, n) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n).getTime(); };
 const nextMidnight = () => addDays(startOfDay(), 1);
 const weekStart = (t = now()) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7)).getTime(); };
 const nextMonday = () => addDays(weekStart(), 7);
+// Cycles: any number of days 1–60 (counted from the claim day); MONTHLY (99) resets on the 1st, phone time
+const MONTHLY = 99;
+const monthStart = (t = now()) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); };
+const addMonths = (t, n) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth() + n, 1).getTime(); };   // the 1st, n months on
+const cycleAfter = (from, days) => days === MONTHLY ? addMonths(from, 1) : addDays(from, days);
+const cycleName = d => d === 1 ? 'Daily' : d === 7 ? 'Weekly' : d === 14 ? 'Biweekly' : d === MONTHLY ? 'Monthly' : `Every ${d} days`;
 const pad2 = n => String(n).padStart(2, '0');
 const dayKey = (t = now()) => { const d = new Date(t); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
 const dayLabel = t => new Date(t).toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short' });
@@ -119,8 +127,8 @@ function sanitizeState(){
     if (q.note != null && typeof q.note !== 'string') q.note = '';
     ['xp','gold','xpPer','goldPer','goalXp','goalGold'].forEach(k => { if (k in q) q[k] = Math.round(fin(q[k], 0, 0, 9999)); });
     if ('growth' in q) q.growth = fin(q.growth, 0, 0, 500);
-    if ('days' in q) q.days = Math.round(fin(q.days, 1, 1, 60));
-    if ('period' in q) q.period = Math.round(fin(q.period, 7, 1, 60));
+    if ('days' in q) q.days = q.days === MONTHLY ? MONTHLY : Math.round(fin(q.days, 1, 1, 60));
+    if ('period' in q) q.period = q.period === MONTHLY ? MONTHLY : Math.round(fin(q.period, 7, 1, 60));
     if ('need' in q) q.need = Math.round(fin(q.need, 5, 1, 999));
     if ('hits' in q) q.hits = Math.round(fin(q.hits, 0, 0, 1e6));
     if ('step' in q) q.step = fin(q.step, 1, 0.01, VALUE_CAP);
@@ -133,8 +141,13 @@ function sanitizeState(){
     ['best','paidTo','start'].forEach(k => { if (q[k] != null && !isFinite(+q[k])) q[k] = null; });
     if (q.kind === 'pair') ['a','b'].forEach(h => { if (!obj(q[h])) q[h] = { name:h === 'a' ? 'Quest A' : 'Quest B', xp:0, gold:0, log:[] }; q[h].name = typeof q[h].name === 'string' ? q[h].name.slice(0, 80) : ''; q[h].xp = Math.round(fin(q[h].xp, 0, 0, 9999)); q[h].gold = Math.round(fin(q[h].gold, 0, 0, 9999)); });
     if (q.kind === 'pair' && !obj(q.bonus)) q.bonus = { xp:0, gold:0 };
+    if (q.size !== undefined && q.size !== 'full' && q.size !== 'half') delete q.size;
     if (q.parent != null && (typeof q.parent !== 'string' || q.parent === q.id || !seen.has(q.parent))) q.parent = null;
   });
+  if (S.layout && (typeof S.layout !== 'object' || Array.isArray(S.layout))) S.layout = {};
+  if (S.widgets && !Array.isArray(S.widgets)) S.widgets = [];
+  if (S.widgets) S.widgets = S.widgets.filter(w => w && typeof w === 'object' && WSIZES_OK.includes(w.size) && Array.isArray(w.rows))
+    .map(w => ({ id:String(w.id || uid()), name:String(w.name || '').slice(0, 24), size:w.size, rows:w.rows.filter(Array.isArray).slice(0, 2).map(r => r.slice(0, 2).map(x => typeof x === 'string' ? x : null)) }));
   // break parent loops (A under B under A)
   const byIdMap = new Map(S.quests.map(q => [q.id, q]));
   S.quests.forEach(q => { const path = new Set([q.id]); let p = q.parent && byIdMap.get(q.parent);
@@ -142,7 +155,7 @@ function sanitizeState(){
 }
 // every claim is logged so the Progress tab can show history
 function logClaim(arr, xp, gold){ arr.push({ t:now(), xp, gold }); if (arr.length > 4000) arr.shift(); }
-function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e){} }
+function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e){} if (typeof pushWidgets === 'function') pushWidgets(); }
 
 /* ================= Quest logic ================= */
 const byId = id => S.quests.find(q => q.id === id);
@@ -160,7 +173,7 @@ function isDone(q){
 // Target: its own countdown (Resets every N days). A new cycle starts when the old one runs out.
 function targetRoll(q){
   if (q.kind !== 'target') return;
-  if (!q.cycleEnd || now() >= q.cycleEnd){ q.cycleEnd = addDays(startOfDay(), q.days || 1); q.hits = 0; }
+  if (!q.cycleEnd || now() >= q.cycleEnd){ q.cycleEnd = cycleAfter(startOfDay(), q.days || 1); q.hits = 0; }
 }
 // Avoid: whole days clean since the start (the start day counts once it has passed)
 const daysClean = q => q.since ? Math.max(0, Math.round((startOfDay() - q.since) / 864e5)) : 0;
@@ -169,15 +182,16 @@ const slippedToday = q => q.kind === 'avoid' && q.slipDay === dayKey();
 const dueIn = q => Math.round((q.due - startOfDay()) / 864e5);
 const bountyUrgent = q => q.kind === 'bounty' && !isDone(q) && dueIn(q) <= 1;
 function isVisible(q, d = 0){ const p = parentOf(q); return !p || d > 50 || (isVisible(p, d + 1) && isDone(p)); }
-function cycleEndFor(q){ if (q.kind === 'target'){ targetRoll(q); return q.cycleEnd; } const p = parentOf(q); return p ? p.doneUntil : addDays(startOfDay(), q.days || 1); }
+function cycleEndFor(q){ if (q.kind === 'target'){ targetRoll(q); return q.cycleEnd; } const p = parentOf(q); return p ? p.doneUntil : cycleAfter(startOfDay(), q.days || 1); }
 // Recurring quests reset every q.period days (7 = Monday to Monday, the original behaviour)
 const periodOf = q => q.period || 7;
 function periodStart(q){
   if (periodOf(q) === 7) return weekStart();
+  if (periodOf(q) === MONTHLY) return monthStart();
   return q.week && now() < addDays(q.week, periodOf(q)) ? q.week : startOfDay();
 }
-const periodEnd = q => periodOf(q) === 7 ? nextMonday() : addDays(periodStart(q), periodOf(q));
-const periodWord = q => periodOf(q) === 7 ? 'week' : periodOf(q) === 1 ? 'day' : `${periodOf(q)} days`;
+const periodEnd = q => periodOf(q) === 7 ? nextMonday() : periodOf(q) === MONTHLY ? addMonths(now(), 1) : addDays(periodStart(q), periodOf(q));
+const periodWord = q => periodOf(q) === 7 ? 'week' : periodOf(q) === 1 ? 'day' : periodOf(q) === MONTHLY ? 'month' : periodOf(q) === 14 ? '2 weeks' : `${periodOf(q)} days`;
 const weekClaims = q => (q.week === periodStart(q) ? q.weekClaims : 0);
 function scaledReward(q, n){ const f = Math.pow(1 + (q.growth || 0) / 100, Math.max(0, n - 1)); return { xp:Math.min(REWARD_CAP, Math.round(q.xp * f)) || 0, gold:Math.min(REWARD_CAP, Math.round(q.gold * f)) || 0 }; }
 const round2 = v => Math.round(v * 100) / 100;
@@ -268,12 +282,14 @@ function etch(q){
   const c = fmt(q.count);
   return `<div class="etch"><b class="${c.length > 3 ? 'sm' : ''}">${c}</b><small>${q.count === 1 ? 'TIME' : 'TIMES'}</small></div>`;
 }
-const daysTag = d => `<span class="tag${d === 1 ? ' gold' : d === 2 ? ' green' : d === 3 ? ' violet' : d === 7 ? ' steel' : ''}">${d === 1 ? 'Daily' : d === 7 ? 'Weekly' : d + '-day'}</span>`;
+const daysTag = d => (d = +d || 1, `<span class="tag${d === 1 ? ' gold' : d === 2 ? ' green' : d === 3 ? ' violet' : d === 7 ? ' steel' : d === 14 ? ' green' : d === MONTHLY ? ' violet' : ''}">${d === 1 || d === 7 || d === 14 || d === MONTHLY ? cycleName(d) : d + '-day'}</span>`);
 function kindTag(q){
   if (q.kind === 'pair') return '<span class="tag red">Pair</span>';
   if (q.kind === 'scaling') return '<span class="tag crimson">Recurring</span>';
   if (q.kind === 'steps') return '<span class="tag steel">Tracker</span>';
   if (q.kind === 'tally') return '<span class="tag orange">Tally</span>';
+  if (q.kind === 'bounty') return '<span class="tag orange">Bounty</span>';
+  if (q.kind === 'target') return '<span class="tag">Target</span>' + daysTag(q.days || 1);
   if (q.kind === 'record') return (q.parent ? '<span class="tag red">Follow-up</span>' : '') + '<span class="tag rose">Record</span>';
   if (q.parent) return '<span class="tag red">Follow-up</span>';
   return daysTag(q.days);
@@ -477,11 +493,13 @@ function dayMap(q){
     o.n++; o.xp += e.xp || 0; o.gold += e.gold || 0; o.v = round2((o.v || 0) + (e.v || 0)); if (flag) o[flag] = (o[flag] || 0) + 1;
   });
   if (q.kind === 'pair'){ add(q.a.log, 'a'); add(q.b.log, 'b'); add(q.bonusLog, 'bonus'); } else add(q.log);
+  if (q.kind === 'avoid') (q.slips || []).forEach(t => { const k = dayKey(t); (m[k] ||= { n:0, xp:0, gold:0 }).slip = true; });
   return m;
 }
 function allLogs(q){
   if (q.kind === 'pair') return [...(q.a.log || []).map(e => ({ ...e, what:q.a.name })), ...(q.b.log || []).map(e => ({ ...e, what:q.b.name })), ...(q.bonusLog || []).map(e => ({ ...e, what:'Pair bonus' }))];
-  return (q.log || []).map(e => ({ ...e, what:q.kind === 'tally' ? fmtU(q, e.v || 0) : q.kind === 'scaling' ? 'Claimed' : 'Completed' }));
+  const slips = q.kind === 'avoid' ? (q.slips || []).map(t => ({ t, xp:0, gold:0, what:'Slipped', slip:true })) : [];
+  return [...(q.log || []).map(e => ({ ...e, what:q.kind === 'tally' ? fmtU(q, e.v || 0) : q.kind === 'scaling' ? 'Claimed' : 'Completed' })), ...slips];
 }
 function cellClass(q, o){
   if (!o) return '';
@@ -1198,23 +1216,26 @@ function renderTabs(){
   });
 }
 function renderPanel(){
-  $('#boardTitle').textContent = TAB_TITLES[S.tab];
+  $('#boardTitle').textContent = S.tab === 'quests' && arranging ? 'Arrange' : TAB_TITLES[S.tab];
   $('#progMenu').hidden = S.tab !== 'progress';
   $('#openAllBtn').hidden = true;   // the Deck tab shows it when there is something to open
   $('#colSearchBtn').hidden = S.tab !== 'collection';
+  $('#wBtn').hidden = S.tab !== 'quests' || arranging;
+  $('#arBtn').hidden = S.tab !== 'quests' || !S.quests.some(q => !q.parent);
+  $('#arBtn').classList.toggle('on', arranging);
   $('#colSearchBtn').classList.toggle('on', colSearch);
   $('#colSearchBox').hidden = S.tab !== 'collection' || !colSearch;
   if (S.tab !== 'progress') $('#progPop').classList.remove('open');
   if (S.tab === 'quests'){
     const visible = S.quests.filter(q => isVisible(q) && q.kind !== 'scaling' && q.kind !== 'tally' && q.kind !== 'bounty' && !isTracker(q));
     const done = visible.filter(isDone).length;
-    $('#boardSub').textContent = arranging ? 'Drag the dots to reorder' : visible.length ? '' : 'Post a quest to begin';
+    $('#boardSub').textContent = arranging ? '' : visible.length ? '' : 'Post a quest to begin';
     const top = S.quests.filter(q => !q.parent);
     $('#panel').innerHTML = `${!top.length ? '<div class="list qboard"><div class="empty">The board is empty.</div></div>'
-      : arranging ? `<div class="list qboard">${questTree(top)}</div>` : questBoard()}
+      : arranging ? arrangeBoard() : questBoard()}
       <div class="board-actions">${arranging
-        ? '<button class="post" id="arrangeBtn">Done arranging</button>'
-        : '<button class="post" id="postBtn">+ Post a quest</button><button class="post alt" id="arrangeBtn">Arrange</button>'}</div>`;
+        ? '<button class="post save" id="arrangeBtn">SAVE</button>'
+        : '<button class="post" id="postBtn">+ Post a quest</button>'}</div>`;
   } else if (S.tab === 'progress'){
     { const pq = S.pview && S.pview !== 'steps' && byId(S.pview) && isTracked(byId(S.pview)) ? byId(S.pview) : null;
       $('#boardSub').textContent = ''; }
@@ -1278,7 +1299,6 @@ function grant(reward, rect, msg, freshId, freshRow, power){
   renderHeader.hold = false;
   requestAnimationFrame(() => celebrate(reward, rect, freshId, power, newL, oldL, paid));
   vibrate(paid ? [18, 40, 22] : 10);
-  showToast(msg, true);
   if (newL > oldL) setTimeout(() => showLevelUp(newL, lvGold), 1050);
 }
 function celebrate(reward, rect, freshId, power, newL, oldL, paid){
@@ -1312,7 +1332,7 @@ function celebrate(reward, rect, freshId, power, newL, oldL, paid){
    Regular quests and pairs keep a streak: done in every cycle in a row (daily, 2-day, 3-day…).
    Each full 5 in the streak adds ×0.1 to the reward: streak 1–5 ×1, 6–10 ×1.1, 11–15 ×1.2 … (always rounded down). */
 const hasStreak = q => q.kind === 'standard' || q.kind === 'pair' || q.kind === 'target' || q.kind === 'avoid';   // these keep a streak
-const streakReward = q => hasStreak(q) && q.showCount !== false;           // "Enable streak reward" in the quest form
+const streakReward = q => hasStreak(q) && q.showCount !== false;           // "Streak reward" in the quest form
 const cycleDays = q => { const p = parentOf(q); return (p ? p.days : q.days) || 1; };
 function streakLast(q){ return q.kind === 'pair' ? q.lastBoth : q.doneUntil; }        // end of the last completed cycle
 function streakNow(q){
@@ -1320,7 +1340,7 @@ function streakNow(q){
   if (q.kind === 'avoid') return slippedToday(q) ? 0 : daysClean(q);                  // avoid: the streak is the days clean
   const last = streakLast(q), t = now();
   if (!last || !q.streak) return 0;
-  return t < addDays(last, cycleDays(q) + vacationDays(last, t)) ? q.streak : 0;      // a whole cycle missed = streak lost (vacation days don't count)
+  return t < addDays(cycleAfter(last, cycleDays(q)), vacationDays(last, t)) ? q.streak : 0;      // a whole cycle missed = streak lost (vacation days don't count)
 }
 // days of vacation mode between two times (whole days, including one that's still on)
 function vacationDays(a, b){
@@ -1340,6 +1360,12 @@ const boosted = (q, xp, gold) => { const n = hasStreak(q) ? streakNext(q) : 0, r
 function pairCompleted(q){
   q.streakUndo = { streak:q.streak || 0, lastBoth:q.lastBoth || 0 };
   q.streak = streakNow(q) + 1; q.lastBoth = q.cycleEnd; q.bestStreak = Math.max(q.bestStreak || 0, q.streak);
+}
+function claimQuest(q, rect){
+  if (q.kind === 'scaling') claimScaling(q, rect);
+  else if (q.kind === 'target' && (targetRoll(q), (q.hits || 0) < q.need)) targetHit(q, 1, rect);
+  else if (q.kind === 'bounty') claimBounty(q, rect);
+  else claimStandard(q, rect);
 }
 function claimStandard(q, rect){
   if (isDone(q)) return;
@@ -1454,7 +1480,7 @@ function take(r){
 async function reopen(q, key){
   if (q.kind === 'pair'){
     const r = q[key];
-    if (!r.undo || !await ask(`Reopen “${r.name}”?`, `Its reward${q.bonusUntil > now() ? ' and the pair bonus' : ''} will be taken back.`, 'Reopen')) return;
+    if (!r.undo || !await ask(`Undo “${r.name}”?`, `Its reward${q.bonusUntil > now() ? ' and the pair bonus' : ''} will be taken back.`, 'Undo', 'btn-undo')) return;
     if (isDone(q) && q.streakUndo){ q.streak = q.streakUndo.streak; q.lastBoth = q.streakUndo.lastBoth; q.streakUndo = null; }
     take(r.undo); r.count = Math.max(0, r.count - 1); r.until = 0; r.undo = null; r.log && r.log.pop();
     if (q.bonusUntil > now() && q.bonusUndo){ take(q.bonusUndo); q.bonusCount = Math.max(0, q.bonusCount - 1); q.bonusUntil = 0; q.bonusUndo = null; q.bonusLog && q.bonusLog.pop(); }
@@ -1463,7 +1489,7 @@ async function reopen(q, key){
     if (!q.undo || !await ask('Remove your latest entry?', 'Any reward from it will be taken back.', 'Remove')) return;
     take(q.undo); q.entries.pop(); q.best = q.undo.prevBest; q.paidTo = q.undo.prevPaid; q.count = Math.max(0, q.count - 1); q.doneUntil = 0; q.undo = null;
   } else {
-    if (!q.undo || !await ask(`Reopen “${q.name}”?`, 'Its reward will be taken back.', 'Reopen')) return;
+    if (!q.undo || !await ask(`Undo “${q.name}”?`, 'Its reward will be taken back.', 'Undo', 'btn-undo')) return;
     take(q.undo); q.count = Math.max(0, q.count - 1); q.doneUntil = q.undo.prevUntil; if (q.undo.prevStreak != null) q.streak = q.undo.prevStreak; q.undo = null; q.log && q.log.pop();
     if (q.kind === 'bounty') q.doneAt = 0;
   }
@@ -1534,7 +1560,7 @@ const FX = (() => {
     const dt = Math.min(.05, (t - last) / 1000); last = t;
     if (box) g.clearRect(box[0], box[1], box[2] - box[0], box[3] - box[1]);
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-    g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+    g.globalCompositeOperation = S.reduceFx ? 'source-over' : 'lighter'; g.lineCap = 'round';
     let n = 0;
     for (let i = 0; i < parts.length; i++){
       const p = parts[i];
@@ -1785,8 +1811,8 @@ function shake(el){ el.classList.remove('shake'); void el.offsetWidth; el.classL
 
 /* ================= In-app confirm dialog ================= */
 let askResolve = null;
-function ask(title, text, yes = 'Confirm'){
-  $('#ask .dialog').className = 'dialog'; $('#askArt').innerHTML = ''; $('#askYes').className = 'btn-plain btn-danger';
+function ask(title, text, yes = 'Confirm', cls = 'btn-danger'){
+  $('#ask .dialog').className = 'dialog'; $('#askArt').innerHTML = ''; $('#askYes').className = 'btn-plain ' + cls;
   $('#askTitle').textContent = title; $('#askText').textContent = text; $('#askYes').textContent = yes;
   $('#askNo').style.display = yes === 'OK' ? 'none' : '';
   $('#ask').classList.add('open');
@@ -1822,6 +1848,52 @@ function moveDrag(){
   if (before){ if (ph.nextElementSibling !== before) box.insertBefore(ph, before); }
   else if (box.lastElementChild !== ph) box.appendChild(ph);
 }
+// Arrange board: drag a tile around its own group (2-D grid)
+let arDrag = null;
+// the dots start a drag at once; holding anywhere else on the tile starts it after a short hold (a quick swipe still scrolls)
+let arHold = null;
+$('#panel').addEventListener('pointerdown', e => {
+  if (!arranging || arDrag) return;
+  const item = e.target.closest('.ar-t'); if (!item || item.classList.contains('pin') || !item.querySelector('.ar-grip')) return;
+  if (e.target.closest('.ar-grip')){ e.preventDefault(); return arStart(item, e.clientX, e.clientY); }
+  if (e.target.closest('button')) return;
+  const x0 = e.clientX, y0 = e.clientY;
+  clearTimeout(arHold && arHold.t);
+  arHold = { x0, y0, x:x0, y:y0, t:setTimeout(() => { const h = arHold; arHold = null; if (h) arStart(item, h.x, h.y); }, e.pointerType === 'mouse' ? 140 : 280) };
+});
+window.addEventListener('pointermove', e => { if (!arHold) return; arHold.x = e.clientX; arHold.y = e.clientY;
+  if (Math.hypot(e.clientX - arHold.x0, e.clientY - arHold.y0) > 8){ clearTimeout(arHold.t); arHold = null; } });
+['pointerup','pointercancel'].forEach(t => window.addEventListener(t, () => { if (arHold){ clearTimeout(arHold.t); arHold = null; } }));
+// while dragging, the finger moves the tile, not the page
+window.addEventListener('touchmove', e => { if (arDrag && e.cancelable) e.preventDefault(); }, { passive:false });
+$('#panel').addEventListener('contextmenu', e => { if (arranging && e.target.closest('.ar-t')) e.preventDefault(); });
+function arStart(item, cx, cy){
+  const box = item.parentElement, r = item.getBoundingClientRect(), e = { clientX:cx, clientY:cy };
+  const ph = document.createElement('div'); ph.className = 'ar-ph' + (item.classList.contains('w') ? ' w' : '');
+  box.insertBefore(ph, item);
+  Object.assign(item.style, { position:'fixed', left:r.left + 'px', top:r.top + 'px', width:r.width + 'px', height:r.height + 'px', zIndex:50, pointerEvents:'none' });
+  item.classList.add('drag');
+  arDrag = { item, box, ph, dx:e.clientX - r.left, dy:e.clientY - r.top, x:e.clientX, y:e.clientY };
+  vibrate(12);
+  dragScroll = setInterval(() => { if (!arDrag) return; if (arDrag.y < 170) scrollBy(0, -10); else if (arDrag.y > innerHeight - 110) scrollBy(0, 10); else return; arMove(); }, 16);
+}
+function arMove(){
+  const { item, box, dx, dy, x, y } = arDrag;
+  item.style.left = (x - dx) + 'px'; item.style.top = (y - dy) + 'px';
+  const hit = document.elementFromPoint(x, y), t = hit && hit.closest('[data-r]');
+  const ok = t && t !== item && box.contains(t) && !t.classList.contains('pin') ? t : null;
+  if (arDrag.hov !== ok){ arDrag.hov && arDrag.hov.classList.remove('hov'); ok && ok.classList.add('hov'); arDrag.hov = ok; }
+}
+window.addEventListener('pointermove', e => { if (!arDrag) return; arDrag.x = e.clientX; arDrag.y = e.clientY; arMove(); });
+function arEnd(){
+  if (!arDrag) return;
+  const { item, box, ph, hov } = arDrag; arDrag = null; clearInterval(dragScroll);
+  if (hov){ const key = box.dataset.g, g = boardGroups().find(x => x.key === key);
+    if (g) moveTile(key, g.list, item.dataset.id, +hov.dataset.r, +hov.dataset.c); }
+  ph.remove(); save(); const y = scrollY; render(); scrollTo(0, y);
+}
+window.addEventListener('pointerup', arEnd);
+window.addEventListener('pointercancel', arEnd);
 $('#panel').addEventListener('pointerdown', e => {
   const grip = e.target.closest('.grip'); if (!grip || !arranging) return;
   e.preventDefault();
@@ -1868,14 +1940,36 @@ function fillParentOptions(selfId, current){
 }
 // "Resets every": any number of days (1–60), with − / + and quick picks
 function setDays(n){
-  n = Math.max(1, Math.min(60, Math.round(+n) || 1));
-  $('#fDays').value = n; $('#fDaysUnit').textContent = n === 1 ? 'day' : 'days';
+  n = +n === MONTHLY ? MONTHLY : Math.max(1, Math.min(60, Math.round(+n) || 1));
+  $('#fDays').value = n; $('#fDaysShow').value = n === MONTHLY ? '' : n; sizeDaysBox();
+  $('#fDaysUnit').textContent = n === MONTHLY ? 'Monthly' : n === 1 ? 'day' : 'days';
+  $('#daysPick').classList.toggle('mo', n === MONTHLY);
   document.querySelectorAll('.dp-quick button').forEach(b => b.classList.toggle('on', +b.dataset.days === n));
+  $('#daysHelp').textContent = n === MONTHLY ? 'Resets on the 1st of each month, at midnight.' : n === 1 ? 'Resets at midnight.' : 'Counts from the day you claim it. Resets at midnight.';
 }
-document.querySelector('.days-pick').addEventListener('click', e => { const b = e.target.closest('[data-dd]'); if (b) setDays(+$('#fDays').value + +b.dataset.dd); });
+$('#daysPick').addEventListener('click', e => { const b = e.target.closest('[data-dd]'); if (!b) return;
+  const cur = +$('#fDays').value; setDays(cur === MONTHLY ? (+b.dataset.dd > 0 ? 31 : 30) : cur + +b.dataset.dd); });
+$('#fDaysShow').addEventListener('change', () => setDays($('#fDaysShow').value));
+// the number box is as wide as its digits, so "5 days" sits in the middle
+function sizeDaysBox(){ $('#fDaysShow').style.setProperty('width', (Math.max(1, String($('#fDaysShow').value).length) + 1) + 'ch', 'important'); }
+$('#fDaysShow').addEventListener('input', () => { sizeDaysBox(); const v = Math.round(+$('#fDaysShow').value); if (v >= 1){ $('#fDays').value = Math.min(60, v); document.querySelectorAll('.dp-quick button').forEach(b => b.classList.toggle('on', +b.dataset.days === Math.min(60, v))); } });
 document.querySelector('.dp-quick').addEventListener('click', e => { const b = e.target.closest('[data-days]'); if (b) setDays(b.dataset.days); });
-$('#fDays').addEventListener('change', () => setDays($('#fDays').value));
+// HALF / FULL next to the kind name in the editor, for quests that can be half width
+let formSize = 'half', formSizeSet = false;
+function sizeOkForm(){
+  const k = getRadio('kind'), q = editingId && byId(editingId);
+  if (q && S.quests.some(c => c.parent === q.id)) return false;
+  if ((k === 'standard') && $('#fParent').value) return false;
+  return k === 'standard' || k === 'avoid' || k === 'bounty' || k === 'steps' || (k === 'target' && +$('#fNeed').value <= 10);
+}
+function renderFormSize(){
+  const el = $('#khSize'); if (!el) return;
+  el.hidden = !sizeOkForm();
+  el.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sz === formSize));
+}
+$('#khSize').addEventListener('click', e => { const b = e.target.closest('[data-sz]'); if (!b) return; formSize = b.dataset.sz; formSizeSet = true; renderFormSize(); vibrate(6); });
 function updateForm(){
+  renderFormSize();
   const kind = getRadio('kind');
   document.querySelectorAll('#form [data-show]').forEach(el => el.style.display = el.dataset.show.split(' ').includes(kind) ? '' : 'none');
   if ((kind === 'standard' || kind === 'record') && $('#fParent').value) $('#daysField').style.display = 'none';
@@ -1908,6 +2002,7 @@ function updateForm(){
 function openSheet(id){
   editingId = id || null;
   const q = id ? byId(id) : null;
+  formSize = q && q.size === 'full' ? 'full' : 'half'; formSizeSet = false;
   const kind = q ? q.kind : 'standard';
   $('#formTitle').textContent = q ? 'Edit Quest' : 'Post a Quest';
   $('#saveBtn').textContent = q ? 'Save Changes' : 'Post Quest';
@@ -1977,7 +2072,7 @@ function saveForm(){
   const name = $('#fName').value.trim();
   if (!name){ shake($('#fName')); return; }
   const common = { name, note:$('#fNote').value.trim(), showCount:$('#fShowCount').checked, tracked:$('#fTracked').checked };
-  const days = int($('#fDays').value || 1, 60) || 1;
+  const days = +$('#fDays').value === MONTHLY ? MONTHLY : int($('#fDays').value || 1, 60) || 1;
   const parent = $('#fParent').value || null;
   let q = editingId ? byId(editingId) : null;
   const isNew = !q;
@@ -2026,6 +2121,7 @@ function saveForm(){
     Object.assign(q, common, { xp:int($('#fXp').value), gold:int($('#fGold').value), parent, days });
   }
   if (isNew) S.quests.push(q);
+  if (formSizeSet && sizeOkForm()) q.size = formSize;
   save(); closeSheet(); render();
   showToast(isNew ? `Posted “${name}”` : 'Changes saved', false);
 }
@@ -2054,9 +2150,7 @@ function renderSync(){
   const on = S.sync && S.sync.connected;
   $('#syncDot').classList.toggle('on', !!on);
   $('#syncState').textContent = on ? `Connected · last sync ${S.sync.last ? timeAgo(S.sync.last) : 'pending'}` : 'Not connected';
-  $('#syncHelp').textContent = hasNative
-    ? 'Steps come from Health Connect, Android’s shared health hub. Samsung Health sends its step count there.'
-    : 'This only works in the phone app (APK).';
+  $('#syncHelp').textContent = 'Sync your steps with Health Connect.';
   $('#syncConnect').textContent = on ? 'Disconnect' : 'Connect';
 }
 function openSettings(){ renderRanks(); renderSync(); renderBackup(); $('#reduceFx').checked = !!S.reduceFx; $('#settings').classList.add('open'); }
@@ -2084,18 +2178,13 @@ $('#syncNowBtn').addEventListener('click', async () => {
    and read from a Psych folder instead. */
 const BACKUP_PICKER = { id:'psych-backup', startIn:'documents', types:[{ description:'Psych backup', accept:{ 'application/json':['.json'] } }] };
 function renderBackup(){
-  $('#backupInfo').textContent = (S.lastBackup ? `Manual: last saved ${timeAgo(S.lastBackup)}.` : 'Manual: never saved.')
-    + ' Each Save backup makes a new dated file.';
-  $('#autoBackupInfo').textContent = native()
-    ? (S.autoBackup ? `Automatic: last saved ${timeAgo(S.autoBackup)}.` : 'Automatic: not saved yet.')
-      + ' One file, Psych-AUTO-backup.json, replaced every night at midnight.'
-    : 'Automatic: only in the phone app (one file, replaced every night at midnight).';
+  $('#backupInfo').textContent = 'Data is backed up automatically at midnight.';
 }
 const backupStamp = t => { const d = new Date(t); return `${dayKey(t)}_${pad2(d.getHours())}${pad2(d.getMinutes())}`; };
 // the file says which kind it is, in its name and inside it
 function backupPayload(kind, stamp){
   return JSON.stringify({ app:'Psych', version:1, kind,
-    note: kind === 'auto' ? 'AUTOMATIC backup: saved by the app at midnight, replaced every night.' : 'MANUAL backup: saved when you tapped Save backup.',
+    note: kind === 'auto' ? 'AUTOMATIC backup: saved by the app at midnight, replaced every night.' : 'MANUAL backup: saved when you tapped Manual backup.',
     exported:new Date(stamp).toISOString(), data:{ ...S, lastBackup:kind === 'manual' ? stamp : S.lastBackup, autoBackup:kind === 'auto' ? stamp : S.autoBackup } }, null, 2);
 }
 async function exportBackup(){
@@ -2166,8 +2255,12 @@ document.addEventListener('click', e => { if (!e.target.closest('.info')) docume
 $('#boardTitle').addEventListener('click', e => { const el = e.target.closest('.info'); if (!el) return; el.classList.toggle('open'); vibrate(6); });
 $('#panel').addEventListener('click', e => {
   if (e.target.closest('#postBtn')) return openSheet(null);
-  if (e.target.closest('#arrangeBtn')){ arranging = !arranging; render(); return; }
-  if (arranging) return;
+  if (e.target.closest('#arrangeBtn')){ arranging = false; render(); window.scrollTo({ top:0 }); return; }
+  if (arranging){
+    const sz = e.target.closest('[data-act="arsize"]');
+    if (sz){ const q = byId(sz.dataset.id); if (q){ q.size = sz.dataset.size === 'full' ? 'full' : 'half'; save(); const y = scrollY; render(); scrollTo(0, y); vibrate(6); } }
+    return;
+  }
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act, rect = el.getBoundingClientRect();
   if (act === 'stepsexact'){ stepsExact = !stepsExact; render(); return; }
@@ -2191,6 +2284,7 @@ $('#panel').addEventListener('click', e => {
   if (act === 'colfold'){ const k = el.dataset.set; colOpen[k] = colOpen[k] === false; const y = scrollY; render(); scrollTo(0, y); return; }
   if (act === 'opensettings'){ openSettings(); return; }
   if (act === 'skinfo'){ toggleSkPop(el); return; }
+  if (act === 'unslip' && el.dataset.q){ const q = byId(el.dataset.q); if (q) undoSlip(q); return; }
   if (act === 'lastundo'){ const q = byId(el.dataset.q); if (q) undoLast(q); return; }
   if (act === 'dayundo'){ const q = byId(el.dataset.q); if (q) undoDay(q, el.dataset.day); return; }
   if (act === 'hxundo'){ const q = byId(el.dataset.q); if (q) reopen(q, el.dataset.k || undefined); return; }
@@ -2213,11 +2307,10 @@ $('#panel').addEventListener('click', e => {
   else if (act === 'tally') claimTally(q, el.closest('.card').querySelector('[data-tallyin]'), rect);
   else if (act === 'claim'){
     if (q.kind === 'pair') claimPair(q, el.dataset.row, rect);
-    else if (q.kind === 'scaling') claimScaling(q, rect);
-    else if (q.kind === 'target' && (targetRoll(q), (q.hits || 0) < q.need)) targetHit(q, 1, rect);
-    else if (q.kind === 'bounty') claimBounty(q, rect);
-    else claimStandard(q, rect);
+    else claimQuest(q, rect);
   }
+  else if (act === 'tunhit') targetUnhit(q);
+  else if (act === 'unslip') undoSlip(q);
   else if (act === 'thit'){ const n = el.dataset.n; if (n === 'type') return targetType(q, el); targetHit(q, +n, rect); }
   else if (act === 'slip'){ slipAvoid(q);
   }
@@ -2322,6 +2415,8 @@ function handleBack(){
   if ($('#lvlPop').classList.contains('open')) return toggleLvlPop(false);
   if ($('#ask').classList.contains('open')) return answer(false);
   if ($('#modal').classList.contains('open')) return closeSheet();
+  if ($('#wPick').classList.contains('open')) return $('#wPick').classList.remove('open');
+  if ($('#widgets').classList.contains('open')) return closeWidgets();
   if ($('#settings').classList.contains('open')) return closeSettings();
   if (arranging){ arranging = false; return render(); }
   if (S.tab !== 'quests'){ S.tab = 'quests'; save(); render(); window.scrollTo({ top:0 }); return; }
@@ -2440,7 +2535,7 @@ function cyMeta(q, until){
   if (until) return metaLine(cd(until, 'Reset: '));
   if (p && p.doneUntil > now()) return metaLine(cd(p.doneUntil, 'Reset: '));
   if ((q.days || 1) === 1) return metaLine(cd(nextMidnight(), 'Reset: '));
-  return metaLine(`${q.days}-day cycle`);
+  return metaLine(q.days === MONTHLY ? cd(addMonths(now(), 1), 'Reset: ') : `${cycleName(q.days)} cycle`);
 }
 function standardCard(q, fresh){
   const done = isDone(q);
@@ -2525,7 +2620,7 @@ function claimPair(q, key, rect){
   const t = now(), r = q[key];
   if (r.until > t) return;
   snapshot();
-  if (!(q.cycleEnd > t)) q.cycleEnd = addDays(startOfDay(), q.days || 1);
+  if (!(q.cycleEnd > t)) q.cycleEnd = cycleAfter(startOfDay(), q.days || 1);
   const R = boosted(q, r.xp, r.gold), other = q[key === 'a' ? 'b' : 'a'];
   r.until = q.cycleEnd; r.count++;
   r.undo = { xp:R.xp, gold:R.gold };
@@ -2805,9 +2900,10 @@ function qbIcon(q){ return `<button class="qb-ic k-${q.kind}" data-act="edit" ar
 function qbRew(xp, gold, dim){ return `<div class="qb-rew${dim ? ' dim' : ''}"><span class="xp-r">${ico('i-gem')}+${cyNum(xp)}</span><span class="gold-r">${ico('i-coin')}+${cyNum(gold)}</span></div>`; }
 function qbBadge(txt, cls = "") { return `<span class="qb-badge ${cls}">${txt}</span>`; }
 function qbRing(v, max){
-  const r = 36, c = 2 * Math.PI * r, k = max ? v / max : 0;
-  return `<div class="qb-ring"><svg viewBox="0 0 86 86"><circle cx="43" cy="43" r="${r}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/>
-    <circle cx="43" cy="43" r="${r}" fill="none" stroke="#ff6b1a" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(c * k).toFixed(1)} ${c.toFixed(1)}"/></svg>
+  const r = 36, c = 2 * Math.PI * r, k = max ? Math.min(1, v / max) : 0, full = max > 0 && v >= max;
+  const len = `${v}/${max}`.length, fs = len <= 3 ? 20 : len === 4 ? 17 : len === 5 ? 15 : 13;   // shrink so 10/10 stays inside the ring
+  return `<div class="qb-ring${full ? ' full' : ''}" style="--rfs:${fs}px"><svg viewBox="0 0 86 86"><circle cx="43" cy="43" r="${r}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/>
+    <circle cx="43" cy="43" r="${r}" fill="none" stroke="${full ? '#3fd47a' : '#ff6b1a'}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(c * k).toFixed(1)} ${c.toFixed(1)}"/></svg>
     <div class="qb-rc"><b>${v}/${max}</b><small>DONE</small></div></div>`;
 }
 function qbSummary(){
@@ -2860,7 +2956,7 @@ function qbScaling(q){
     ${qbTR(qbBadge('CLAIM'))}
     ${qbHead(q)}${q.note ? `<p class="qb-note">${esc(q.note)}</p>` : ''}
     <div class="qb-pips">${Array.from({ length:7 }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}${n > 7 ? `<em>+${n - 7}</em>` : ''}</div>
-    <span class="qb-next">${(w => n ? `Claimed ×${n} ${w}${up ? ` · next pays +${up}%` : ''}` : `Each claim ${w} pays ${q.growth}% more`)(periodOf(q) === 1 ? 'today' : `this ${periodWord(q)}`)}</span>
+    <span class="qb-next">${(w => n ? `Claimed ×${n}${up ? ` · Next pays +${up}%` : ''}` : `Each claim ${w} pays ${q.growth}% more`)(periodOf(q) === 1 ? 'today' : `this ${periodWord(q)}`)}</span>
     <div class="qb-foot">${qbRew(next.xp, next.gold)}</div>
   </article>`;
 }
@@ -2893,7 +2989,7 @@ function qbTile(q, wide){
   if (isTracker(q)) return qbSteps(q);
   if (q.kind === 'tally') return qbTally(q);
   if (q.kind === 'target') return qbTarget(q, wide);
-  if (q.kind === 'bounty') return qbBounty(q);
+  if (q.kind === 'bounty') return qbBounty(q, wide);
   if (q.kind === 'avoid') return qbAvoid(q, wide);
   return qbStandard(q, wide);
 }
@@ -2902,7 +2998,96 @@ function qbGroupOf(q){
   if (q.kind === 'tally') return { key:'z-tally', order:9e9, title:'Tally', time:'' };
   if (q.kind === 'bounty') return bountyUrgent(q) ? { key:'a-due', order:-1, title:'Due soon', time:'' } : { key:'y-bounty', order:8e9, title:'Bounties', time:'' };
   const d = q.kind === 'scaling' ? periodOf(q) : isTracker(q) ? 1 : (q.days || 1);
-  return { key:'d' + d, order:d, title:d === 1 ? 'Daily' : d === 7 ? 'Weekly' : `Every ${d} days`, time:d === 1 ? cd(nextMidnight()) : '' };
+  return { key:'d' + d, order:d, title:cycleName(d), time:d === 1 ? cd(nextMidnight()) : '' };
+}
+// Which quests can be half width, and the tile layout of a group: half tiles pair up; an odd one out takes the full row.
+// Arrange sets q.size: 'full', 'half' (stays half even alone), or nothing (half, but a lone one stretches).
+const canHalf = q => (q.kind === 'standard' || q.kind === 'bounty' || q.kind === 'avoid' || (q.kind === 'target' && q.need <= 10) || isTracker(q)) && !S.quests.some(c => c.parent === q.id);
+function layoutTiles(all){
+  const tiles = all.map(q => ({ q, w:!canHalf(q) || q.size === 'full' }));
+  let run = [];
+  // an odd one out stretches to the full row, unless it was set to HALF on purpose (then it stays half, with a gap)
+  const fix = () => { const last = run[run.length - 1]; if (run.length % 2 && last.q.size !== 'half') last.w = true; run = []; };
+  tiles.forEach(t => { if (t.w) fix(); else run.push(t); }); fix();
+  return tiles;
+}
+/* Free placement. Each group is a list of rows saved in S.layout[groupKey]:
+   [id] = a full-width tile, [idL, idR] = two half slots (either may be null = an empty spot).
+   Quests not placed yet are added at the end (halves pair up). A lone half that was never set to HALF stretches. */
+const isWide = q => !canHalf(q) || q.size === 'full';
+function groupRows(key, list){
+  const ids = new Set(list.map(q => q.id)), seen = new Set(), ok = id => id && ids.has(id) && !seen.has(id) ? (seen.add(id), id) : null;
+  const out = [];
+  ((S.layout || {})[key] || []).forEach(r => {
+    if (!Array.isArray(r)) return;
+    const [a, b] = r.length === 1 ? [ok(r[0]), null] : [ok(r[0]), ok(r[1])];
+    const qa = a && byId(a), qb = b && byId(b);
+    if (r.length === 1){ if (a) out.push(isWide(qa) ? [a] : [a, null]); return; }
+    if (qa && isWide(qa)){ out.push([a]); if (qb) out.push(isWide(qb) ? [b] : [null, b]); return; }
+    if (qb && isWide(qb)){ if (qa) out.push([a, null]); out.push([b]); return; }
+    if (a || b) out.push([a, b]);
+  });
+  let open = null;   // a row made just now with a free right slot
+  list.filter(q => !seen.has(q.id)).forEach(q => {
+    if (isWide(q)){ out.push([q.id]); open = null; }
+    else if (open){ open[1] = q.id; open = null; }
+    else { open = [q.id, null]; out.push(open); }
+  });
+  return out;
+}
+// the cells to draw, in order: a tile (full or half) or an empty spot
+function rowCells(rows, withGaps){
+  const cells = [];
+  rows.forEach((r, ri) => {
+    if (r.length === 1){ cells.push({ q:byId(r[0]), w:true, r:ri, c:-1 }); return; }
+    const one = (r[0] ? 1 : 0) + (r[1] ? 1 : 0) === 1, lone = byId(r[0] || r[1]);
+    if (one && lone.size !== 'half'){ cells.push({ q:lone, w:true, r:ri, c:r[0] ? 0 : 1 }); return; }   // never set to HALF: stretch
+    r.forEach((id, c) => cells.push(id ? { q:byId(id), w:false, r:ri, c } : { gap:true, r:ri, c }));
+  });
+  if (withGaps) cells.push({ gap:true, add:true, r:rows.length, c:0 });
+  return cells;
+}
+// move a quest to row tr, slot tc (-1 = take that row's place as a full tile); a half dropped on a half swaps with it
+function moveTile(key, list, id, tr, tc){
+  const rows = groupRows(key, list).map(r => r.slice()), q = byId(id); if (!q) return;
+  let sr = -1, sc = -1; rows.forEach((r, i) => { const j = r.indexOf(id); if (j >= 0){ sr = i; sc = j; } });
+  if (sr < 0 || (sr === tr && sc === tc)) return;
+  if (tr >= rows.length) rows.push([null, null]);
+  const T = rows[tr];
+  if (isWide(q)){ rows[sr][sc] = null; rows.splice(tr > sr ? tr + 1 : tr, 0, [id]); }
+  else if (T.length === 1 || tc < 0){ rows[sr][sc] = null; rows.splice(tr > sr ? tr + 1 : tr, 0, [id, null]); }
+  else { const other = T[tc]; T[tc] = id; rows[sr][sc] = other || null; }
+  const placed = rows.find(r => r.includes(id));
+  if (placed && placed.length === 2 && !(placed[0] && placed[1])) q.size = 'half';   // put next to an empty spot on purpose: keep it half
+  (S.layout ||= {})[key] = rows.filter(r => r.some(Boolean));
+}
+function boardGroups(){
+  const groups = {};
+  S.quests.filter(q => !q.parent && !isTracker(q) && !(q.kind === 'bounty' && q.doneAt && q.doneAt < startOfDay())).forEach(q => {
+    const g = qbGroupOf(q); (groups[g.key] ||= { ...g, list:[] }).list.push(q);
+  });
+  return Object.values(groups).sort((a, b) => a.order - b.order);
+}
+/* Arrange: the board in outline. Drag the dots to move a quest inside its group; HALF / FULL sets its tile size.
+   A bounty in "Due soon" is pinned (red, no dots). */
+const KIND_COL = { standard:'#ff8a45', pair:'#5cabff', scaling:'#ff7a7a', record:'#ff8fb1', tally:'#ffc94a', steps:'#2ee6d6', target:'#2ee6d6', bounty:'#ffb44a', avoid:'#ff8fb1' };
+function arrangeBoard(){
+  const withKids = q => [q, ...S.quests.filter(c => c.parent === q.id).flatMap(withKids)];
+  return `<div class="qb ar">${boardGroups().map(g => {
+    const pinned = g.key === 'a-due', kidsOf = q => S.quests.filter(c => c.parent === q.id).flatMap(withKids), tiles = [];
+    rowCells(groupRows(g.key, g.list), !pinned).forEach(c => { tiles.push(c); if (c.q) kidsOf(c.q).forEach(k => tiles.push({ q:k, w:true, kid:true })); });
+    return `<section class="qb-g${pinned ? ' due' : ''}"><div class="qb-gh"><b>${g.title}</b></div><div class="ar-grid" data-g="${g.key}">${tiles.map(({ q, w, r, c, gap, add, kid }) => {
+      if (gap) return `<div class="ar-slot${add ? ' add w' : ''}" data-r="${r}" data-c="${c}">${add ? '+' : ''}</div>`;
+      const p = parentOf(q), kind = (KIND_NAME[q.kind] || 'Quest').toUpperCase();
+      const sub = pinned ? `${kind} · ${dueIn(q) < 0 ? 'OVERDUE' : dueIn(q) === 0 ? 'DUE TODAY' : 'DUE TOMORROW'}`
+        : p ? `${kind} · AFTER ${esc(p.name).toUpperCase()}` : q.kind === 'target' ? `${kind} · ${fmt(q.need)}` : kind;
+      const size = canHalf(q) ? `<span class="ar-sz"><button data-act="arsize" data-id="${q.id}" data-size="half" class="${w ? '' : 'on'}">HALF</button><button data-act="arsize" data-id="${q.id}" data-size="full" class="${w ? 'on' : ''}">FULL</button></span>`
+        : `<span class="ar-al">ALWAYS FULL</span>`;
+      return `<div class="item ar-t${w ? ' w' : ''}${pinned ? ' pin' : ''}" data-id="${q.id}"${kid ? '' : ` data-r="${r}" data-c="${w ? -1 : c}"`} style="--kc:${KIND_COL[q.kind] || '#ff8a45'}">
+        <b class="ar-n">${esc(q.name)}</b>${pinned || p ? '' : '<span class="ar-grip" aria-label="Drag to move"></span>'}
+        <div class="ar-ft"><span class="ar-k">${sub}</span>${pinned ? '' : size}</div></div>`;
+    }).join('')}</div></section>`;
+  }).join('')}</div>`;
 }
 function questBoard(){
   const groups = {};
@@ -2917,18 +3102,15 @@ function questBoard(){
     // multi-day groups: count down to the soonest reset of a finished quest, else just say the cycle
     let time = g.time;
     if (!time && g.key[0] === 'd'){ const ends = all.map(q => q.kind === 'pair' || q.kind === 'target' ? q.cycleEnd : q.kind === 'scaling' ? periodEnd(q) : q.doneUntil).filter(x => x > now());
-      time = ends.length ? cd(Math.min(...ends)) : `${g.key.slice(1)}-day cycle`; }
+      time = ends.length ? cd(Math.min(...ends)) : +g.key.slice(1) === MONTHLY ? cd(addMonths(now(), 1)) : `${cycleName(+g.key.slice(1))} cycle`; }
     const counted = all.filter(q => q.kind !== 'scaling' && q.kind !== 'tally' && q.kind !== 'bounty' && !isTracker(q) && isVisible(q));
     const cnt = g.key === 'z-tally' ? '' : counted.length ? `${counted.filter(isDone).length}/${counted.length}` : '';
-    // half-width tiles: plain quests and steps without follow-ups; an odd one out takes the full row
-    const half = q => (q.kind === 'standard' || q.kind === 'avoid' || (q.kind === 'target' && q.need <= 10) || isTracker(q)) && !S.quests.some(c => c.parent === q.id);
-    const tiles = all.map(q => ({ q, w:!half(q) }));
-    let run = [];
-    const fix = () => { if (run.length % 2) run[run.length - 1].w = true; run = []; };
-    tiles.forEach(t => { if (t.w) fix(); else run.push(t); }); fix();
+    const kidsOf = q => S.quests.filter(c => c.parent === q.id).flatMap(withKids);
+    const tiles = [];
+    rowCells(groupRows(g.key, g.list), false).forEach(c => { tiles.push(c); if (c.q) kidsOf(c.q).forEach(k => tiles.push({ q:k, w:true, kid:true })); });
     const fresh_ = id => fresh.id === id ? ' fresh' : '';
     return `<section class="qb-g${g.key === 'a-due' ? ' due' : ''}"><div class="qb-gh"><b>${g.title}${cnt ? `<span>${cnt}</span>` : ''}</b>${time ? `<span class="qb-time">${ico('i-hourglass','0 0 16 16')}${time}</span>` : ''}</div>
-      <div class="qb-grid">${tiles.map(t => `<div class="item qb-item${t.w ? ' wide' : ''}${fresh_(t.q.id)}" data-id="${t.q.id}">${qbTile(t.q, t.w)}</div>`).join('')}</div></section>`;
+      <div class="qb-grid">${tiles.map(t => t.gap ? '<div class="qb-gap"></div>' : `<div class="item qb-item${t.w ? ' wide' : ''}${fresh_(t.q.id)}" data-id="${t.q.id}">${qbTile(t.q, t.w)}</div>`).join('')}</div></section>`;
   }).join('');
   return `<div class="qb">${S.vacation ? '<div class="vac-note">Vacation mode · streaks paused</div>' : ''}${qbSummary()}${html}</div>`;
 }
@@ -2976,10 +3158,10 @@ function heroCal(q, map, tc){
   const y = m0.getFullYear(), mo = m0.getMonth(), daysIn = new Date(y, mo + 1, 0).getDate(), lead = (m0.getDay() + 6) % 7, today = dayKey();
   let cells = ['M','T','W','T','F','S','S'].map(d => `<span class="hx-dow">${d}</span>`).join('') + '<i class="hx-c blank"></i>'.repeat(lead), n = 0;
   for (let d = 1; d <= daysIn; d++){
-    const t = new Date(y, mo, d).getTime(), k = dayKey(t), o = map[k]; if (o) n++;
+    const t = new Date(y, mo, d).getTime(), k = dayKey(t), o = map[k]; if (o && o.n) n++;
     let c = '';
     if (o){ if (q.kind === 'pair') c = o.a && o.b ? (o.bonus ? 'on bonus' : 'on') : 'split';
-      else if (q.kind === 'scaling') c = 'on s' + Math.min(3, o.n); else c = 'on'; }
+      else if (q.kind === 'scaling') c = 'on s' + Math.min(3, o.n); else c = o.slip ? 'slip' : 'on'; }
     if (t > startOfDay()) c += ' fut'; if (k === today) c += ' td'; if (k === selDay) c += ' sel';
     cells += `<button class="hx-c ${c}" data-act="hday" data-day="${k}">${d}</button>`;
   }
@@ -2994,6 +3176,7 @@ function heroCal(q, map, tc){
 const UNDO_OFF = '<button class="hx-undo" disabled>Undo</button>';
 function undoBtn(q, e, i){ return undoLive(q, e, i) || UNDO_OFF; }
 function undoLive(q, e, i){
+  if (e.slip) return slippedToday(q) && q.slipUndo && (q.slips || []).slice(-1)[0] === e.t ? `<button class="hx-undo" data-act="unslip" data-q="${q.id}">Undo</button>` : '';
   if (i === 0 && q.kind === 'scaling' && q.week === periodStart(q) && q.weekClaims > 0 && e.t >= q.week)
     return `<button class="hx-undo" data-act="lastundo" data-q="${q.id}">Undo</button>`;
   if (i === 0 && q.kind === 'tally') return `<button class="hx-undo" data-act="lastundo" data-q="${q.id}">Undo</button>`;
@@ -3016,15 +3199,20 @@ function streakInfo(){
 // the streak card clips its corners, so its bubble is shown outside it, under the (i)
 function toggleSkPop(el){
   let pop = $('#skPop');
-  if (pop){ pop.remove(); if (pop.dataset.for === 'on') return; }
+  if (pop){ pop.remove(); if (pop._for === el) return; }   // same (i) again closes it; another (i) swaps the bubble
   const r = el.getBoundingClientRect();
   pop = document.createElement('div'); pop.id = 'skPop'; pop.className = 'info-pop sk-pop'; pop.dataset.for = 'on';
-  pop.innerHTML = el.querySelector('template').innerHTML;
+  pop.innerHTML = el.querySelector('template').innerHTML; pop._for = el;
   pop.style.top = (r.bottom + scrollY + 6) + 'px'; pop.style.left = Math.max(8, Math.min(innerWidth - 216, r.left - 2)) + 'px';
   document.body.appendChild(pop); vibrate(6);
 }
 document.addEventListener('click', e => { const p = $('#skPop'); if (p && !e.target.closest('#skPop, .sk-info')) p.remove(); }, true);
 document.addEventListener('scroll', () => { const p = $('#skPop'); if (p) p.remove(); }, true);
+// small (i) bubbles in Settings: data-tip holds the text
+document.querySelectorAll('.tip-host').forEach(host => {
+  host.innerHTML = `<div class="info sk-info"><span class="info-btn" aria-label="Info">i</span><template><div class="tip-t">${esc(host.dataset.tip)}</div></template></div>`;
+  host.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleSkPop(host.querySelector('.sk-info')); });
+});
 { const host = $('#fStreakInfo');
   if (host){ host.innerHTML = streakInfo();
     host.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleSkPop(host.querySelector('.sk-info')); }); } }
@@ -3048,14 +3236,14 @@ function questHero(q){
   const tc = tier === -1 ? ['#ff5a5a', '255,90,90'] : tier === -2 ? ['#ffc94a', '255,201,74'] : tierCol(tier);   // recurring = red, tally = gold, streaks = flame colour
   const kp = q.kind === 'pair'
     ? [[esc(q.a.name), fmt(q.a.count || 0) + '×'], [esc(q.b.name), fmt(q.b.count || 0) + '×'], ['Bonus', fmt(q.bonusCount || 0) + '×', 't']]
-    : [['Total', fmt(logs.length)], ['XP earned', fmt(xp), 'x'], ['Gold', fmt(gold), 'g']];
+    : [['Total', fmt(logs.filter(e => !e.slip).length)], ['XP earned', fmt(xp), 'x'], ['Gold', fmt(gold), 'g']];
   return `<div class="hx" style="--tc:${tc[0]};--tcr:${tc[1]}">
     <div class="hx-hero"><div><div class="hx-k">${k}${hasStreak(q) && streakReward(q) ? streakInfo() : ''}</div><div class="hx-big">${big}${unit ? `<small>${unit}</small>` : ''}</div><div class="hx-sub">${sub}</div></div><div class="hx-art">${art}</div></div>
     <div class="hx-kp">${kp.map(([l, v, c]) => `<div><span>${l}</span><b class="${c || ''}">${v}</b></div>`).join('')}</div>
     ${heroCal(q, map, tc)}
     <div class="hx-card"><div class="hx-h"><span>Recent</span></div>
       ${logs.length ? (() => { const rows = logs.slice(0, 8), ub = rows.map((e, i) => undoBtn(q, e, i));
-        return rows.map((e, i) => `<div class="hx-log"><div class="hx-lt"><b>${esc(e.what)}</b><small>${dayLabel(e.t)} · ${new Date(e.t).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' })}</small></div>${qbRew(e.xp || 0, e.gold || 0)}${ub[i]}</div>`).join(''); })() : '<div class="dayinfo">Nothing claimed yet.</div>'}
+        return rows.map((e, i) => `<div class="hx-log"><div class="hx-lt"><b>${esc(e.what)}</b><small>${dayLabel(e.t)} · ${new Date(e.t).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' })}</small></div>${e.slip ? '<span class="hx-slipt">count reset</span>' : qbRew(e.xp || 0, e.gold || 0)}${ub[i]}</div>`).join(''); })() : '<div class="dayinfo">Nothing claimed yet.</div>'}
     </div></div>`;
 }
 /* "Show in Progress": a centred dialog with switches, grouped like the Quests tab */
@@ -3361,7 +3549,9 @@ function renderCollection(){
     const I = colInfo(k), open = colOpen[k] !== false;
     const scene = k === SCENES_KEY;
     const prevIds = scene ? SCENES.filter(sc => S.scenes[sc.id]).map(sc => sc.id) : I.list.filter(c => ownedCard(c.id)).map(c => c.id);
-    const prev = (prevIds.length ? prevIds : scene ? [] : I.list.map(c => backOf(c))).slice(0, 3);
+    // 3 cards in the preview: owned ones face up in front, topped up with face-down backs (1 up 2 down, 2 up 1 down, 3 up)
+    const up = prevIds.slice(0, 3), downs = scene ? [] : I.list.filter(c => !ownedCard(c.id)).map(c => backOf(c)).slice(0, 3 - up.length);
+    const prev = [...downs, ...up];
     const claim = scene ? claimBtn(SCENES_KEY, I.got === I.n, SCENE_REWARD) : claimBtn(k, I.ready, SET_REWARD[I.rar], true);
     const cnt = !scene && setTimes(k) ? `${I.two}/${I.n} ×2` : `${I.got}/${I.n}`;
     html += `<section class="cc-fold${open ? ' open' : ''}${I.ready ? ' ready' : ''}" style="--c:${I.col};--rows:${open ? (k === 'Puzzle' ? 1 : Math.ceil(I.n / 3)) : 0}">
@@ -3527,22 +3717,22 @@ function qbTarget(q, wide){
   targetRoll(q);
   const done = isDone(q), need = q.need || 1, hits = Math.min(need, q.hits || 0), full = hits >= need, R = boosted(q, q.xp, q.gold);
   const badge = qbBadge(done ? 'DONE' : full ? 'CLAIM' : `${hits}/${need}`, done ? 'ok' : full ? 'cy' : 'dim');
-  const timer = `<span class="tg-time">${done ? 'next in ' : ''}${cd(q.cycleEnd)}</span>`;
+  // no countdown on the tile: the group heading (Weekly, Every 3 days…) already shows when it resets
   if (need <= 10){
-    const orbs = `<div class="tg-orbs${full ? ' full' : ''}">${Array.from({ length:need }, (_, i) => `<i class="${i < hits ? 'on' : ''}"></i>`).join('')}</div>`;
+    // tap anywhere on the orb bar to take one hit back; anywhere else on the tile adds one
+    const orbs = `<div class="tg-orbs${full ? ' full' : ''}"${done ? '' : ' data-act="tunhit"'}>${Array.from({ length:need }, (_, i) => `<i class="${i < hits ? 'on' : ''}"></i>`).join('')}</div>`;
     return `<article class="card qb-t${done ? ' done' : ''}" data-act="${done ? 'reopen' : 'claim'}">
       ${wide ? qbTR(cyStreak(q), badge) + qbHead(q) : `<div class="qb-top">${qbIcon(q)}${cyStreak(q)}</div><h4 class="qb-h2">${esc(q.name)}</h4>`}
-      ${orbs}<div class="tg-line">${hits} / ${need} · ${timer}</div>
-      ${wide ? `<div class="qb-foot">${qbRew(R.xp, R.gold, done)}</div>` : `${qbRew(R.xp, R.gold, done)}<div class="qb-strk">${badge}</div>`}</article>`;
+      ${wide ? `${orbs}<div class="qb-foot">${qbRew(R.xp, R.gold, done)}</div>` : `${qbRew(R.xp, R.gold, done)}<div class="qb-strk tg-strk">${orbs}${badge}</div>`}</article>`;
   }
   const C = 2 * Math.PI * 24, f = hits / need, on = Math.floor(f * 10 + 1e-9);
   return `<article class="card qb-t wide${done ? ' done' : ''}" data-act="${done ? 'reopen' : 'claim'}">
     ${qbTR(cyStreak(q), badge)}
     <div class="tg-big"><div class="tg-ring"><svg viewBox="0 0 58 58"><circle cx="29" cy="29" r="24"/><circle class="v${full ? ' full' : ''}" cx="29" cy="29" r="24" stroke-dasharray="${C * f} ${C}"/></svg><b>${Math.floor(f * 100)}%</b></div>
       <div class="tg-main"><div class="qb-hd">${qbIcon(q)}<div class="qb-hdt"><h4>${esc(q.name)}</h4></div></div>
-      <div class="tg-line"><span>${fmt(hits)} / ${fmt(need)}</span>${timer}</div>
+      <div class="tg-line"><span>${fmt(hits)} / ${fmt(need)}</span></div>
       <div class="tg-seg">${Array.from({ length:10 }, (_, i) => `<i class="${i < on ? 'on' : ''}"></i>`).join('')}</div>
-      ${done || full ? '' : `<div class="tg-add">${[1, 5, 10].map(n => `<button data-act="thit" data-n="${n}">+${n}</button>`).join('')}<button data-act="thit" data-n="type">+ type</button></div>`}</div></div>
+      ${done ? '' : `<div class="tg-add"><button class="tg-minus" data-act="tunhit"${hits ? '' : ' disabled'}>−1</button>${full ? '' : [1, 5, 10].map(n => `<button data-act="thit" data-n="${n}">+${n}</button>`).join('') + '<button data-act="thit" data-n="type" aria-label="Type an amount">+</button>'}</div>`}</div></div>
     <div class="qb-foot">${qbRew(R.xp, R.gold, done)}</div></article>`;
 }
 function targetHit(q, n, rect){
@@ -3552,7 +3742,10 @@ function targetHit(q, n, rect){
   save(); render();
   if (rect) FX.small(...mid(rect), 'blue');
   vibrate(8);
-  showToast(q.hits >= q.need ? `${q.name}: all ${q.need} done · tap to claim` : `${q.name}: ${q.hits} / ${q.need}`, true);
+}
+function targetUnhit(q){
+  targetRoll(q); if (isDone(q) || !(q.hits > 0)) return;
+  snapshot(); q.hits--; save(); render(); vibrate(8);
 }
 function targetType(q, btn){
   btn.outerHTML = `<input class="tg-in" type="number" min="1" inputmode="numeric" placeholder="+" aria-label="Add">`;
@@ -3565,20 +3758,23 @@ function targetType(q, btn){
   inp.addEventListener('click', e => e.stopPropagation());
 }
 // Bounty: one-off with a due date
-function bountyDue(q){
-  if (isDone(q)) return '';
+// due date, then a clock and how long is left (orange; red when due soon). Full tiles: one line; half: two.
+const CLOCK = '<svg class="bt-clk" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.6V8l2.3 1.5"/></svg>';
+function bountyLeft(q){
   const d = dueIn(q);
-  if (d < 0) return `<span class="bt-tag">OVERDUE</span> ${shortDate(q.due)} · ${-d} ${d === -1 ? 'day' : 'days'} late`;
-  if (d === 0) return `<span class="bt-tag">DUE TODAY</span> ${shortDate(q.due)}`;
-  if (d === 1) return `<span class="bt-tag">DUE TOMORROW</span> ${shortDate(q.due)}`;
-  return `Due ${shortDate(q.due)} · ${d} days left`;
+  return d < 0 ? `${-d} ${d === -1 ? 'day' : 'days'} late` : d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : `${d} days`;
 }
-function qbBounty(q){
-  const done = isDone(q);
-  return `<article class="card qb-t wide${done ? ' done' : ''}${bountyUrgent(q) ? ' urgent' : ''}" data-act="${done ? 'reopen' : 'claim'}">
-    ${qbTR(qbBadge(done ? 'DONE' : 'CLAIM', done ? 'ok' : bountyUrgent(q) ? 'red' : ''))}
-    ${qbHead(q, isDone(q) ? '' : `<span class="bt-due">${bountyDue(q)}</span>`)}${q.note ? `<p class="qb-note">${esc(q.note)}</p>` : ''}
-    <div class="qb-foot">${qbRew(q.xp, q.gold, done)}</div></article>`;
+function bountyDue(q, wide){
+  if (isDone(q)) return '';
+  const left = `<span class="bt-left">${CLOCK}${bountyLeft(q)}</span>`;
+  return wide ? `<span class="bt-due">Due ${shortDate(q.due)} · ${left}</span>`
+    : `<span class="bt-due">Due ${shortDate(q.due)}</span><span class="bt-due">${left}</span>`;
+}
+function qbBounty(q, wide){
+  const done = isDone(q); const b = qbBadge(done ? 'DONE' : 'CLAIM', done ? 'ok' : bountyUrgent(q) ? 'red' : '');
+  return `<article class="card qb-t${wide ? ' wide' : ' bt-half'}${done ? ' done' : ''}${bountyUrgent(q) ? ' urgent' : ''}" data-act="${done ? 'reopen' : 'claim'}">
+    ${wide ? qbTR(b) + qbHead(q, bountyDue(q, true)) + (q.note ? `<p class="qb-note">${esc(q.note)}</p>` : '') + `<div class="qb-foot">${qbRew(q.xp, q.gold, done)}</div>`
+      : `<div class="qb-top">${qbIcon(q)}${done ? '' : `<span class="bt-chip">${CLOCK}${bountyLeft(q)}</span>`}</div><h4 class="qb-h2">${esc(q.name)}</h4>${done ? '' : `<span class="bt-date">Due ${shortDate(q.due)}</span>`}${qbRew(q.xp, q.gold, done)}<div class="qb-strk">${b}</div>`}</article>`;
 }
 function claimBounty(q, rect){
   if (isDone(q)) return;
@@ -3592,7 +3788,7 @@ function claimBounty(q, rect){
 function qbAvoid(q, wide){
   const slip = slippedToday(q), done = isDone(q), n = daysClean(q), R = boosted(q, q.xp, q.gold);
   const best = Math.max(q.best || 0, n);
-  const badge = slip ? qbBadge('SLIPPED', 'red') : qbBadge(done ? 'DONE' : 'CLAIM', done ? 'ok' : '');
+  const badge = slip ? `<span class="qb-badge red" data-act="unslip">SLIPPED</span>` : qbBadge(done ? 'DONE' : 'CLAIM', done ? 'ok' : '');
   const slipBtn = slip ? '' : `<button class="av-slip" data-act="slip">${wide ? 'SLIPPED' : 'SLIP'}</button>`;
   const big = `<div class="av-n">${fmt(n)}<small>${n === 1 ? 'day' : 'days'} clean${wide ? ` · best ${fmt(best)}` : ''}</small></div>`;
   let strip = '';
@@ -3604,20 +3800,35 @@ function qbAvoid(q, wide){
   const act = slip ? '' : ` data-act="${done ? 'reopen' : 'claim'}"`;
   return `<article class="card qb-t${wide ? ' wide' : ''}${done ? ' done' : ''}${slip ? ' slipped' : ''}"${act}>
     ${wide ? qbTR(cyStreak(q), badge) + qbHead(q) : `<div class="qb-top">${qbIcon(q)}${cyStreak(q)}</div><h4 class="qb-h2">${esc(q.name)}</h4>`}
-    ${big}${strip}
+    ${wide ? big : ''}${strip}
     ${wide ? `<div class="qb-foot av-foot">${qbRew(R.xp, R.gold, done)}${slipBtn}</div>` : `${qbRew(R.xp, R.gold, done)}<div class="qb-strk">${slipBtn}${badge}</div>`}</article>`;
+}
+// undo today's slip: count, best, and a reward it took back all return
+async function undoSlip(q){
+  const u = q.slipUndo; if (!slippedToday(q) || !u) return;
+  const back = Math.max(0, Math.round((startOfDay() - u.since) / 864e5));
+  if (!await ask('Undo the slip?', `Your count goes back to ${fmt(back)} ${back === 1 ? 'day' : 'days'}.${u.reward ? ' Today’s reward is given back.' : ''}`, 'Undo')) return;
+  (q.slips || []).pop(); q.slipDay = null; q.since = u.since; q.best = u.best; q.doneUntil = u.doneUntil; q.slipUndo = null;
+  if (u.reward){ q.undo = u.reward; if (u.entry) (q.log ||= []).push(u.entry); q.count = (q.count || 0) + 1; S.xp += u.reward.xp || 0; S.gold += u.reward.gold || 0; bumpToday(u.reward.xp || 0, u.reward.gold || 0); }
+  snap = null; save(); hideToast(); render();
 }
 async function slipAvoid(q){
   if (slippedToday(q)) return;
   const n = daysClean(q), best = Math.max(q.best || 0, n), claimed = isDone(q) && q.undo;
   if (!await ask('Slipped?', `The count goes back to 0.${claimed ? ' Today’s reward is taken back.' : ''}`, 'Slipped')) return;
+  doSlip(q);
+}
+function doSlip(q){
+  if (slippedToday(q)) return;
+  const n = daysClean(q), best = Math.max(q.best || 0, n), claimed = isDone(q) && q.undo;
   snapshot();
+  q.slipUndo = { since:q.since, best:q.best || 0, doneUntil:q.doneUntil || 0, reward:claimed ? q.undo : null, entry:claimed && q.log ? q.log[q.log.length - 1] : null };
   if (claimed){ take(q.undo); q.log && q.log.pop(); q.count = Math.max(0, (q.count || 0) - 1); }
   q.best = best; q.undo = null;
   (q.slips ||= []).push(now()); q.slipDay = dayKey();
   q.since = addDays(startOfDay(), 1);      // clean days count again from tomorrow
   q.doneUntil = nextMidnight();
-  save(); render(); showToast(`${q.name}: slipped · the count starts again tomorrow`, true);
+  save(); render();
 }
 
 /* ---- Date picker (bounty due date, avoid start) ---- */
@@ -3671,6 +3882,7 @@ function kindHead(editing){
   $('#kindHeadT').textContent = (editing ? 'Edit ' : 'New ') + KIND_NAME[k];
   $('#kindHeadS').textContent = KIND_HELP[k].split('. ')[0].replace(/\.$/, '') + '.';
   $('#kindBack').hidden = editing;
+  renderFormSize();
 }
 function setPick(on){ $('#form').classList.toggle('pick', on); if (!on) kindHead(!!editingId); $('#form').scrollTop = 0; }
 { const os = openSheet; openSheet = function(id){ os.apply(this, arguments); setNeed($('#fNeed').value); setPick(!id); }; }
@@ -3681,7 +3893,6 @@ $('#kindBack').addEventListener('click', () => setPick(true));
 /* ---- Vacation mode (Settings > General): streaks pause while it's on ---- */
 function renderVacation(){
   $('#vacation').checked = !!S.vacation;
-  $('#vacInfo').textContent = S.vacation ? `On since ${shortDate(S.vacation)}. Streaks are paused; turn it off when you're back.` : "Streaks pause while it's on, so days away don't break them.";
 }
 $('#vacation').addEventListener('change', e => {
   if (e.target.checked){ S.vacation = now(); }
@@ -3724,6 +3935,242 @@ $('#vacation').addEventListener('change', e => {
     if (fix !== null && fix !== el.value) el.value = fix;   // runs before the field's own handlers, so they see the fixed value
   }, true);
 })();
+
+/* ================= Home-screen widgets =================
+   S.widgets = [{ id, name, size:'2x1'|'4x1'|'2x2'|'4x2', rows }]. Every row is one home-screen cell high:
+     a row is [id] (one full-width quest, or one half quest in a 2-wide widget) or [a, b] (two half quests).
+   Shapes: 2x1 [[h]] · 4x1 [[f]] or [[h,h]] · 2x2 [[h],[h]] · 4x2 [[f],[f]], [[f],[h,h]] or [[h,h],[h,h]].
+   Each spot looks like the quest's tile. The app sends a ready-to-draw snapshot to the phone (PsychWidget plugin,
+   Android code in scripts/android-widget); taps there are queued and applied when the app opens. */
+// the phone side, found the same way as the other phone plugins (Capacitor.Plugins); null in the browser
+let _wg = null;
+const inPhoneApp = () => !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+function WG(){
+  if (_wg) return _wg;
+  if (!inPhoneApp()) return null;
+  const C = window.Capacitor;
+  _wg = (C.Plugins && C.Plugins.PsychWidget) || (C.registerPlugin && C.isPluginAvailable && C.isPluginAvailable('PsychWidget') ? C.registerPlugin('PsychWidget') : null);
+  return _wg;
+}
+const W_SHAPES = [
+  { key:'2x1',   size:'2x1', rows:[[0]],         name:'2×1',            sub:'1 half quest',            draw:[[['h']]], w:2 },
+  { key:'4x1f',  size:'4x1', rows:[[0]],         name:'4×1',            sub:'1 full quest',            draw:[[['f']]], w:4 },
+  { key:'4x1h',  size:'4x1', rows:[[0, 0]],      name:'4×1 halves',     sub:'2 half quests',           draw:[[['h','h']]], w:4 },
+  { key:'2x2',   size:'2x2', rows:[[0], [0]],    name:'2×2',            sub:'2 half quests stacked',   draw:[[['h']],[['h']]], w:2 },
+  { key:'4x2ff', size:'4x2', rows:[[0], [0]],    name:'4×2 full',       sub:'2 full quests',           draw:[[['f']],[['f']]], w:4 },
+  { key:'4x2fh', size:'4x2', rows:[[0], [0, 0]], name:'4×2 mixed',      sub:'1 full + 2 half',         draw:[[['f']],[['h','h']]], w:4 },
+];
+const wWidth = w => w.size === '2x1' || w.size === '2x2' ? 2 : 4;
+function wShapeOf(w){
+  const pat = (w.rows || []).map(r => r.length).join(',');
+  return W_SHAPES.find(t => t.size === w.size && t.rows.map(r => r.length).join(',') === pat) || W_SHAPES.find(t => t.size === w.size) || W_SHAPES[1];
+}
+// is a spot half-size? (in a 2-wide widget every spot is half; in a 4-wide one, a row of two)
+const wHalfSpot = (w, r) => wWidth(w) === 2 || (w.rows[r] || []).length === 2;
+const wFits = (q, half) => !!q && (!half || canHalf(q));
+const STREAK_COL = ['#f2f7f6', '#3fd47a', '#1ea4e6', '#b46ae0', '#f08a24', '#ff3b3b'];
+function wSlot(q){
+  if (!q) return null;
+  const done = isDone(q), R = boosted(q, q.xp || 0, q.gold || 0);
+  const n = hasStreak(q) ? streakNow(q) : 0, m = hasStreak(q) && streakReward(q) ? streakMult(done ? n : n + 1) : 1;
+  const B = (label, act, style) => ({ label, act, style });
+  const base = { qid:q.id, name:q.name, kind:q.kind, color:KIND_COL[q.kind] || '#ff8a45', streak:hasStreak(q) ? fmt(n) + '×' : '',
+    streakColor:STREAK_COL[flameTier(n)], mult:m > 1 ? `+${Math.round((m - 1) * 100)}%` : '', xp:'+' + cyNum(R.xp), gold:'+' + cyNum(R.gold),
+    sub:'', done, tap:'claim', btn:[], doneUntil:0, reset:null };
+  if (q.kind === 'avoid'){
+    const slip = slippedToday(q);
+    Object.assign(base, { done: done || slip, btn: slip ? [B('SLIPPED', '', 'red')] : done ? [B('SLIP', 'slip', 'red'), B('DONE', '', 'ok')] : [B('SLIP', 'slip', 'red'), B('CLAIM', 'claim', 'or')],
+      doneUntil: done || slip ? nextMidnight() : 0, reset:{ btn:[B('SLIP', 'slip', 'red'), B('CLAIM', 'claim', 'or')] } });
+  } else if (q.kind === 'target'){
+    targetRoll(q); const h = Math.min(q.need, q.hits || 0);
+    Object.assign(base, { hits:h, need:q.need, tap: h >= q.need ? 'claim' : 'hit',
+      btn: done ? [B('DONE', '', 'ok')] : h >= q.need ? [B('CLAIM', 'claim', 'or')] : [B(`${h}/${q.need}`, 'hit', 'cy')], doneUntil: done ? q.cycleEnd : 0,
+      reset:{ btn:[B(`0/${q.need}`, 'hit', 'cy')], hits:0, tap:'hit' } });
+  } else if (q.kind === 'scaling'){
+    const w = weekClaims(q), R2 = scaledReward(q, w + 1), up = Math.round((Math.pow(1 + q.growth / 100, w) - 1) * 100);
+    Object.assign(base, { done:false, xp:'+' + cyNum(R2.xp), gold:'+' + cyNum(R2.gold), streak:'', btn:[B('CLAIM', 'claim', 'or')], growth:q.growth || 0, baseXp:q.xp || 0, baseGold:q.gold || 0,
+      segs:w, segMax:7, note: w ? `Claimed ×${w}${up ? ` · Next pays +${up}%` : ''}` : `Each claim pays ${q.growth}% more` });
+  } else if (q.kind === 'bounty'){
+    const d = dueIn(q);
+    Object.assign(base, { streak: done ? '' : d < 0 ? 'LATE' : d === 0 ? 'TODAY' : d === 1 ? 'TMRW' : shortDate(q.due), streakColor: d <= 1 ? '#ff6b5e' : '#9db2b0',
+      btn: done ? [B('DONE', '', 'ok')] : [B('CLAIM', 'claim', 'or')] });
+  } else if (q.kind === 'standard'){
+    Object.assign(base, { btn: done ? [B('DONE', '', 'ok')] : [B('CLAIM', 'claim', 'or')], doneUntil: done ? q.doneUntil : 0, reset:{ btn:[B('CLAIM', 'claim', 'or')] } });
+  } else if (q.kind === 'tally'){
+    Object.assign(base, { done:false, tap:'tally', unit:unitOf(q) || '', pre:CURRENCY.includes(unitOf(q)), chunk:q.chunk, carry:q.carry || 0, xpPer:q.xpPer, goldPer:q.goldPer,
+      xp:'+' + cyNum(q.xpPer), gold:'+' + cyNum(q.goldPer), sub:`${fmtU(q, q.total || 0)} total`, note:`per ${fmtU(q, q.chunk)}`, btn:[B('+ ADD', 'tally', 'or')] });
+  } else if (q.kind === 'record'){
+    Object.assign(base, { tap: done ? 'open' : 'record', unit:q.unit || '', xp:'+' + cyNum(q.xpPer), gold:'+' + cyNum(q.goldPer),
+      note: q.best != null ? `per ${fmt(q.step)} ${q.unit} · best ${fmt(q.best)}` : 'no entries yet', btn: done ? [B('DONE', '', 'ok')] : [B('RECORD', 'record', 'or')] });
+  } else if (q.kind === 'pair'){
+    // the two halves as boxes (each tappable); the rewards line is the bonus for doing both
+    const H = (h, key) => { const r = boosted(q, h.xp || 0, h.gold || 0); return { label:h.name, done:h.until > now(), act:'pair' + key, xp:'+' + cyNum(r.xp), gold:'+' + cyNum(r.gold) }; };
+    const bz = boosted(q, (q.bonus || {}).xp || 0, (q.bonus || {}).gold || 0), both = isDone(q);
+    Object.assign(base, { tap:'open', done:both, pa:H(q.a, 'A'), pb:H(q.b, 'B'), xp:'+' + cyNum(bz.xp), gold:'+' + cyNum(bz.gold), note: both ? 'bonus earned' : 'bonus for both',
+      streak:`${[q.a, q.b].filter(h => h.until > now()).length}/2`, streakColor:'#5cabff', btn:[] });
+  } else if (isTracker(q)){
+    const due = dueTotals(q), st = stepDue(q, dayKey()).steps;
+    Object.assign(base, { done: !due.keys.length, tap: due.keys.length ? 'steps' : 'open', xp:'+' + cyNum(due.xp), gold:'+' + cyNum(due.gold), streak:'',
+      sub:`${fmt(st)}${q.goal ? ' / ' + fmt(q.goal) : ''} steps`, pct: q.goal ? Math.min(100, Math.round(st / q.goal * 100)) : 0,
+      note: due.keys.length ? `${due.keys.length} ${due.keys.length === 1 ? 'day' : 'days'} waiting` : 'all claimed', btn: due.keys.length ? [B('CLAIM', 'steps', 'or')] : [] });
+  }
+  return base;
+}
+function widgetSnapshot(){
+  return { updated:now(), widgets:(S.widgets || []).map(w => ({ id:w.id, size:w.size, width:wWidth(w),
+    rows:(w.rows || []).map((r, ri) => r.map(id => { const sl = wSlot(id && byId(id)); if (sl) sl.half = wHalfSpot(w, ri); return sl; })) })) };
+}
+let _wpush = 0;
+function pushWidgets(){
+  const P = WG(); if (!P) return;
+  clearTimeout(_wpush);
+  _wpush = setTimeout(() => { try { P.update({ data:JSON.stringify(widgetSnapshot()) }); } catch(e){} }, 300);
+}
+// apply what was tapped on a widget while the app was closed (counted at the time of the tap)
+async function applyWidgetActions(){
+  const P = WG(); if (!P) return;
+  let list = [];
+  try { const r = await P.takeActions(); list = JSON.parse((r && r.actions) || '[]'); } catch(e){ return; }
+  if (!Array.isArray(list) || !list.length) return;
+  let n = 0;
+  list.sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(a => {
+    const q = byId(a.qid); if (!q) return;
+    NOW_AT = Math.min(Date.now(), +a.t || Date.now());
+    try {
+      const v = round2(+a.v);
+      if (a.act === 'claim'){ if (!isDone(q)){ claimQuest(q, null); n++; } }
+      else if (a.act === 'hit' && q.kind === 'target'){ targetHit(q, 1, null); n++; }
+      else if (a.act === 'slip' && q.kind === 'avoid'){ doSlip(q); n++; }
+      else if (a.act === 'tally' && q.kind === 'tally' && v > 0 && v <= VALUE_CAP){ claimTally(q, { value:String(v) }, null); n++; }
+      else if (a.act === 'record' && q.kind === 'record' && v > 0 && v <= VALUE_CAP && !isDone(q)){ submitRecord(q, { value:String(v) }, null); n++; }
+      else if ((a.act === 'pairA' || a.act === 'pairB') && q.kind === 'pair'){ claimPair(q, a.act === 'pairA' ? 'a' : 'b', null); n++; }
+      else if (a.act === 'steps' && isTracker(q)){ claimAll(q, null); n++; }
+    } catch(e){}
+    NOW_AT = 0;
+  });
+  NOW_AT = 0; snap = null; save(); render();
+  if (n) showToast(`${n} ${n === 1 ? 'tap' : 'taps'} from your widget added`, false);
+}
+
+/* ---- Widgets screen (the button next to the Quests title) ---- */
+let wEdit = null;   // the widget being edited (a copy), or null for the list
+function openWidgets(){ wEdit = null; renderWidgets(); $('#widgets').classList.add('open'); refreshPlaced(); }
+function closeWidgets(){ $('#widgets').classList.remove('open'); $('#wPick').classList.remove('open'); }
+// the preview is drawn from the same data the phone gets, in the widget's own layout (so it matches the home screen)
+function wTileHTML(sl, half){
+  const btns = (sl.btn || []).map(b => `<span class="wt-b ${b.style}">${esc(b.label)}</span>`).join('');
+  const orbs = sl.need ? `<span class="wt-orbs">${Array.from({ length:sl.need }, (_, i) => `<i class="${i < sl.hits ? 'on' : ''}${sl.hits >= sl.need ? ' gold' : ''}"></i>`).join('')}</span>` : '';
+  const rew = `<span class="wt-rew"><span class="xp-r">${ico('i-gem')}${esc(sl.xp)}</span><span class="gold-r">${ico('i-coin')}${esc(sl.gold)}</span></span>`;
+  const icon = `<span class="wt-ic" style="--kc:${sl.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${qbIcons()[sl.kind] || qbIcons().standard}</svg></span>`;
+  const st = `${sl.mult ? `<span class="wt-mult">${esc(sl.mult)}</span>` : ''}<span class="wt-st" style="color:${sl.streakColor}">${esc(sl.streak || '')}</span>`;
+  const sub = sl.sub ? `<span class="wt-sub">${esc(sl.sub)}</span>` : '', bar = sl.pct != null ? `<span class="wt-bar"><i style="width:${sl.pct}%"></i></span>` : '';
+  const segs = sl.segs != null ? `<span class="wt-segs">${Array.from({ length:sl.segMax || 7 }, (_, i) => `<i class="${i < sl.segs ? 'on' : ''}"></i>`).join('')}</span>` : '';
+  if (half) return `<div class="wt h${sl.done ? ' done' : ''}"><div class="wt-r1">${icon}<span class="wt-gap"></span>${st}</div><b class="wt-t">${esc(sl.name)}</b>${sub}${bar}<span class="wt-fill"></span>${orbs ? `<div class="wt-r3 orb">${orbs}</div>` : ''}<div class="wt-r3">${(sl.btn || []).length >= 2 ? '' : rew}<span class="wt-gap"></span>${btns}</div></div>`;
+  const pair = sl.pa ? `<div class="wt-pair">${[sl.pa, sl.pb].map(h => `<span class="${h.done ? 'd' : ''}"><b>${h.done ? '●' : '○'}&nbsp; ${esc(h.label)}</b>${h.done ? '' : `<em class="xp-r">${ico('i-gem')}${esc(h.xp)}</em><em class="gold-r">${ico('i-coin')}${esc(h.gold)}</em>`}</span>`).join('')}</div>` : '';
+  return `<div class="wt f${sl.done ? ' done' : ''}"><div class="wt-r1">${icon}<b class="wt-t">${esc(sl.name)}</b>${st}${btns}</div><span class="wt-fill"></span>${sub}${bar}${segs}${pair}<span class="wt-fill"></span><div class="wt-r2">${rew}<span class="wt-note">${esc(sl.note || '')}</span>${orbs}</div></div>`;
+}
+function wPreview(w, edit){
+  const two = wWidth(w) === 2;
+  const spot = (id, r, c, half) => { const sl = wSlot(id && byId(id));
+    const inner = sl ? wTileHTML(sl, half) : `<div class="wv-add">${edit ? '+' : ''}</div>`;
+    return edit ? `<div class="wv-spot${sl ? '' : ' empty'}" data-wslot="${r},${c}">${inner}</div>` : `<div class="wv-cell">${inner}</div>`; };
+  return `<div class="wv${two ? ' wv-narrow' : ''}">${w.rows.map((row, ri) => `<div class="wv-row${row.length === 2 ? ' two' : ''}">${row.length === 2
+    ? spot(row[0], ri, 0, true) + spot(row[1], ri, 1, true) : spot(row[0], ri, 0, two)}</div>`).join('')}</div>`;
+}
+let wPlaced = null;   // ids of widgets that are on the home screen (asked from the phone)
+async function refreshPlaced(){
+  const P = WG(); if (!P || !P.placed) return;
+  try { const r = await P.placed(); const list = String((r && r.ids) || '').split(',').filter(Boolean);
+    const set = new Set(list.filter(x => !x.startsWith('size:')));
+    list.filter(x => x.startsWith('size:')).forEach(x => { const w = (S.widgets || []).find(w => w.size === x.slice(5)); if (w) set.add(w.id); });
+    wPlaced = set; if (!wEdit && $('#widgets').classList.contains('open')) renderWidgets();
+  } catch(e){}
+}
+const wShapeDraw = t => `<span class="w-shape${t.w === 2 ? ' narrow' : ''}">${t.draw.map(r => `<span class="w-srow">${r[0].map(k => `<i class="${k}"></i>`).join('')}</span>`).join('')}</span>`;
+function renderWidgets(){
+  const box = $('#wBody');
+  if (!wEdit){
+    const ws = S.widgets || [];
+    box.innerHTML = `<h2>Widgets</h2>
+      <p class="help">Your widgets as they look on the home screen. Tap one to change it.</p>
+      <div class="w-lab">Yours</div>
+      <div class="w-wall">${ws.map(w => `<div class="w-card" role="button" tabindex="0" data-wedit="${w.id}">${wPreview(w, false)}
+        <span class="w-cap"><span>${esc(w.name || 'Widget')} · ${wShapeOf(w).name}</span>${wPlaced ? (wPlaced.has(w.id) ? '<em class="on">on home screen</em>' : '<em>not placed</em>') : ''}</span></div>`).join('')}
+        <button class="w-newbox" data-wnew="1">+ New widget</button></div>
+      <div class="actions"><button type="button" class="btn-plain" data-wclose="1">Close</button></div>`;
+    return;
+  }
+  const w = wEdit, cur = wShapeOf(w).key, editing = (S.widgets || []).some(x => x.id === w.id);
+  box.innerHTML = `<h2>${editing ? 'Edit widget' : 'New widget'}</h2>
+    <p class="help">Pick a size, then tap a spot on the preview to put a quest in it.</p>
+    <div class="w-lab">Name</div><input class="w-name" id="wName" maxlength="24" value="${esc(w.name || '')}" placeholder="Morning, Gym…">
+    <div class="w-lab">Size</div>
+    <div class="w-sizes">${W_SHAPES.map(t => `<button class="w-sc${cur === t.key ? ' on' : ''}" data-wshape="${t.key}">${wShapeDraw(t)}<b>${t.name}</b><small>${t.sub}</small></button>`).join('')}</div>
+    <div class="w-lab">Tap a spot</div><div class="w-prev">${wPreview(w, true)}</div>
+    <div class="w-acts"><button class="w-place" data-wsave="place">Save &amp; place on home screen</button>
+      <button class="w-save" data-wsave="1">Save</button>
+      ${editing ? '<button class="w-del" data-wdel="1">Delete</button>' : ''}
+      <button class="btn-plain" data-wback="1">Back</button></div>`;
+}
+// change the shape, keeping the quests that still fit (full spots first, then half spots)
+function wReshape(w, key){
+  const t = W_SHAPES.find(x => x.key === key); if (!t) return;
+  const keep = w.rows.flat().filter(id => id && byId(id));
+  w.size = t.size; w.rows = t.rows.map(r => r.map(() => null));
+  w.rows.forEach((r, ri) => r.forEach((_, ci) => {
+    const half = wHalfSpot(w, ri), i = keep.findIndex(id => wFits(byId(id), half));
+    if (i >= 0){ r[ci] = keep[i]; keep.splice(i, 1); }
+  }));
+}
+function wPickOpen(r, c){
+  const used = new Set(wEdit.rows.flat().filter(Boolean)), half = wHalfSpot(wEdit, r);
+  const list = S.quests.filter(q => !used.has(q.id) && wFits(q, half));
+  $('#wPick').innerHTML = `<div class="w-pick"><b>${half ? 'Choose a half-size quest' : 'Choose a quest'}</b>${list.map(q => `<button data-wq="${q.id}" style="--kc:${KIND_COL[q.kind]}"><span>${esc(q.name)}</span><small>${(KIND_NAME[q.kind] || 'Quest').toUpperCase()}</small></button>`).join('') || '<p class="help">No more quests fit here.</p>'}
+    <button data-wq="" class="w-clear">Empty this spot</button><button class="btn-plain" data-wpclose="1">Cancel</button></div>`;
+  $('#wPick').dataset.slot = r + ',' + c; $('#wPick').classList.add('open');
+}
+$('#widgets').addEventListener('click', async e => {
+  if (e.target.id === 'widgets' || e.target.closest('[data-wclose]')) return closeWidgets();
+  const t = e.target.closest('[data-wslot], [data-wedit], button'); if (!t) return;
+  const keepName = () => { const n = $('#wName'); if (n && wEdit) wEdit.name = n.value.trim().slice(0, 24); };
+  if (t.dataset.wnew){ wEdit = { id:uid(), name:'', size:'4x1', rows:[[null]] }; return renderWidgets(); }
+  if (t.dataset.wedit){ const w = (S.widgets || []).find(x => x.id === t.dataset.wedit); if (w){ wEdit = JSON.parse(JSON.stringify(w)); renderWidgets(); } return; }
+  if (t.dataset.wback){ wEdit = null; return renderWidgets(); }
+  if (t.dataset.wshape){ keepName(); wReshape(wEdit, t.dataset.wshape); return renderWidgets(); }
+  if (t.dataset.wslot){ keepName(); const [r, c] = t.dataset.wslot.split(',').map(Number); return wPickOpen(r, c); }
+  if (t.dataset.wdel){ if (!await ask('Delete this widget?', 'It disappears from your home screen too.', 'Delete')) return;
+    S.widgets = (S.widgets || []).filter(x => x.id !== wEdit.id); save(); wEdit = null; return renderWidgets(); }
+  if (t.dataset.wsave){
+    keepName();
+    if (!wEdit.rows.flat().some(Boolean)){ showToast('Add at least one quest', false); return; }
+    S.widgets ||= []; const i = S.widgets.findIndex(x => x.id === wEdit.id);
+    if (i >= 0) S.widgets[i] = wEdit; else S.widgets.push(wEdit);
+    save();
+    const P = WG(), placed = wEdit;
+    wEdit = null; renderWidgets();
+    if (t.dataset.wsave !== 'place') return showToast('Widget saved', false);
+    if (!P) return inPhoneApp()
+      ? ask('Widget part missing', 'This build of the app doesn’t include the widget code. On the PC run npm run widget, then npm run sync, and build the APK again.', 'OK')
+      : ask('Saved', 'Placing on the home screen works in the phone app. Open this widget there and tap Save & place.', 'OK');
+    try { await P.update({ data:JSON.stringify(widgetSnapshot()) }); const r = await P.pin({ size:placed.size, id:placed.id });
+      setTimeout(refreshPlaced, 4000);
+      if (!(r && r.pinned)) await ask('Add it from the home screen', 'Your launcher doesn’t let apps place widgets. Long-press an empty spot on the home screen, tap Widgets, find Psych, and drag this size in.', 'OK');
+    } catch(err){ showToast('Couldn’t place the widget', false); }
+  }
+});
+$('#wPick').addEventListener('click', e => {
+  if (e.target.id === 'wPick' || e.target.closest('[data-wpclose]')) return $('#wPick').classList.remove('open');
+  const b = e.target.closest('[data-wq]'); if (!b) return;
+  const [r, c] = $('#wPick').dataset.slot.split(',').map(Number);
+  wEdit.rows[r][c] = b.dataset.wq || null;
+  $('#wPick').classList.remove('open'); renderWidgets();
+});
+$('#wBtn').addEventListener('click', openWidgets);
+// in Arrange the same icon saves and goes back to the quests
+$('#arBtn').addEventListener('click', () => { arranging = !arranging; save(); render(); window.scrollTo({ top:0 }); vibrate(6); });
+{ const P0 = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App;
+  if (P0 && P0.addListener){ P0.addListener('resume', () => applyWidgetActions()); P0.addListener('appStateChange', st => { if (st && st.isActive) applyWidgetActions(); }); } }
+setTimeout(() => { applyWidgetActions(); pushWidgets(); }, 600);
 
 // ===== start: everything is defined now, draw the app =====
 render();

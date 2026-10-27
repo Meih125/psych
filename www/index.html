@@ -87,7 +87,9 @@
 <div class="app">
   <section class="board-head">
     <h2 id="boardTitle">Quests</h2>
+    <button class="ar-btn" id="arBtn" hidden aria-label="Arrange quests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M12 3l-2.6 2.6M12 3l2.6 2.6M12 21l-2.6-2.6M12 21l2.6-2.6M3 12l2.6-2.6M3 12l2.6 2.6M21 12l-2.6-2.6M21 12l-2.6 2.6"/></svg></button>
     <button class="open-all" id="openAllBtn" hidden>Open all</button>
+    <button class="w-btn" id="wBtn" hidden aria-label="Home-screen widgets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="17" height="7" rx="1.5"/></svg></button>
     <div class="cc-search" id="colSearchBox" hidden><svg viewBox="0 0 24 24"><use href="#i-search"/></svg><input id="ccQ" type="search" maxlength="60" placeholder="Card, hero, set, words" autocomplete="off"><button class="cc-sx" id="ccClear" hidden aria-label="Clear">×</button></div>
     <button class="col-search" id="colSearchBtn" hidden aria-label="Search cards"><svg viewBox="0 0 24 24"><use href="#i-search"/></svg></button>
     <button class="prog-menu" id="progMenu" hidden aria-label="Choose what Progress shows"><svg viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
@@ -130,7 +132,7 @@
       <p class="help" id="kindHelp"></p>
       <div class="pick-actions"><button type="button" class="btn-main" id="pickNext">Next ›</button><button type="button" class="btn-plain" id="pickCancel">Cancel</button></div>
     </div>
-    <div class="kind-head" id="kindHead"><button type="button" class="kh-back" id="kindBack" aria-label="Back">‹</button><span class="kh-ic" id="kindHeadIc"></span><div><b id="kindHeadT"></b><small id="kindHeadS"></small></div></div>
+    <div class="kind-head" id="kindHead"><button type="button" class="kh-back" id="kindBack" aria-label="Back">‹</button><span class="kh-ic" id="kindHeadIc"></span><div><b id="kindHeadT"></b><small id="kindHeadS"></small></div><span class="kh-sz" id="khSize" hidden><button type="button" data-sz="half">HALF</button><button type="button" data-sz="full">FULL</button></span></div>
 
     <div class="field">
       <label for="fName" id="nameLbl">Title</label>
@@ -168,13 +170,14 @@
 
     <div class="field" id="daysField" data-show="standard pair record scaling target">
       <span class="lbl">Resets every</span>
-      <div class="days-pick">
+      <input type="hidden" id="fDays" value="1">
+      <div class="days-pick" id="daysPick">
         <button type="button" class="dp-step" data-dd="-1" aria-label="Fewer days">−</button>
-        <div class="dp-val"><input type="number" id="fDays" min="1" max="60" inputmode="numeric" value="1"><span id="fDaysUnit">day</span></div>
+        <div class="dp-val"><input type="number" id="fDaysShow" min="1" max="60" inputmode="numeric" value="1"><span id="fDaysUnit">day</span></div>
         <button type="button" class="dp-step" data-dd="1" aria-label="More days">+</button>
       </div>
-      <div class="dp-quick"><button type="button" data-days="1">Daily</button><button type="button" data-days="2">2</button><button type="button" data-days="3">3</button><button type="button" data-days="7">Weekly</button><button type="button" data-days="14">14</button><button type="button" data-days="30">30</button></div>
-      <p class="help">Counts from the day you claim it. Resets at midnight.</p>
+      <div class="dp-quick"><button type="button" data-days="1">Daily</button><button type="button" data-days="7">Weekly</button><button type="button" data-days="14">Biweekly</button><button type="button" data-days="99">Monthly</button></div>
+      <p class="help" id="daysHelp">Resets at midnight.</p>
     </div>
 
     <div class="field row2" data-show="standard scaling target bounty avoid">
@@ -251,7 +254,7 @@
     <input type="hidden" id="fShowDays">
 
     <div class="field" data-show="standard pair target avoid">
-      <label class="toggle"><span>Enable streak reward<span id="fStreakInfo" class="sk-host"></span></span><input type="checkbox" id="fShowCount"><i></i></label>
+      <label class="toggle"><span>Streak reward<span id="fStreakInfo" class="sk-host"></span></span><input type="checkbox" id="fShowCount"><i></i></label>
     </div>
     <div class="field" style="display:none">
       <label class="toggle"><span>Track in Progress</span><input type="checkbox" id="fTracked"><i></i></label>
@@ -275,37 +278,29 @@
 </div>
 
 <!-- ===== Settings sheet ===== -->
-<div class="modal" id="settings">
+<div class="modal center" id="settings">
   <div class="sheet">
     <h2>Settings</h2>
     <div class="group">
       <div class="group-title">Step sync</div>
       <div class="sync-status"><span class="st-sync" id="syncDot" style="width:auto"><i></i></span><span id="syncState"></span></div>
       <p class="help" id="syncHelp"></p>
-      <ol class="steps-list">
-        <li>Open <b>Samsung Health</b> › Settings › <b>Health Connect</b> and allow it to share <b>Steps</b>.</li>
-        <li>Tap <b>Connect</b> below and allow Psych to read steps.</li>
-        <li>Psych then syncs whenever you open it, every few minutes while it’s open, and when you tap <b>Sync now</b>.</li>
-      </ol>
       <div class="field btn-row"><button type="button" class="btn-plain" id="syncConnect">Connect</button><button type="button" class="btn-plain" id="syncNowBtn">Sync now</button></div>
     </div>
     <div class="group">
       <div class="group-title">Backup</div>
       <p class="help" id="backupInfo"></p>
-      <p class="help" id="autoBackupInfo"></p>
-      <div class="field btn-row"><button type="button" class="btn-plain" id="exportBtn">Save backup</button><button type="button" class="btn-plain" id="importBtn">Restore backup</button></div>
+      <div class="field btn-row"><button type="button" class="btn-plain" id="exportBtn">Manual backup</button><button type="button" class="btn-plain" id="importBtn">Restore backup</button></div>
       <input type="file" id="importFile" accept=".json,application/json" hidden>
     </div>
     <div class="group">
       <div class="group-title">General</div>
-      <div class="field"><label class="toggle"><span>Vacation mode</span><input type="checkbox" id="vacation"><i></i></label></div>
-      <p class="help" id="vacInfo">Streaks pause while it's on, so days away don't break them.</p>
-      <div class="field"><label class="toggle"><span>Reduce effects</span><input type="checkbox" id="reduceFx"><i></i></label></div>
-      <p class="help">Fewer sparks and no looping glows. Handy when the phone is warm or the battery is low.</p>
+      <div class="field"><label class="toggle"><span>Vacation mode<span class="sk-host tip-host" data-tip="Pause streaks"></span></span><input type="checkbox" id="vacation"><i></i></label></div>
+      <div class="field"><label class="toggle"><span>Reduce effects<span class="sk-host tip-host" data-tip="Less sparks. No glow. No bloom."></span></span><input type="checkbox" id="reduceFx"><i></i></label></div>
     </div>
     <div class="danger-block">
       <div class="group-title">Reset progress</div>
-      <p class="help">Keeps your quests. Sets gold to 0 and level to 1, marks every quest as not done, and clears counts, records and step history.</p>
+      <p class="help">Keeps your quests. Gold, level, collection, counts and history reset to zero.</p>
       <div class="field"><button type="button" class="btn-plain btn-danger" id="resetProgress">Reset progress</button></div>
     </div>
     <div class="danger-block" style="display:none">
@@ -313,10 +308,12 @@
       <p class="help">Deletes all your quests and progress, and puts back the original example quests.</p>
       <div class="field"><button type="button" class="btn-plain btn-danger" id="resetAll">Restore starter quests</button></div>
     </div>
-    <div class="actions"><button type="button" class="btn-plain" id="closeSettings">Close</button></div>
+    <div class="actions"><button type="button" class="btn-plain" id="closeSettings">Back</button></div>
   </div>
 </div>
 
+<div class="modal center" id="widgets"><div class="sheet" id="wBody"></div></div>
+<div class="modal center" id="wPick"></div>
 <div class="modal center" id="datePick"><div class="dpk" id="dpk"></div></div>
 <div class="modal center" id="ask">
   <div class="dialog">

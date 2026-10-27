@@ -1926,3 +1926,284 @@ body{font-family:var(--f-body);background:#071012}
 .sk-pop{z-index:9999}
 .hx-undo:disabled{opacity:.28;border-color:rgba(255,143,177,.35);background:none;cursor:default}
 .log-row .hx-undo{margin-left:10px}
+
+/* half-size Target: the orbs sit in the button row, so the tile is as tall as a normal quest */
+.tg-strk{justify-content:space-between;gap:8px}
+.tg-strk .tg-orbs{flex:1;min-width:0;flex-wrap:nowrap;gap:4px;margin:0}
+.tg-strk .tg-orbs i{flex:0 1 15px;width:auto;height:auto;min-width:7px;aspect-ratio:1}
+.tg-add .tg-minus{border-color:rgba(255,143,177,.6);color:#ff8fb1;background:rgba(255,143,177,.06)}
+/* Pair halves: the check orb is cyan like the Target orbs (ring when open, filled + glow when done) */
+.qb-half .hk{border-color:#2ee6d6}
+.qb-half.done .hk{background:#2ee6d6;border-color:#2ee6d6;box-shadow:0 0 7px rgba(46,230,214,.55);opacity:1 !important}
+.qb-half.done{opacity:1}.qb-half.done > :not(.hk){opacity:.6}
+
+/* slipped days: red ring in the Progress calendar; Recent row text; tappable SLIPPED badge */
+.hx-c.slip{box-shadow:inset 0 0 0 1.5px #ff3b30;background:rgba(255,59,48,.14);color:#ff8a7f}
+.hx-log .hx-slipt{font:600 11.5px var(--f-num);color:#ff8a7f}
+.qb-badge[data-act="unslip"]{cursor:pointer}
+.card.qb-t.slipped{opacity:1}.card.qb-t.slipped > *:not(.qb-strk):not(.qb-tr):not(.qb-foot){opacity:.7}
+.tg-add .tg-minus:disabled{opacity:.3}
+
+/* ===== Arrange: the board in outline ===== */
+.qb.ar .qb-gh{margin-top:14px}
+.ar-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.ar-t,.ar-ph{position:relative;min-height:66px;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.ar-t{display:flex;flex-direction:column;justify-content:space-between;gap:8px;padding:10px 11px 9px;background:rgba(20,36,38,.85);border:1.5px dashed rgba(46,230,214,.32);touch-action:pan-y}
+.ar-t.w,.ar-ph.w{grid-column:span 2}
+.ar-n{font:700 13.5px var(--f-num);color:#f2f7f6;padding-right:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ar-grip{position:absolute;right:4px;top:4px;width:30px;height:30px;touch-action:none;cursor:grab}
+.ar-grip::before{content:'';position:absolute;right:8px;top:7px;width:9px;height:14px;background:radial-gradient(circle,#ff6b1a 1.4px,transparent 1.7px) 0 0/4.5px 4.7px}
+.ar-ft{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.ar-k{font:700 10px var(--f-num);letter-spacing:.08em;color:var(--kc);opacity:.9;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ar-sz{display:flex;flex:none;border:1px solid rgba(255,255,255,.14)}
+.ar-sz button{padding:3px 6px;border:0;background:none;color:#5f7472;font:700 9.5px var(--f-num);letter-spacing:.04em}
+.ar-sz button.on{background:rgba(46,230,214,.16);color:#2ee6d6}
+.ar-al{flex:none;font:700 9px var(--f-num);letter-spacing:.06em;color:#5f7472}
+.ar-t.drag{border-style:solid;border-color:#ff6b1a;background:#16282a;box-shadow:0 12px 26px rgba(0,0,0,.6);transform:scale(1.03) rotate(-1deg)}
+.ar-ph{border:1.5px dashed rgba(255,107,26,.6);background:rgba(255,107,26,.06)}
+.ar-t.pin{border:1.5px solid rgba(255,59,48,.75);background:linear-gradient(120deg,rgba(255,59,48,.16),rgba(20,36,38,.85) 70%)}
+.tg-orbs[data-act]{position:relative;cursor:pointer}
+.tg-orbs[data-act]::after{content:'';position:absolute;inset:-8px -4px}   /* the whole bar, a bit bigger than the dots */
+/* XP bar idle shimmer: a soft light band slides across the filled part every few seconds (transform only, cheap) */
+.top .xpbar.seg .xpfill{position:relative;overflow:hidden}
+.top .xpbar.seg .xpfill::before{content:'';position:absolute;top:0;bottom:0;left:0;width:28%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);transform:translateX(-120%);animation:xpShimmer 5.5s ease-in-out 1.2s infinite;will-change:transform;pointer-events:none}
+@keyframes xpShimmer{0%{transform:translateX(-120%)}28%,100%{transform:translateX(380%)}}
+.reduce-fx .top .xpbar.seg .xpfill::before{animation:none;display:none}
+/* names no longer reserve two lines: a tile is as tall as it needs; side-by-side tiles still match each other's height */
+.card.qb-t h4.qb-h2{min-height:0}
+/* side-by-side tiles line up: rewards (and buttons) sit at the bottom, so a short name leaves its space above the
+   rewards and both tiles' rewards are at the same height. A tile on its own has no extra space, so nothing moves. */
+.qb-item:not(.wide) .card.qb-t > .qb-rew{margin-top:auto}
+.qb-item:not(.wide) .card.qb-t > .qb-rew + .qb-strk{margin-top:0}
+.qb-half .qb-rew{margin-top:auto}
+
+/* free placement: empty spots */
+.qb-gap{min-height:1px}
+.ar-slot{min-height:66px;border:1.5px dashed rgba(255,255,255,.1);display:grid;place-items:center;font:600 11px var(--f-num);color:#4e6260;letter-spacing:.06em;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.ar-slot.w{grid-column:span 2;min-height:44px}
+.ar-slot.hov,.ar-t.hov{border:1.5px dashed #ff6b1a;background:rgba(255,107,26,.08);color:#ff8a45}
+.ar-ph{opacity:.4}
+
+/* ===== Widgets ===== */
+.w-btn{position:absolute;right:16px;top:20px;display:flex;align-items:center;gap:6px;padding:7px 11px;border:1.5px solid rgba(46,230,214,.45);background:rgba(46,230,214,.07);color:#2ee6d6;font:700 11.5px var(--f-num);letter-spacing:.06em;text-transform:uppercase;clip-path:var(--cut7)}
+.w-btn svg{width:15px;height:15px}
+#widgets .sheet{max-height:92vh;overflow-y:auto}
+#widgets .sheet{border-radius:4px !important;background:rgba(6,14,16,.97);border:1px solid rgba(46,230,214,.3) !important;clip-path:var(--cut14)}
+.w-item{display:flex;align-items:center;gap:10px;width:100%;margin:0 0 8px;padding:12px;text-align:left;border:1px solid rgba(46,230,214,.2);background:rgba(14,26,28,.85);color:#f2f7f6;clip-path:var(--cut10)}
+.w-item div{flex:1;min-width:0}.w-item b{display:block;font:700 13.5px var(--f-num)}.w-item small{display:block;margin-top:2px;font:500 11.5px var(--f-body);color:#7f9593;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.w-sz{font:700 10.5px var(--f-num);padding:3px 7px;border:1px solid rgba(46,230,214,.5);color:#2ee6d6}
+.w-new,.w-place,.w-save{width:100%;margin:4px 0;padding:12px;border:1.5px solid #ff6b1a;background:rgba(255,107,26,.06);color:#ff8a45;font:700 13px var(--f-num);letter-spacing:.08em;text-transform:uppercase;clip-path:var(--cut7)}
+.w-place{border-color:#2ee6d6;background:rgba(46,230,214,.07);color:#2ee6d6}
+.w-del{width:100%;margin:4px 0;padding:10px;border:1.5px solid rgba(255,59,48,.6);background:none;color:#ff8a7f;font:700 12px var(--f-num);letter-spacing:.08em;text-transform:uppercase;clip-path:var(--cut7)}
+.w-acts{margin-top:10px;display:flex;flex-direction:column}.w-acts .btn-plain{margin-top:4px}
+.w-lab{margin:14px 0 6px;font:700 11px var(--f-num);letter-spacing:.16em;color:#2ee6d6;text-transform:uppercase}.w-lab::before{content:'// ';opacity:.6}
+.w-name{width:100%;padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(210,240,236,.18);color:#f2f7f6;font:600 14px var(--f-num)}
+.w-tabs{display:flex;gap:8px}.w-tabs button{flex:1;padding:9px 0;border:1.5px solid rgba(255,255,255,.14);background:none;color:#9db2b0;font:700 12.5px var(--f-num)}
+.w-tabs button.on{border-color:#2ee6d6;color:#2ee6d6;background:rgba(46,230,214,.08)}
+.w-slots{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.w-slot{min-height:52px;padding:9px 10px;text-align:left;border:1.5px dashed rgba(46,230,214,.35);background:rgba(14,26,28,.6);color:#f2f7f6;font:700 12.5px var(--f-num);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.w-slot.w{grid-column:span 2}.w-slot small{display:block;margin-top:4px;font:700 10px var(--f-num);letter-spacing:.06em;color:var(--kc)}
+.w-slot.empty{color:#4e6260;text-align:center;font-weight:600}
+.w-prev{padding:16px;border-radius:18px;background:linear-gradient(160deg,#2a3d58,#5a3a5e)}
+/* the widget as it will look */
+.wv{border-radius:16px;background:rgba(9,20,22,.94);border:1px solid rgba(46,230,214,.25);padding:11px 12px;color:#f2f7f6}
+.wv-2x2{width:min(170px,100%);aspect-ratio:1;margin:0 auto;display:flex;flex-direction:column}
+.wv-hd{display:flex;align-items:center;gap:7px;font:700 9.5px var(--f-num);letter-spacing:.14em;color:#ff8a45}.wv-hd i{width:13px;height:13px;border-radius:3px;background:linear-gradient(135deg,#2ee6d6,#0f6f68)}
+.wv-s{display:flex;align-items:center;gap:10px;margin-top:8px}
+.wv-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wv-s.h{flex-direction:column;align-items:stretch;gap:6px;padding:8px;border:1px solid rgba(255,255,255,.08);border-radius:10px}
+.wv-s.empty{border-style:dashed;opacity:.4;min-height:60px}
+.wv-t{flex:1;min-width:0}.wv-t b{display:block;font:700 12px var(--f-num);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2px solid var(--kc);padding-left:6px}
+.wv-t small{display:block;margin-top:2px;font:600 10px var(--f-num);color:#8fa6a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:8px}
+.wv-bs{display:flex;gap:5px;flex:none}
+.wv-b{font:700 9.5px var(--f-num);padding:4px 8px;border:1.5px solid #ff6b1a;color:#ff8a45}.wv-b.ok{border-color:#3fd47a;color:#3fd47a}.wv-b.red{border-color:#ff6b5e;color:#ff8a7f}.wv-b.cy{border-color:#2ee6d6;color:#2ee6d6}
+.wv-big{flex:1;display:flex;flex-direction:column;justify-content:space-between;margin-top:6px}.wv-big b{font:700 12px var(--f-num);color:var(--kc)}
+.wv-n{font:700 30px var(--f-num);line-height:1}.wv-n small{font-size:11px;color:#8fa6a3;margin-left:4px}
+.wv-none{margin-top:10px;font:600 11px var(--f-num);color:#5f7472}
+#wPick{z-index:40}
+.w-pick{width:min(92vw,380px);max-height:80vh;overflow-y:auto;padding:16px;background:#0c1719;border:1px solid rgba(46,230,214,.3);clip-path:var(--cut14);display:flex;flex-direction:column;gap:6px}
+.w-pick > b{font:700 14px var(--f-num);color:#f2f7f6;margin-bottom:4px}
+.w-pick button[data-wq]{text-align:left;padding:10px 12px;border:1px solid rgba(255,255,255,.1);background:rgba(20,36,38,.8);color:#f2f7f6;font:700 13px var(--f-num)}
+.w-pick button small{display:block;margin-top:3px;font:700 10px var(--f-num);color:var(--kc);letter-spacing:.06em}
+.w-pick .w-clear{color:#9db2b0 !important;text-align:center !important}
+/* Widgets: a centred dialog like the others (not a bottom sheet) */
+#widgets{z-index:30}
+#widgets .sheet{max-width:420px;max-height:88vh;padding:20px 18px;border-bottom:1px solid rgba(46,230,214,.3) !important;animation:pop .22s ease-out;box-shadow:0 18px 50px rgba(0,0,0,.7)}
+/* widget preview = the real quest tiles */
+.w-prev .wv{background:none;border:0;padding:0;border-radius:0;pointer-events:none;display:flex;flex-direction:column;gap:8px}
+.w-prev .wv .qb-item{display:block}
+.wv-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.w-prev .wv-sq{width:calc(50% - 4px);margin:0 auto}
+.wv-empty{min-height:120px;border:1.5px dashed rgba(255,255,255,.18);border-radius:6px}
+.w-mode{margin-top:8px}.w-mode button{font-size:11.5px}
+
+.w-btn{padding:8px 9px}.w-btn svg{width:18px;height:18px}
+/* every spot the same height, so the screen doesn't jump between modes */
+.w-slot{height:58px;min-height:0;display:flex;flex-direction:column;justify-content:center}
+.w-slot.empty{align-items:center}
+.w-slot.tallnote{border-style:dotted;color:#4e6260;font-weight:600;align-items:center;cursor:default}
+.wv-none{height:76px;border:1.5px dashed rgba(255,255,255,.18);border-radius:12px}
+.wv-none.wv-4x2{height:150px}.wv-none.wv-2x2{width:calc(50% - 4px);height:150px;margin:0 auto}
+/* target orbs always fit next to the button (they shrink instead of overlapping) */
+.tg-strk .tg-orbs{overflow:hidden}
+.tg-strk .tg-orbs i{flex:1 1 0;min-width:0;max-width:15px}
+/* 4x2: the two half spots are as tall as the two full ones, and the preview keeps one height */
+.w-slot.hq{height:124px}
+.w-prev.tall{min-height:220px;display:flex;flex-direction:column;justify-content:center}
+/* Widgets list: space between the text and + New widget, and less empty space before Close */
+#widgets .help{margin-bottom:0}
+#widgets .w-item:first-of-type,#widgets .w-new{margin-top:14px}
+#widgets .w-item + .w-new{margin-top:6px}
+#widgets .actions{margin-top:10px;padding-top:0}
+
+/* Widgets list (A): the widgets themselves on a wallpaper */
+.w-wall{padding:12px;border-radius:14px;background:linear-gradient(160deg,#2a3d58,#5a3a5e);display:flex;flex-direction:column;gap:12px}
+.w-card{display:block;width:100%;padding:0;border:0;background:none;text-align:left;cursor:pointer}
+.w-card .wv{pointer-events:none}
+.w-cap{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font:600 11px var(--f-num);color:#e3ecea}
+.w-cap em{font-style:normal;color:#c2cfcd}.w-cap em.on{color:#2ee6d6}
+.w-newbox{width:100%;min-height:52px;border:0;border-radius:8px;background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.06));color:#f2f7f6;font:700 12.5px var(--f-num);letter-spacing:.08em;text-transform:uppercase;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.w-wall .wv{display:flex;flex-direction:column;gap:8px}
+.w-wall .wv-sq{width:calc(50% - 4px)}
+/* Editor (B): size cards with the shape, spots on the preview */
+.w-sizes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.w-sc{padding:10px;text-align:left;border:1.5px solid rgba(255,255,255,.14);background:rgba(14,26,28,.85);color:#f2f7f6}
+.w-sc.on{border-color:#2ee6d6;background:rgba(46,230,214,.07)}
+.w-shape{height:54px;display:flex;align-items:center;justify-content:center;gap:4%}
+.w-shape.col{flex-direction:column;gap:5px}
+.w-shape i{display:block;border:1.5px solid #2ee6d6;border-radius:4px;background:rgba(46,230,214,.08)}
+.w-sc b{display:block;margin-top:6px;font:700 12px var(--f-num)}.w-sc small{font:500 10.5px var(--f-body);color:#7f9593}
+.w-prev .wv{pointer-events:auto}
+.wv-spot{cursor:pointer;border-radius:6px}.wv-spot .qb-item{pointer-events:none}
+.wv-spot:not(.empty):active{opacity:.8}
+.wv-add{min-height:96px;border:1.5px dashed rgba(46,230,214,.6);border-radius:6px;background:rgba(46,230,214,.06);display:grid;place-items:center;font:700 12px var(--f-num);color:#2ee6d6}
+.w-wall .wv-add{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.05)}
+.wv .wv-spot + .wv-spot{margin-top:0}
+.w-wall .wv{background:none;border:0;padding:0;border-radius:0}
+/* wide tiles: the name never runs under the streak / +% / CLAIM corner */
+.card.qb-t .qb-hd{padding-right:120px}
+.card.qb-t:has(.qb-tr .cy-streak em) .qb-hd{padding-right:170px}
+.card.qb-t:has(.qb-tr .bt-tag) .qb-hd{padding-right:120px}
+/* size cards: the shape drawn with full (f) and half (h) blocks */
+.w-sizes{grid-template-columns:1fr 1fr}
+.w-shape{height:54px;display:flex;flex-direction:column;justify-content:center;gap:4px;align-items:center}
+.w-srow{display:flex;gap:4px;width:100%}
+.w-shape.narrow .w-srow{width:48%}
+.w-srow i{display:block;flex:1;height:20px;border:1.5px solid #2ee6d6;border-radius:3px;background:rgba(46,230,214,.08)}
+.w-shape .w-srow:only-child i{height:24px}
+.wv-narrow{width:calc(50% - 4px);margin:0 auto}
+.wv-add{min-height:70px}
+.ar-slot.add{font-size:22px;font-weight:400;color:#5f7472}
+
+/* ===== widget preview: the home-screen widget's own layout (one row = one home-screen cell, ~110px) ===== */
+.wv{display:flex;flex-direction:column;gap:8px;background:none !important;border:0 !important;padding:0 !important}
+.wv-row{display:grid;grid-template-columns:1fr;gap:8px;height:118px}
+.wv-row.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.wv-spot,.wv-cell{min-width:0;height:100%}
+.wv-add{height:100%;min-height:0}
+.wt{height:100%;display:flex;flex-direction:column;padding:10px 12px;background:rgba(20,38,41,.95);border:1px solid rgba(210,240,236,.2);clip-path:var(--cut10);color:#f2f7f6;overflow:hidden}
+.wt.h{padding:9px 10px}
+.wt-r1,.wt-r2,.wt-r3{display:flex;align-items:center;gap:6px;min-width:0}
+.wt-r3{justify-content:flex-end;margin-top:5px}
+.wt-ic{flex:none;width:27px;height:27px;display:grid;place-items:center;border-radius:3px;color:var(--kc);background:color-mix(in srgb,var(--kc) 15%,transparent)}
+.wt.h .wt-ic{width:25px;height:25px}
+.wt-ic svg{width:16px;height:16px}
+.wt-t{flex:1;min-width:0;font:700 13px var(--f-num);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wt.h .wt-t{flex:none;margin-top:5px;font-size:12.5px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.wt-gap,.wt-fill{flex:1}
+.wt-mult{font:700 9.5px var(--f-num);color:#f5c542}.wt-st{font:700 13.5px var(--f-num)}
+.wt-rew{display:flex;gap:9px;font:700 12px var(--f-num);flex:none}.wt-rew span{display:inline-flex;align-items:center;gap:3px}.wt-rew svg{width:13px;height:13px}
+.wt-note{flex:1;min-width:0;font:500 10.5px var(--f-num);color:#8fa6a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wt-sub{font:500 10.5px var(--f-num);color:#8fa6a3;margin-top:4px}
+.wt-bar{display:block;height:5px;margin-top:6px;border-radius:2px;background:rgba(255,255,255,.08)}.wt-bar i{display:block;height:100%;border-radius:2px;background:#2ee6d6}
+.wt-b{flex:none;font:700 10px var(--f-num);padding:3px 8px;border:1.5px solid #ff6b1a;color:#ff8a45;clip-path:var(--cut5)}
+.wt-b.ok{border-color:#3fd47a;color:#3fd47a}.wt-b.red{border-color:#ff6b5e;color:#ff8a7f}.wt-b.cy{border-color:#2ee6d6;color:#2ee6d6}
+.wt-orbs{flex:1;display:flex;gap:4px;min-width:0}.wt-r2 .wt-orbs{flex:none}
+.wt-orbs i{flex:0 1 13px;aspect-ratio:1;min-width:4px;border-radius:50%;border:1.5px solid #2ee6d6}.wt-orbs i.on{background:#2ee6d6}.wt-orbs i.gold{border-color:#ffd27a}.wt-orbs i.on.gold{background:#ffd27a}
+.wt-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.wt-pair span{padding:6px 8px;border:1px solid rgba(210,240,236,.16);font:700 11px var(--f-num);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wt-pair span.d{color:#7f9593}.wt-pair em{font-style:normal;margin-left:6px;color:#8fa6a3;font-weight:500}
+.wt.done .wt-t,.wt.done .wt-rew{opacity:.5}
+
+.wt-r3{justify-content:flex-start}.wt-r3.orb{margin-top:0;margin-bottom:5px}.wt-r3.orb .wt-orbs{flex:1}
+.wt.f .wt-sub{font-size:12.5px;color:#cfdedc}
+.wt-segs{display:flex;gap:4px;margin-top:8px}.wt-segs i{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.08)}.wt-segs i.on{background:#ff5a5a}
+
+/* preview: half tiles at real widget proportions, nothing clipped */
+.wt.h .wt-rew{gap:6px;font-size:10.5px}.wt.h .wt-rew svg{width:11px;height:11px}
+.wt.h .wt-b{font-size:9px;padding:2px 6px}
+.wt.h .wt-r3{gap:4px;overflow:hidden}
+.wt.h .wt-st{font-size:12.5px}.wt.h .wt-t{font-size:12px}
+.wt-pair span{display:flex;align-items:center;gap:5px}
+.wt-pair span b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+.wt-pair em{display:inline-flex;align-items:center;gap:2px;margin:0;font:700 10px var(--f-num)}.wt-pair em svg{width:10px;height:10px}
+
+/* arrange: icon next to the Quests title; hold anywhere on a tile to move it */
+.ar-btn{align-self:center;display:grid;place-items:center;width:30px;height:30px;margin-left:-2px;padding:0;border:1.5px solid rgba(46,230,214,.4);background:rgba(46,230,214,.06);color:#2ee6d6;clip-path:var(--cut5)}
+.ar-btn svg{width:16px;height:16px}
+.ar-btn[hidden],.w-btn[hidden]{display:none}
+.w-btn{padding:6px 7px;top:18px}.w-btn svg{width:16px;height:16px}
+.ar-t{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab}
+.post.save{font-family:var(--f-num) !important;letter-spacing:.14em;border-style:solid;border-color:rgba(var(--acc-rgb),.6);color:#ff8a45;background:rgba(var(--acc-rgb),.08)}
+
+.kh-sz{margin-left:auto;align-self:center;display:flex;flex:none;border:1px solid rgba(255,255,255,.16);clip-path:var(--cut5)}
+.kh-sz[hidden]{display:none}
+.kh-sz button{padding:6px 9px;border:0;background:none;color:#5f7472;font:700 10.5px var(--f-num);letter-spacing:.06em}
+.kh-sz button.on{background:rgba(46,230,214,.16);color:#2ee6d6}
+/* bounty: due date, then clock + time left in orange */
+.bt-due{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt-left{display:inline-flex;align-items:center;gap:4px;color:#ff8a45;font-weight:700}
+.bt-clk{width:12px;height:12px;flex:none}
+.card.qb-t.urgent .bt-left{color:#ff6b5e}
+.card.qb-t.wide:has(.bt-due) .qb-hd{padding-right:72px}
+.bt-lines{display:flex;flex-direction:column;gap:3px;margin:4px 0 8px;font:600 11px var(--f-num);color:#9db2b0}
+.bt-lines .bt-due{font-size:11.5px}
+.av-slip{padding:3px 7px;font-size:10px;letter-spacing:.8px;line-height:normal}
+.qb-strk .av-slip{min-width:50px;text-align:center}
+
+/* title row: Quests [arrange] ........ [widgets], all on one centre line */
+.board-head h2{line-height:30px}
+.w-btn{position:static;margin-left:auto;align-self:center;display:grid;place-items:center;width:30px;height:30px;padding:0;border:1.5px solid rgba(46,230,214,.4);background:rgba(46,230,214,.06);clip-path:var(--cut5)}
+.w-btn svg{width:16px;height:16px}
+.ar-btn.on{background:rgba(46,230,214,.2);border-color:#2ee6d6;box-shadow:inset 0 0 8px rgba(46,230,214,.3)}
+
+.btn-plain.btn-undo{color:#ff8fb1;border-color:rgba(255,143,177,.6);background:rgba(255,143,177,.07)}
+.ar-btn.on{background:rgba(46,230,214,.06);border-color:rgba(46,230,214,.4);box-shadow:none}
+.w-sc{text-align:center}
+/* bounty half: time left as a chip where other tiles show their streak */
+.bt-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border:1.5px solid rgba(255,138,69,.5);background:rgba(255,138,69,.08);color:#ff8a45;font:700 10.5px var(--f-num);white-space:nowrap;clip-path:var(--cut5)}
+.bt-chip .bt-clk{width:12px;height:12px}
+.card.qb-t.urgent .bt-chip{color:#ff6b5e;border-color:rgba(255,59,48,.65);background:rgba(255,59,48,.1)}
+.bt-date{display:block;margin:2px 0 8px;font:600 11px var(--f-num);color:#7f9593;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.qb-rc b{font-size:var(--rfs,20px)}
+.qb-ring.full circle+circle{filter:drop-shadow(0 0 4px #3fd47a)}
+.qb-ring.full .qb-rc small{color:#3fd47a}
+.toggle > span:has(#fStreakInfo){display:inline-flex;align-items:center}
+#fStreakInfo{display:inline-flex;align-items:center;vertical-align:0}
+.dp-quick{margin-top:2px}.dp-quick button{padding:9px 0;font-size:12.5px}
+/* ring: the count sits on the exact centre, DONE hangs underneath */
+.qb-rc{display:block}
+.qb-rc b{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center}
+.qb-rc small{position:absolute;left:0;right:0;top:calc(50% + var(--rfs,20px) / 2 + 3px);text-align:center}
+.col-search{width:30px;height:30px;top:20px;clip-path:var(--cut5)}.col-search svg{width:16px;height:16px}
+.col-search{right:12px}
+
+.toggle > span:has(.sk-host){display:inline-flex;align-items:center}
+.sk-host{display:inline-flex;align-items:center;vertical-align:0}
+.sk-pop .tip-t{font:600 12.5px var(--f-body);color:#e9f2f0}
+.sk-pop:has(.tip-t){width:auto;max-width:220px;padding:8px 11px}
+/* reduce effects: no glows or bloom */
+.reduce-fx *,.reduce-fx *::before,.reduce-fx *::after{text-shadow:none !important}
+.reduce-fx .pk-tile b,.reduce-fx .xpnum,.reduce-fx .float{text-shadow:0 1px 2px #000 !important}
+.reduce-fx .chart .bar-met,.reduce-fx .placeholder .big-ico,.reduce-fx .tab.on svg,.reduce-fx .lu-reward svg,.reduce-fx .qb-ring circle+circle{filter:none !important}
+.sk-pop:has(.tip-t){max-width:200px}
+.dp-quick{margin-top:8px}
+.days-pick.mo .dp-val input{display:none}.days-pick.mo .dp-val span{color:#ff8a45;font-size:18px}
+/* pack tile backs: solid (not see-through) so the front card hides the UR back; dimmed with brightness instead */
+.pk-tile img{opacity:1 !important;filter:brightness(.62)}
+.pk-tile:not(.on) img{filter:grayscale(.7) brightness(.42)}
+.days-pick.mo .dp-val span{color:#ff8a45 !important;font-size:18px !important}
+.dp-val{align-items:center}
+#fDaysShow{min-width:0;padding:6px 0 !important}
+#settings .sheet{max-height:calc(100dvh - 40px);overflow-y:auto}

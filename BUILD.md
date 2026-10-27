@@ -30,6 +30,12 @@ In Android Studio: wait for "Gradle sync" to finish (bottom bar), then
 Install on the phone: send the APK over (Google Drive works), tap it, allow "Install unknown apps",
 and choose "Install anyway" if Play Protect warns.
 
+## Already have an android folder from before widgets?
+Run this once, then build as usual:
+
+    npm run widget
+    npm run sync
+
 ## Updating later
 1. Replace the changed files in `www` (usually `index.html`, `app.css`, `app.js`).
 2. `npm run sync`
@@ -63,3 +69,11 @@ Backups are saved to Documents/Psych on the phone.
 Commit everything in this folder except what `.gitignore` lists: `node_modules\` (rebuilt by `npm install`)
 and `android\` (rebuilt by `npm run setup`). After cloning, run the "First build" steps above.
 See HANDOFF.md for the full project notes.
+
+
+## Releasing an update
+
+1. Raise `"version"` in `package.json` (for example `1.1.0` to `1.2.0`).
+2. `npm run sync`. This also copies the version into `android/app/build.gradle`, so phones accept the new APK as an update.
+3. Build the signed APK with the **same key** as before (Build › Generate Signed App Bundle or APK).
+4. On GitHub, create a new release with tag `v1.2.0` and attach the APK, named `Psych.apk`.
