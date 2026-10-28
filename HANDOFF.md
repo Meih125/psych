@@ -107,6 +107,11 @@ Native bridge: window.PsychNative, steps callback window.psychReceiveSteps(days,
 - Settings > General > Vacation mode: pauses streaks (days on vacation don't break them; S.vacation = start,
   S.vacations = past ranges). Reduce effects (off by default): fewer sparks, no glow, no bloom, simpler reveals. Both have a small (i) bubble.
 - Settings opens in the middle of the screen; Back closes it.
+- Updates: once a day (or Settings > App > Check) the app asks GitHub for the latest release of Meih125/psych
+  (the repo must stay public). Newer than APP_VERSION: Settings shows it with the release's bullet notes and Download
+  (opens Psych.apk in the phone's browser), the gear gets a cyan dot, and a one-line "Update available" banner sits on
+  top of Quests (× hides it for that version). APP_VERSION follows package.json (npm run sync). Only GitHub https
+  links are ever opened.
 
 ## Code notes
 - Rewards under 10,000 show in full; 10,000+ shortens with 2 decimals, rounded down (12.34k, 5.55M) (cyNum).

@@ -106,6 +106,7 @@ function sanitizeState(){
   const obj = v => v && typeof v === 'object' && !Array.isArray(v);
   S.xp = fin(S.xp, 0, 0, XP_CAP); S.gold = fin(S.gold, 0, -GOLD_CAP, GOLD_CAP);
   ['steps','dist','sync','inv','pity','cards','cardsGot','scenes','setClaims','opened','progHide','today','layout','folded'].forEach(k => { if (k in S && !obj(S[k])) delete S[k]; });
+  if (S.update != null){ const u = S.update; if (!obj(u)) delete S.update; else { if (typeof u.latest !== 'string' || !/^v?\d+(\.\d+){0,2}$/.test(u.latest)) delete u.latest; if (typeof u.url !== 'string' || !/^https:\/\/(github\.com|objects\.githubusercontent\.com)\//.test(u.url)) delete u.url; u.notes = Array.isArray(u.notes) ? u.notes.filter(n => typeof n === 'string').slice(0, 8).map(n => n.slice(0, 200)) : []; if (!isFinite(+u.checked)) u.checked = 0; } }
   if (obj(S.folded)) for (const k in S.folded){ const v = S.folded[k]; if (!obj(v) || v.day !== dayKey()) delete S.folded[k]; }   // hand-set folds last one day
   if (obj(S.dist)) for (const k in S.dist){ const v = +S.dist[k]; if (!/^\d{4}-\d\d-\d\d$/.test(k) || !isFinite(v) || v < 0) delete S.dist[k]; else S.dist[k] = Math.min(1e6, v); }
   ['inv','pity','cards','cardsGot','opened'].forEach(k => { if (obj(S[k])) for (const id in S[k]) S[k][id] = Math.round(fin(S[k][id], 0, 0, 1e6)); });
@@ -2034,7 +2035,7 @@ function renderSync(){
   $('#syncHelp').textContent = 'Sync your steps with Health Connect.';
   $('#syncConnect').textContent = on ? 'Disconnect' : 'Connect';
 }
-function openSettings(){ renderSync(); renderBackup(); $('#reduceFx').checked = !!S.reduceFx; $('#settings').classList.add('open'); }
+function openSettings(){ renderUpdate(); renderSync(); renderBackup(); $('#reduceFx').checked = !!S.reduceFx; $('#settings').classList.add('open'); }
 $('#gearBtn').addEventListener('click', () => openSettings());
 $('#syncConnect').addEventListener('click', async () => {
   const n = native();
@@ -2144,6 +2145,8 @@ $('#panel').addEventListener('click', e => {
   }
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act, rect = el.getBoundingClientRect();
+  if (act === 'upget'){ openUpdate(); return; }
+  if (act === 'upclose'){ if (S.update){ S.update.dismissed = S.update.latest; save(); } render(); return; }
   if (act === 'fold'){ const q = byId(el.dataset.id); if (!q) return; S.folded ||= {}; S.folded[q.id] = { open:folded(q), day:dayKey() }; save(); const y = scrollY; render(); scrollTo(0, y); vibrate(6); return; }
   if (act === 'stepsexact'){ stepsExact = !stepsExact; render(); return; }
   if (act === 'distunit'){ S.distUnit = S.distUnit === 'mi' ? 'km' : 'mi'; save(); render(); return; }
@@ -2852,7 +2855,7 @@ function questBoard(){
     return `<section class="qb-g${g.key === 'a-due' ? ' due' : ''}"><div class="qb-gh"><b>${g.title}${cnt ? `<span>${cnt}</span>` : ''}</b>${time ? `<span class="qb-time">${ico('i-hourglass','0 0 16 16')}${time}</span>` : ''}</div>
       <div class="qb-grid">${tiles.map(t => t.gap ? '<div class="qb-gap"></div>' : `<div class="item qb-item${t.w ? ' wide' : ''}${t.kid ? ' fol' : ''}${folded(t.q) ? ' qb-stacked' + (kidCount(t.q) > 1 ? ' qb-stacked2' : '') : ''}${fresh_(t.q.id)}" data-id="${t.q.id}"${t.kid ? ` style="--fd:${Math.min(t.kid, 4)}"` : ''}>${foldBtn(qbTile(t.q, t.w), t.q)}</div>`).join('')}</div></section>`;
   }).join('');
-  return `<div class="qb">${S.vacation ? '<div class="vac-note">Vacation mode · streaks paused</div>' : ''}${qbSummary()}${html}</div>`;
+  return `<div class="qb">${updateBanner()}${S.vacation ? '<div class="vac-note">Vacation mode · streaks paused</div>' : ''}${qbSummary()}${html}</div>`;
 }
 // press and hold a tile to edit it
 (function(){
@@ -3675,6 +3678,57 @@ $('#vacation').addEventListener('change', e => {
     else if (/\.\d{3,}/.test(el.value)) fix = el.value.replace(/(\.\d\d)\d+/, '$1');
     if (fix !== null && fix !== el.value) el.value = fix;   // runs before the field's own handlers, so they see the fixed value
   }, true);
+})();
+
+/* ================= Updates (checks GitHub for a newer release) =================
+   Once a day when the app opens (or with Check in Settings) it asks GitHub for the latest release.
+   Newer than this version: Settings > App shows it with its notes and a Download button (opens the APK in the browser),
+   the gear gets a dot, and a small banner sits on top of Quests until it's closed (× hides it for that version).
+   No notifications. APP_VERSION is kept in step with package.json by scripts/android-version.js (npm run sync). */
+const APP_VERSION = '1.1.2';
+const UPDATE_REPO = 'Meih125/psych';
+let appVersion = APP_VERSION, upChecking = false;
+const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
+const newerThan = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < 3; i++){ if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+const updateReady = () => !!(S.update && S.update.latest && newerThan(S.update.latest, appVersion));
+// the release notes' bullet lines, as plain text (no markdown)
+function notesOf(body){
+  return String(body || '').split(/\r?\n/).filter(l => /^\s*[-*]\s+/.test(l)).map(l => l.replace(/^\s*[-*]\s+/, '').replace(/[*_`]/g, '').trim()).filter(Boolean).slice(0, 8);
+}
+async function checkUpdate(manual){
+  if (upChecking) return; upChecking = true; renderUpdate();
+  try {
+    const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, { headers:{ Accept:'application/vnd.github+json' }, cache:'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const apk = (j.assets || []).find(a => /\.apk$/i.test(a.name || ''));
+    const tag = String(j.tag_name || '').slice(0, 20);
+    if (!/^v?\d+(\.\d+){0,2}$/.test(tag)) throw new Error('no version');
+    const keepDismiss = S.update && S.update.latest === tag ? S.update.dismissed : null;
+    const safe = u => typeof u === 'string' && /^https:\/\/(github\.com|objects\.githubusercontent\.com)\//.test(u) ? u : null;   // only GitHub https links are ever opened
+    S.update = { checked:now(), latest:tag, notes:notesOf(j.body), url:safe(apk && apk.browser_download_url) || safe(j.html_url) || `https://github.com/${UPDATE_REPO}/releases/latest`, dismissed:keepDismiss };
+    save();
+  } catch(e){ (S.update ||= {}).checked = now(); if (manual) showToast('Couldn’t check for updates. Are you online?', false); }
+  upChecking = false; renderUpdate(); if (S.tab === 'quests') render();
+}
+function renderUpdate(){
+  const ready = updateReady(), u = S.update || {};
+  $('#upInfo').innerHTML = `Psych v${esc(appVersion)}<small class="${ready ? 'up-new' : ''}">${upChecking ? 'Checking…' : ready ? `Update available: ${esc(u.latest)}` : u.checked ? `Up to date · checked ${timeAgo(u.checked)}` : 'Not checked yet'}</small>`;
+  $('#upBtn').textContent = ready ? 'Download' : 'Check';
+  $('#upBtn').classList.toggle('dim', !ready);
+  $('#upNotes').hidden = !(ready && u.notes && u.notes.length);
+  $('#upNotes').innerHTML = ready && u.notes ? u.notes.map(n => `<li>${esc(n)}</li>`).join('') : '';
+  $('#gearBtn').classList.toggle('has-update', ready);
+}
+// opening the link leaves the app: the phone's browser downloads the APK, then tap it to install
+function openUpdate(){ const u = S.update; if (!u || !u.url) return; const a = document.createElement('a'); a.href = u.url; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); }
+const updateBanner = () => updateReady() && S.update.dismissed !== S.update.latest
+  ? `<div class="up-banner"><b>${esc(S.update.latest)}</b><span>Update available</span><button type="button" class="up-btn" data-act="upget">Download</button><button type="button" class="up-x" data-act="upclose" aria-label="Hide">×</button></div>` : '';
+$('#upBtn').addEventListener('click', () => { if (updateReady()) openUpdate(); else checkUpdate(true); });
+(async () => {
+  try { const A = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App; if (A && A.getInfo){ const i = await A.getInfo(); if (i && i.version) appVersion = i.version; } } catch(e){}
+  renderUpdate();
+  if (!S.update || !(now() - (S.update.checked || 0) < 864e5)) setTimeout(() => checkUpdate(false), 2500);   // once a day, quietly
 })();
 
 /* ================= Home-screen widgets =================

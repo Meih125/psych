@@ -29,7 +29,8 @@
 
 | Update | Released | What changed |
 |:---:|:---:|:---:|
-| **[v1.1.1](https://github.com/Meih125/psych/releases/tag/v1.1.1)** (latest) | Oct 28, 2026 | **[Patch notes](docs/patch-notes/v1.1.1.md)** |
+| **[v1.1.2](https://github.com/Meih125/psych/releases/tag/v1.1.2)** (latest) | Oct 28, 2026 | **[Patch notes](docs/patch-notes/v1.1.2.md)** |
+| [v1.1.1](https://github.com/Meih125/psych/releases/tag/v1.1.1) | Oct 28, 2026 | [Patch notes](docs/patch-notes/v1.1.1.md) |
 | [v1.1.0](https://github.com/Meih125/psych/releases/tag/v1.1.0) | Oct 27, 2026 | [Patch notes](docs/patch-notes/v1.1.0.md) |
 
 </div>
