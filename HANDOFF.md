@@ -34,20 +34,27 @@ Backup JSON {app:'Psych',version:1,data:{...}}; restore accepts any file with a 
 Native bridge: window.PsychNative, steps callback window.psychReceiveSteps(days, dist).
 
 ## Features
-- Quest kinds: Standard (daily or every N days), Pair (two halves + bonus), Recurring (claim many times per
+- Quest kinds: Standard (Daily / Weekly / Biweekly / Monthly, or any 1–60 days; Monthly = days 99, resets on the 1st), Pair (two halves + bonus), Recurring (claim many times per
   period, each claim pays more), Record (log a number, reward for beating your best), Tally (add amounts,
   reward per step, remainder carries over), Steps (Health Connect, one Steps quest only; daily goal bonus),
   Target (hit N times before its own countdown ends: orbs up to 10, ring + 10 segments and +1/+5/+10/type above 10;
-  pays when every orb is lit; tap the orb bar, or −1 on big targets, to take a hit back), Bounty (one-off with a due date, no progress; from 1 day before it sits on top in red
-  "Due soon"; gone after midnight once claimed), Avoid (counts days clean; tap = claim today; SLIP resets the count
+  pays when every orb is lit; tap the orb bar, or −1 on big targets, to take a hit back), Bounty (one-off with a due date, no progress; half or full tile with a
+  time-left chip; from 1 day before it sits on top in red "Due soon"; gone after midnight once claimed), Avoid (counts days clean; tap = claim today; SLIP resets the count
   from tomorrow, keeps the best, takes back today's reward if claimed; undo the same day by tapping SLIPPED or Undo in
   Progress > Recent; slipped days show red in the Progress calendar).
+- Follow-ups ("Available after" in the form; Standard and Record): a quest that unlocks once another Standard quest is
+  claimed, and resets with it. Shown under its quest, one step further in per level; LOCKED until then (no claim from the
+  board, the widget or code: claimQuest/submitRecord/targetHit check isVisible). A follow-up already done stays DONE (and
+  undoable) even if its quest is undone. The form never offers a quest's own follow-ups as its parent (no loops).
+  A quest with follow-ups has a fold button in its cut bottom-right corner: folded, its follow-ups are hidden and the tile
+  shows card edges stacked behind it (two edges for 2+ follow-ups). Folded by default until the quest is done; done,
+  the next follow-up shows with its own follow-ups still folded. A hand-set fold lasts the day (S.folded[id] = {open, day}).
 - Post a Quest is two steps: a 3x3 kind grid (Steps in the centre) > Next > that kind's setup page (back arrow).
   Dates use the themed calendar (calendar icon button): Bounty due (today or later), Avoid clean since (default today).
 - Quests tab: summary card (done ring, earned today, steps + last Health Connect sync + Claim, reset clock), tiles grouped by reset.
-  Tap a tile to claim (tap again to reopen with undo), press-and-hold 500 ms to edit.
-  Arrange = the board in outline, same groups, placed freely like home-screen widgets: S.layout[groupKey] is a list of
-  rows ([id] full, [idL, idR] halves, null = empty spot; groupRows/moveTile). Drag the orange dots onto any spot in the
+  Tap a tile to claim (tap again to undo), tap its icon or press-and-hold 500 ms to edit.
+  Arrange (icon next to the Quests title; the same icon or SAVE goes back) = the board in outline, same groups, placed freely like home-screen widgets: S.layout[groupKey] is a list of
+  rows ([id] full, [idL, idR] halves, null = empty spot; groupRows/moveTile). Hold anywhere on a tile (or grab the dots) and drag it onto any spot in the
   group (a half on a half swaps; the dashed row at the end makes a new row); HALF / FULL picks
   the tile size for quests that can be half (q.size 'half' / 'full'). Untouched quests are half but a lone one stretches
   (shows FULL); one set to HALF stays half even alone.
@@ -75,18 +82,18 @@ Native bridge: window.PsychNative, steps callback window.psychReceiveSteps(days,
   folding set sections with Claim (XP + gold). Repeat claims need x2 of every card and use one copy each.
   Card details show Owned xn and Collected xn (total ever); UR and SSR cards get a slow glare (one sweep every 7 s);
   press and hold the card to see the art alone (bigger, no text). Holding a card tile in the collection opens it straight
-  to the art; letting go leaves the normal card view open. The streak (i) is also next to "Enable streak reward" in the form. Search (magnifying glass by the title) finds
+  to the art; letting go leaves the normal card view open. The streak (i) is also next to "Streak reward" in the form. Search (magnifying glass by the title) finds
   any card by name, hero, set or rarity (owned first; flavour text only for owned). Unowned cards show face up but dark grey.
 - Land of Dawn flavour text = a voice line of the card's hero (the skin's own line when it has one), ML_FLAVOR in app.js.
 - Shop: banner carousel (NEW / FEATURED PACK), pack rows with Collected and UR countdown (red = opened, striped red =
   owned but unopened), styled buy dialog.
 - Info (i) bubbles on form fields and in the Shop.
-- Backups (Documents/Psych on the phone): Save backup = new dated file Psych-MANUAL-backup-YYYY-MM-DD_HHMM.json;
+- Backups (Documents/Psych on the phone): Manual backup = new dated file Psych-MANUAL-backup-YYYY-MM-DD_HHMM.json;
   automatic = one file Psych-AUTO-backup.json, replaced at midnight (or the moment the app opens next, before
   anything changes, if it was closed at midnight). The JSON says kind "manual"/"auto"; restore shows which.
-- Widgets (button next to the Quests title, hidden in Arrange): S.widgets = [{id, name, size, rows}]. Every row is one
+- Widgets (button at the right of the Quests title row; Quests tab only, hidden in Arrange): S.widgets = [{id, name, size, rows}]. Every row is one
   home-screen cell high: [id] = one full quest (or one half quest in a 2-wide widget), [a, b] = two half quests.
-  Shapes: 2x1 [[h]] · 4x1 [[f]] / [[h,h]] · 2x2 [[h],[h]] · 4x2 [[f],[f]] / [[f],[h,h]] / [[h,h],[h,h]] (W_SHAPES).
+  Shapes (6): 2x1 [[h]] · 4x1 [[f]] / [[h,h]] · 2x2 [[h],[h]] · 4x2 [[f],[f]] / [[f],[h,h]] (W_SHAPES). A locked follow-up shows LOCKED.
   Half spots take canHalf quests only; Steps, Tally, Record, Pair go in full spots.
   On the phone: tap anywhere on a quest = its main action (claim, +1 orb, Steps claim; Tally/Record open a small box to
   type the amount, WidgetInputActivity); tap the icon or a finished quest to open the app; SLIP and the Pair halves are
@@ -98,7 +105,8 @@ Native bridge: window.PsychNative, steps callback window.psychReceiveSteps(days,
   Cut corners on the phone come from 9-patch images (res/drawable-xxhdpi/*.9.png); the Steps bar is a ProgressBar.
   The list shows each widget as it looks with "on home screen / not placed".
 - Settings > General > Vacation mode: pauses streaks (days on vacation don't break them; S.vacation = start,
-  S.vacations = past ranges). Reduce effects (off by default): fewer particles, no looping glows, simpler reveals.
+  S.vacations = past ranges). Reduce effects (off by default): fewer sparks, no glow, no bloom, simpler reveals. Both have a small (i) bubble.
+- Settings opens in the middle of the screen; Back closes it.
 
 ## Code notes
 - Rewards under 10,000 show in full; 10,000+ shortens with 2 decimals, rounded down (12.34k, 5.55M) (cyNum).
@@ -107,9 +115,17 @@ Native bridge: window.PsychNative, steps callback window.psychReceiveSteps(days,
 - Safety limits: number boxes take digits only (a dot only where decimals make sense), never negative, capped at the
   field's max (XP/gold 9,999; values 10,000,000). One reward is at most 1,000,000; total XP at most 1e9 (level ~8,700).
   sanitizeState() (called by normalize) repairs any save or backup: bad numbers, unknown kinds, duplicate ids, parent
-  loops, extra Steps quests. A backup that still fails to draw is refused and the current data kept.
-- Test headlessly with Playwright (viewport ~401x824, S22 Ultra). test/r31.js-style "break it" checks: typing/pasting
-  junk, double taps on Save/Buy/open, junk backups, max-growth Recurring spam.
+  loops, extra Steps quests, history entries without a real time. fillShape() gives every quest all the fields its kind
+  needs (QUEST_SHAPE), so old or hand-edited saves can't crash a screen. A backup that still fails to draw is refused.
+- repairClock() (every render): if the phone's clock was moved back, nothing stays "done" longer than one cycle.
+- Widget taps older than 14 days or in the future count as now. Steps from the phone: only real days up to today,
+  at most 500,000 a day; a day that hasn't happened yet is never claimable.
+- give(r) is the quiet opposite of take(r) (used when undoing a slip): it pays level rewards again if a level is regained.
+- Test headlessly with Playwright (viewport ~401x824, S22 Ultra), against a build without demo data. Test suites
+  (kept outside the zip): a "break it" suite (junk saves, every kind's claim/undo/edit/delete, follow-up chains,
+  time travel incl. month/year ends, leap day, vacation and the clock moved back, shop/pity/set claims, junk widget
+  queues, backups, arrange, caps, steps, a 200-quest save, reward farming) and a random "monkey" run (thousands of taps,
+  typing, back presses, dialogs and clock jumps across every screen, checked every 50 steps).
 
 ## My working rules
 - Only make the zip when I ask. Zip = folder "psych" with www, assets, scripts, capacitor.config.json,

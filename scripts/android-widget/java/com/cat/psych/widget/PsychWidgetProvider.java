@@ -376,10 +376,10 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
             if (bi < 0) { rv.setViewVisibility(vid, View.GONE); continue; }
             JSONObject b = buttons.getJSONObject(bi);
             String st = b.optString("style", "or"), act = b.optString("act");
-            if (!"ok".equals(st) && !"red".equals(st) && !"cy".equals(st)) st = "or";
+            if (!"ok".equals(st) && !"red".equals(st) && !"cy".equals(st) && !"dim".equals(st)) st = "or";
             rv.setViewVisibility(vid, View.VISIBLE);
             rv.setTextViewText(vid, b.optString("label"));
-            rv.setTextColor(vid, Color.parseColor("ok".equals(st) ? "#3FD47A" : "red".equals(st) ? "#FF8A7F" : "cy".equals(st) ? "#2EE6D6" : "#FF8A45"));
+            rv.setTextColor(vid, Color.parseColor("ok".equals(st) ? "#3FD47A" : "red".equals(st) ? "#FF8A7F" : "cy".equals(st) ? "#2EE6D6" : "dim".equals(st) ? "#6F8482" : "#FF8A45"));
             rv.setInt(vid, "setBackgroundResource", c.getResources().getIdentifier("pw_btn_" + st, "drawable", c.getPackageName()));
             rv.setOnClickPendingIntent(vid, action(c, s, act, (wid * 100 + slot * 4 + 1 + k) & 0x7fffffff));
         }

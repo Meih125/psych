@@ -27,9 +27,10 @@
 
 <div align="center">
 
-| Latest update | Released | What changed |
+| Update | Released | What changed |
 |:---:|:---:|:---:|
-| **[v1.1.0](https://github.com/Meih125/psych/releases/tag/v1.1.0)** | Oct 27, 2026 | **[Patch notes](docs/patch-notes/v1.1.0.md)** |
+| **[v1.1.1](https://github.com/Meih125/psych/releases/tag/v1.1.1)** (latest) | Oct 28, 2026 | **[Patch notes](docs/patch-notes/v1.1.1.md)** |
+| [v1.1.0](https://github.com/Meih125/psych/releases/tag/v1.1.0) | Oct 27, 2026 | [Patch notes](docs/patch-notes/v1.1.0.md) |
 
 </div>
 
@@ -55,7 +56,7 @@ No account, no server, no ads. Everything stays on your phone.
 
 ## Install
 
-1. Download **[Psych.apk](https://github.com/Meih125/psych/releases/latest/download/Psych.apk)**.
+1. Download **[Psych.apk](https://github.com/Meih125/psych/releases/latest/download/Psych.apk)** on your Android phone.
 2. Open it and allow **Install unknown apps** when asked.
 3. If Play Protect warns, choose **Install anyway**. The app isn't on the Play Store, so Android doesn't know it.
 

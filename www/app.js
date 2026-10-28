@@ -92,20 +92,11 @@ function normalize(){
   if (!S.cardsGot) S.cardsGot = {};   // card id -> how many ever collected (set claims take copies away, this never goes down)
   if (!S.scenes) S.scenes = {};
   if (!S.setClaims) S.setClaims = {};
-  if (!S.opened) S.opened = {};   // item id -> how many decks opened, ever   // set name -> true once its completion reward is claimed    // scene id -> true once unlocked
-  if (!S.rewardedLevel) S.rewardedLevel = levelInfo(S.xp).L;   // levels already reached before rewards existed
+  if (!S.opened) S.opened = {};      // pack id -> how many opened, ever
+  if (!S.rewardedLevel) S.rewardedLevel = levelInfo(S.xp).L;   // levels already reached before level rewards existed
   if (!TABS.includes(S.tab)) S.tab = 'quests';
-  S.quests.forEach(q => {                       // fill in fields added in newer versions
-    if (q.kind === 'record'){ if (!q.step) q.step = 1; if (q.paidTo === undefined) q.paidTo = q.best; }
-    if (isTracker(q) && !q.paid) q.paid = {};
-    if (isTracker(q)){ if (q.goalXp == null) q.goalXp = GOAL_BONUS; if (q.goalGold == null) q.goalGold = GOAL_BONUS; q.goalPaid ||= {}; }
-    if (q.kind === 'tally'){ q.log ||= []; q.carry ||= 0; q.total ||= 0; q.count ||= 0; }
-    if (q.kind === 'target'){ q.need ||= 5; q.hits ||= 0; q.log ||= []; q.days ||= 7; }
-    if (q.kind === 'bounty'){ q.due ||= startOfDay(); q.log ||= []; }
-    if (q.kind === 'avoid'){ q.since ||= startOfDay(); q.slips ||= []; q.log ||= []; q.days = 1; }
-    if (q.kind === 'pair'){ q.a.log = q.a.log || []; q.b.log = q.b.log || []; q.bonusLog = q.bonusLog || []; }
-    else if (q.kind === 'standard' || q.kind === 'scaling') q.log = q.log || [];
-  });
+  // every quest already has all its fields (fillShape, in sanitizeState); only the steps goal bonus default is set here
+  S.quests.forEach(q => { if (isTracker(q)){ if (q.goalXp == null) q.goalXp = GOAL_BONUS; if (q.goalGold == null) q.goalGold = GOAL_BONUS; } if (q.kind === 'avoid') q.days = 1; });
 }
 // Repairs a save or backup so nothing in it can crash or freeze the app:
 // numbers finite and in range, known quest kinds only, unique ids, no parent loops.
@@ -114,7 +105,9 @@ function sanitizeState(){
   const fin = (v, d = 0, lo = -Infinity, hi = Infinity) => { v = +v; return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
   const obj = v => v && typeof v === 'object' && !Array.isArray(v);
   S.xp = fin(S.xp, 0, 0, XP_CAP); S.gold = fin(S.gold, 0, -GOLD_CAP, GOLD_CAP);
-  ['steps','sync','inv','pity','cards','cardsGot','scenes','setClaims','opened','progHide','today'].forEach(k => { if (k in S && !obj(S[k])) delete S[k]; });
+  ['steps','dist','sync','inv','pity','cards','cardsGot','scenes','setClaims','opened','progHide','today','layout','folded'].forEach(k => { if (k in S && !obj(S[k])) delete S[k]; });
+  if (obj(S.folded)) for (const k in S.folded){ const v = S.folded[k]; if (!obj(v) || v.day !== dayKey()) delete S.folded[k]; }   // hand-set folds last one day
+  if (obj(S.dist)) for (const k in S.dist){ const v = +S.dist[k]; if (!/^\d{4}-\d\d-\d\d$/.test(k) || !isFinite(v) || v < 0) delete S.dist[k]; else S.dist[k] = Math.min(1e6, v); }
   ['inv','pity','cards','cardsGot','opened'].forEach(k => { if (obj(S[k])) for (const id in S[k]) S[k][id] = Math.round(fin(S[k][id], 0, 0, 1e6)); });
   const seen = new Set();
   S.quests = S.quests.filter(q => obj(q) && KINDS.includes(q.kind)).filter(q => {
@@ -122,6 +115,12 @@ function sanitizeState(){
     seen.add(q.id); return true;
   });
   if (S.quests.filter(q => q.kind === 'steps').length > 1){ let one = false; S.quests = S.quests.filter(q => q.kind !== 'steps' || (!one && (one = true))); }
+  S.quests.forEach(fillShape);
+  if (obj(S.steps)) for (const k in S.steps){ const v = +S.steps[k]; if (!/^\d{4}-\d\d-\d\d$/.test(k) || !isFinite(v) || v < 0) delete S.steps[k]; else S.steps[k] = Math.min(VALUE_CAP, v); }
+  if (S.vacation != null && !(isFinite(+S.vacation) && +S.vacation > 0)) S.vacation = null;
+  if (S.vacations != null) S.vacations = Array.isArray(S.vacations) ? S.vacations.filter(v => obj(v) && isFinite(+v.from) && isFinite(+v.to) && +v.to >= +v.from) : [];
+  ['lastBackup','autoBackup'].forEach(k => { if (S[k] != null && !isFinite(+S[k])) delete S[k]; });
+  if (S.rewardedLevel != null && !(S.rewardedLevel >= 1)) delete S.rewardedLevel;
   S.quests.forEach(q => {
     q.name = typeof q.name === 'string' && q.name.trim() ? q.name.slice(0, 80) : 'Quest';
     if (q.note != null && typeof q.note !== 'string') q.note = '';
@@ -137,7 +136,14 @@ function sanitizeState(){
     ['count','weekClaims','carry','total'].forEach(k => { if (k in q) q[k] = fin(q[k], 0, 0, 1e12); });
     ['doneUntil','due','since','cycleEnd','week','created'].forEach(k => { if (k in q) q[k] = fin(q[k], 0, 0, 9e15); });
     ['log','entries','slips','bonusLog'].forEach(k => { if (k in q && !Array.isArray(q[k])) q[k] = []; });
-    if (Array.isArray(q.entries)) q.entries = q.entries.filter(e => obj(e) && isFinite(+e.v)).map(e => ({ ...e, v:fin(e.v, 0, -VALUE_CAP, VALUE_CAP) }));
+    const okT = t => isFinite(+t) && +t > 0 && +t < 9e15;
+    if (Array.isArray(q.entries)) q.entries = q.entries.filter(e => obj(e) && isFinite(+e.v) && okT(e.t)).map(e => ({ ...e, t:+e.t, v:fin(e.v, 0, -VALUE_CAP, VALUE_CAP) }));
+    // history: every entry needs a real time; rewards are numbers
+    const cleanLog = L => L.filter(e => obj(e) && okT(e.t)).map(e => ({ ...e, t:+e.t, xp:fin(e.xp, 0, -REWARD_CAP, REWARD_CAP), gold:fin(e.gold, 0, -REWARD_CAP, REWARD_CAP) }));
+    ['log','bonusLog'].forEach(k => { if (Array.isArray(q[k])) q[k] = cleanLog(q[k]); });
+    if (q.kind === 'pair') ['a','b'].forEach(h => { if (Array.isArray(q[h].log)) q[h].log = cleanLog(q[h].log); });
+    if (Array.isArray(q.slips)) q.slips = q.slips.filter(okT).map(Number);
+    ['paid','goalPaid','vals'].forEach(k => { if (obj(q[k])) for (const d in q[k]){ const v = +q[k][d]; if (!isFinite(v)) delete q[k][d]; else q[k][d] = v; } });
     ['best','paidTo','start'].forEach(k => { if (q[k] != null && !isFinite(+q[k])) q[k] = null; });
     if (q.kind === 'pair') ['a','b'].forEach(h => { if (!obj(q[h])) q[h] = { name:h === 'a' ? 'Quest A' : 'Quest B', xp:0, gold:0, log:[] }; q[h].name = typeof q[h].name === 'string' ? q[h].name.slice(0, 80) : ''; q[h].xp = Math.round(fin(q[h].xp, 0, 0, 9999)); q[h].gold = Math.round(fin(q[h].gold, 0, 0, 9999)); });
     if (q.kind === 'pair' && !obj(q.bonus)) q.bonus = { xp:0, gold:0 };
@@ -152,6 +158,57 @@ function sanitizeState(){
   const byIdMap = new Map(S.quests.map(q => [q.id, q]));
   S.quests.forEach(q => { const path = new Set([q.id]); let p = q.parent && byIdMap.get(q.parent);
     while (p){ if (path.has(p.id)){ q.parent = null; break; } path.add(p.id); p = p.parent && byIdMap.get(p.parent); } });
+}
+// Every field each kind of quest needs, with its default. A missing field, or one of the wrong type, gets the default
+// (old saves, hand-edited backups). Numbers are range-checked afterwards in sanitizeState.
+const QUEST_SHAPE = {
+  standard:{ xp:10, gold:5, days:1, doneUntil:0, undo:null, log:[] },
+  scaling: { xp:10, gold:10, growth:50, week:0, weekClaims:0, log:[] },
+  record:  { unit:'unit', better:'lower', step:1, xpPer:10, goldPer:10, entries:[], start:null, best:null, paidTo:null, doneUntil:0, undo:null },
+  tally:   { unit:'', chunk:1, xpPer:1, goldPer:1, carry:0, total:0, log:[], vals:{} },
+  target:  { need:5, hits:0, days:7, xp:30, gold:15, cycleEnd:0, doneUntil:0, undo:null, log:[] },
+  bounty:  { due:0, xp:20, gold:10, doneUntil:0, doneAt:0, undo:null, log:[] },
+  avoid:   { since:0, slips:[], best:0, xp:10, gold:5, days:1, doneUntil:0, undo:null, log:[] },
+  steps:   { chunk:100, xpPer:1, goldPer:1, goal:10000, showDays:3, paid:{}, goalPaid:{} },
+  pair:    { days:1, cycleEnd:0, bonusCount:0, bonusUntil:0, bonusLog:[], bonus:{ xp:0, gold:0 } },
+};
+const PAIR_HALF = { name:'', xp:5, gold:5, count:0, until:0, undo:null, log:[] };
+const typeOf = v => v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v;
+function fillFrom(o, shape){
+  for (const k in shape){
+    const d = shape[k], v = o[k], dt = typeOf(d), vt = typeOf(v);
+    if (vt === dt) continue;
+    if (dt === 'null'){ if (vt === 'undefined' || (vt !== 'number' && vt !== 'object' && vt !== 'null')) o[k] = null; continue; }   // nullable: a number/object or nothing
+    if (dt === 'string' && vt === 'number'){ o[k] = String(v); continue; }
+    if (dt === 'number' && vt === 'string' && v.trim() !== '' && isFinite(+v)){ o[k] = +v; continue; }
+    o[k] = JSON.parse(JSON.stringify(d));
+  }
+}
+function fillShape(q){
+  if (typeof q.count !== 'number') q.count = +q.count || 0;
+  if (q.kind === 'record' && q.paidTo === undefined) q.paidTo = q.best ?? null;   // older saves: paid up to the best so far
+  fillFrom(q, QUEST_SHAPE[q.kind] || {});
+  if (q.kind === 'bounty' && !q.due) q.due = startOfDay();
+  if (q.kind === 'avoid' && !q.since) q.since = startOfDay();
+  if (q.kind === 'record' && !['lower','higher'].includes(q.better)) q.better = 'lower';
+  if (q.kind === 'pair') ['a','b'].forEach(h => { if (typeOf(q[h]) !== 'object') q[h] = { name:h === 'a' ? 'Quest A' : 'Quest B' }; fillFrom(q[h], PAIR_HALF); if (!q[h].name.trim()) q[h].name = h === 'a' ? 'Quest A' : 'Quest B'; });
+  if (q.slipDay != null && typeof q.slipDay !== 'string') q.slipDay = null;
+  if (q.undo != null && typeOf(q.undo) !== 'object') q.undo = null;
+}
+// If the phone's clock was moved back, saved "done until" times can sit far in the future and a quest would stay
+// done for ages. Nothing can legitimately end later than one full cycle from today, so pull anything later back to that.
+function repairClock(){
+  if (!S || !Array.isArray(S.quests)) return;
+  const sod = startOfDay(), lim = d => cycleAfter(sod, d || 1);
+  S.quests.forEach(q => {
+    const max = lim(q.kind === 'scaling' ? periodOf(q) : cycleDays(q));
+    if (q.kind !== 'bounty' && q.doneUntil > max) q.doneUntil = max;          // a claimed bounty stays done for good (9e15)
+    if (q.cycleEnd > max) q.cycleEnd = max;
+    if (q.kind === 'pair'){ ['a','b'].forEach(h => { if (q[h].until > max) q[h].until = max; }); if (q.bonusUntil > max) q.bonusUntil = max; }
+    if (q.kind === 'avoid' && q.since > addDays(sod, 1)) q.since = addDays(sod, 1);
+    if (q.kind === 'scaling' && q.week > now()){ q.week = 0; q.weekClaims = 0; }
+  });
+  if (S.vacation > now()) S.vacation = now();
 }
 // every claim is logged so the Progress tab can show history
 function logClaim(arr, xp, gold){ arr.push({ t:now(), xp, gold }); if (arr.length > 4000) arr.shift(); }
@@ -220,14 +277,12 @@ function stepDue(q, key){
    window.psychReceiveSteps({ 'YYYY-MM-DD': steps, ... }). Nothing else needs to change. */
 const native = () => window.PsychNative || null;   // provided by the phone app later
 function timeAgo(t){ const m = Math.round((now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; }
-function syncLine(){
-  if (S.sync && S.sync.connected) return `<i class="on"></i>Synced from Health Connect · ${S.sync.last ? timeAgo(S.sync.last) : 'waiting'}`;
-  return '<i></i>Step sync is off · tap to set up';
-}
 window.psychReceiveSteps = (days, dist) => {
-  Object.entries(days || {}).forEach(([k, v]) => { const n = Math.max(0, Math.round(+v || 0)); if (n) S.steps[k] = n; });
+  // only real days up to today, and believable numbers (anything else from the phone is ignored)
+  const okDay = k => /^\d{4}-\d\d-\d\d$/.test(k) && k <= dayKey();
+  if (days && typeof days === 'object') Object.entries(days).forEach(([k, v]) => { const n = Math.min(500000, Math.max(0, Math.round(+v || 0))); if (n && okDay(k)) S.steps[k] = n; });
   // walking distance per day in metres, measured by the phone (Health Connect)
-  if (dist){ S.dist ||= {}; Object.entries(dist).forEach(([k, v]) => { const m = Math.max(0, +v || 0); if (m) S.dist[k] = Math.round(m); }); }
+  if (dist && typeof dist === 'object'){ S.dist ||= {}; Object.entries(dist).forEach(([k, v]) => { const m = Math.min(1e6, Math.max(0, +v || 0)); if (m && okDay(k)) S.dist[k] = Math.round(m); }); }
   S.sync = { ...(S.sync || {}), connected:true, last:now() };
   save(); render();
 };
@@ -266,22 +321,12 @@ const vibrate = p => { try { navigator.vibrate && navigator.vibrate(p); } catch(
 function levelInfo(total){ let L = 1, r = Math.min(XP_CAP, Math.max(0, +total || 0)); while (r >= xpToNext(L)) { r -= xpToNext(L); L++; } return { L, into:r, need:xpToNext(L) }; }
 const CORNERS = ['tl','tr','bl','br'].map(c => `<svg class="cn ${c}" viewBox="0 0 40 40"><use href="#i-corner"/></svg>`).join('');
 const ico = (id, vb = '0 0 32 32') => `<svg viewBox="${vb}"><use href="#${id}"/></svg>`;
-// "+1 💎 +1 🪙 per $10" using the gem and coin icons instead of words
-function rateHtml(q){
-  return `<span class="xp-r">${ico('i-gem')}+${fmt(q.xpPer)}</span> <span class="gold-r">${ico('i-coin')}+${fmt(q.goldPer)}</span> per ${fmtU(q, q.chunk)}`;
-}
 // rewards over 1000 are shortened (5,120 → 5.1k) so the reward column stays narrow
 const rewNum = v => cyNum(v);
 function rewardsHtml(xp, gold, extra = ''){
   return `<div class="rewards">${extra}<span class="xp-r">${ico('i-gem')}+${rewNum(xp)}</span><span class="gold-r">${ico('i-coin')}+${rewNum(gold)}</span></div>`;
 }
 const cd = (until, pre = '', post = '') => `<span class="cd" data-until="${until}" data-pre="${esc(pre)}" data-post="${esc(post)}">${esc(pre)}${fmtLeft(until - now())}${esc(post)}</span>`;
-const metaLine = inner => `<div class="meta"><span class="groove">${ico('i-hourglass','0 0 16 16')}${inner}</span></div>`;
-function etch(q){
-  if (!showsCount(q)) return '';
-  const c = fmt(q.count);
-  return `<div class="etch"><b class="${c.length > 3 ? 'sm' : ''}">${c}</b><small>${q.count === 1 ? 'TIME' : 'TIMES'}</small></div>`;
-}
 const daysTag = d => (d = +d || 1, `<span class="tag${d === 1 ? ' gold' : d === 2 ? ' green' : d === 3 ? ' violet' : d === 7 ? ' steel' : d === 14 ? ' green' : d === MONTHLY ? ' violet' : ''}">${d === 1 || d === 7 || d === 14 || d === MONTHLY ? cycleName(d) : d + '-day'}</span>`);
 function kindTag(q){
   if (q.kind === 'pair') return '<span class="tag red">Pair</span>';
@@ -295,14 +340,12 @@ function kindTag(q){
   return daysTag(q.days);
 }
 
-/* ================= Rank emblems =================
-   The whole emblem changes every 10 levels: more swords, wings, wreath, axes and crown,
-   banners, a dragon coiled round the shield, flames, scythes, and a halo for Legend. */
+/* ================= Ranks =================
+   A new rank name and emblem colour every 10 levels (the emblem itself is drawn by emblem(), further down). */
 const RANKS = ['Rookie','Runner','Netrunner','Operator','Specialist','Enforcer','Ghost','Phantom','Overclock','Singularity','Legend',
   'Mythic','Ascendant','Eternal','Celestial','Transcendent','Paragon','Apex','Divine','Infinite','Omega'];   // a new rank every 10 levels, Omega at 200+
-// a new rank every 10 levels, reached by the promotion step: Recruit 1–9, Squire 10–19 … Legend 100+
+// a new rank every 10 levels, reached by the promotion step: Rookie 1–9, Runner 10–19 … Omega 200+
 const tierOf = L => Math.min(RANKS.length - 1, Math.floor(L / 10));
-const rankRange = t => t === RANKS.length - 1 ? `Lv ${t * 10}+` : `Lv ${Math.max(1, t * 10)}–${t * 10 + 9}`;
 function star(n, R, r, cx = 30, cy = 40, rot = -90){
   let d = '';
   for (let i = 0; i < n * 2; i++){
@@ -311,42 +354,6 @@ function star(n, R, r, cx = 30, cy = 40, rot = -90){
   }
   return d + 'Z';
 }
-const ring = r => `<circle cx="30" cy="40" r="${r}" fill="none" stroke="#000" stroke-width="3.4" opacity=".85"/><circle cx="30" cy="40" r="${r}" fill="none" stroke="url(#gMark)" stroke-width="1.5"/>`;
-const dot = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#gMark)" stroke="#000" stroke-width=".8"/>`;
-// triquetra-style knot: three lens shapes woven through each other
-function knot(){
-  const P = [-90, 30, 150].map(a => [30 + 9.8 * Math.cos(a * Math.PI / 180), 41 + 9.8 * Math.sin(a * Math.PI / 180)]);
-  const R = 13.5, f = v => v.toFixed(2);
-  return [[0, 1], [1, 2], [2, 0]].map(([i, j]) => `M${f(P[i][0])} ${f(P[i][1])}A${R} ${R} 0 0 1 ${f(P[j][0])} ${f(P[j][1])}A${R} ${R} 0 0 1 ${f(P[i][0])} ${f(P[i][1])}`).join('');
-}
-const mirror = s => `<g transform="translate(80 0) scale(-1 1)">${s}</g>`;
-function wing(fill){
-  const w = `<path d="M24 46C13 42 5 32 2 13c5 6 10 9 15 10.5C11 18 9 13 8.5 6c5.5 7.5 11 11.5 16.5 13.5C21.5 15 20.5 10.5 21 5c4 8 7.5 14 9 22z" fill="${fill}" stroke="#0a0a0a" stroke-width=".8" stroke-linejoin="round"/>
-    <path d="M23 40C15 36 10 28 7.5 20M24 33c-4-3-8-7-10-12M26 27c-2-3-4-6-5-10" fill="none" stroke="rgba(0,0,0,.45)" stroke-width=".7"/>`;
-  return w + mirror(w);
-}
-const crown = `<path d="M28 23h24l2.6-12.5-7.3 5.2L40 6.5l-7.3 9.2-7.3-5.2z" fill="url(#gBronze)" stroke="#120a05" stroke-width="1" stroke-linejoin="round"/>
-  <path d="M28 23h24v2.6H28z" fill="#3c4e4c" stroke="#120a05" stroke-width=".8"/>
-  <circle cx="40" cy="18" r="1.7" fill="#ff3b30"/><circle cx="25.4" cy="10.5" r="1.4" fill="url(#gBronze)"/><circle cx="54.6" cy="10.5" r="1.4" fill="url(#gBronze)"/><circle cx="40" cy="6.5" r="1.5" fill="url(#gBronze)"/>`;
-const banners = `<path d="M19 72V5M61 72V5" stroke="#2a1a10" stroke-width="2.2"/>
-  <circle cx="19" cy="4.5" r="1.8" fill="url(#gBronze)"/><circle cx="61" cy="4.5" r="1.8" fill="url(#gBronze)"/>
-  <path d="M19 7H4.5l4.5 6-4.5 6H19z" fill="#5e1812" stroke="#000" stroke-width=".7"/><path d="M61 7h14.5l-4.5 6 4.5 6H61z" fill="#5e1812" stroke="#000" stroke-width=".7"/>
-  <path d="M8 13h9M72 13h-9" stroke="#ff8a40" stroke-width=".8" opacity=".7"/>`;
-const flames = () => [[18, 26], [28, 38], [40, 46], [52, 38], [62, 26]].map(([x, h]) => {
-  const b = 62, w = h * 0.3;
-  return `<path d="M${x} ${b}C${x - w} ${b - h * .35} ${x - w * .3} ${b - h * .7} ${x} ${b - h}C${x + w * .5} ${b - h * .65} ${x + w} ${b - h * .4} ${x} ${b}z" fill="url(#gFlame)" opacity=".95"/>`;
-}).join('');
-const halo = () => { let s = ''; for (let i = 0; i < 24; i++){ const a = i * 15 * Math.PI / 180, r1 = 31, r2 = i % 2 ? 39 : 45;
-  s += `<path d="M${(40 + r1 * Math.cos(a)).toFixed(1)} ${(46 + r1 * Math.sin(a)).toFixed(1)}L${(40 + r2 * Math.cos(a)).toFixed(1)} ${(46 + r2 * Math.sin(a)).toFixed(1)}" stroke="#e6c88e" stroke-width="${i % 2 ? 1 : 1.6}" opacity=".55" stroke-linecap="round"/>`; }
-  return `<circle cx="40" cy="46" r="34" fill="none" stroke="#e6c88e" stroke-width=".8" opacity=".4"/>` + s; };
-const dragon = `<g>
-  <path d="M22 23C8 33 6 62 20 76C30 87 50 87 60 76C74 62 72 35 62 25" fill="none" stroke="#000" stroke-width="8" stroke-linecap="round"/>
-  <path d="M22 23C8 33 6 62 20 76C30 87 50 87 60 76C74 62 72 35 62 25" fill="none" stroke="url(#gDragon)" stroke-width="5.6" stroke-linecap="round"/>
-  <path d="M22 23C8 33 6 62 20 76C30 87 50 87 60 76C74 62 72 35 62 25" fill="none" stroke="#ff8a40" stroke-width="1.4" stroke-dasharray="1 3.2" opacity=".75"/>
-  <path d="M22 23L15 13.5l9.5 5.5z" fill="url(#gDragon)" stroke="#000" stroke-width=".8"/>
-  <path d="M59 28L50 17.5l8.4.6 3.4-8.6 3.6 8.4 6 4.6-6.4 3.4z" fill="url(#gDragon)" stroke="#000" stroke-width=".9" stroke-linejoin="round"/>
-  <path d="M61.8 9.5l-2.4-4.5M65.4 18l4-3.6" stroke="#ff8a40" stroke-width="1.1" stroke-linecap="round"/>
-  <circle cx="61" cy="19.5" r="1.3" fill="#ff6b1a"/></g>`;
 // Cyber emblem: a neon hex badge. Every 10 levels it changes colour, gains a new core mark,
 // then side fins, an outer ring and finally a crown.
 const TIER_COL = ['#8fd9cf','#4fb3c8','#3b82d6','#6d7ff0','#ffd27a','#ffb44a','#ff8a40','#ff6b1a','#ff4d2a','#ff3b30','#ffd84a',
@@ -354,67 +361,6 @@ const TIER_COL = ['#8fd9cf','#4fb3c8','#3b82d6','#6d7ff0','#ffd27a','#ffb44a','#
 // second colour for ranks past Legend (two-tone parts: crown, wings, outer ring)
 const TIER_COL2 = [,,,,,,,,,,,'#ffd84a','#ff5fa2','#6fd3ff','#ffffff','#6fd3ff','#ffd84a','#ff6b1a','#ffd84a','#6fd3ff','#ffd84a'];
 const hexPts = (cx, cy, r) => Array.from({ length:6 }, (_, i) => { const a = (-90 + i * 60) * Math.PI / 180; return (cx + r * Math.cos(a)).toFixed(2) + ',' + (cy + r * Math.sin(a)).toFixed(2); }).join(' ');
-function renderRanks(){
-  if (!$('#ranks')) return;
-  const cur = tierOf(levelInfo(S.xp).L);
-  $('#ranks').innerHTML = RANKS.map((name, t) => `<div class="rank${t === cur ? ' cur' : ''}${t > cur ? ' locked' : ''}">
-    <div class="rank-ico">${emblem(Math.max(1, t * 10))}</div><b>${name}</b><span>${rankRange(t)}</span></div>`).join('');
-}
-
-/* ================= Cards ================= */
-
-/* ---- Steps tracker ---- */
-function stepAction(q, key){
-  const d = stepDue(q, key);
-  if (d.units) return `<button class="claim" data-act="claimday" data-q="${q.id}" data-day="${key}">Claim</button>`;
-  if (d.paid) return '<span class="claimed">Claimed</span>';
-  return '';   // nothing to claim yet: the Claim button appears here once there is
-}
-function stepReward(q, key){
-  const d = stepDue(q, key);
-  return d.units ? rewardsHtml(d.xp, d.gold) : rewardsHtml(d.totalXp, d.totalGold).replace('class="rewards"', 'class="rewards" style="opacity:.55"');
-}
-function todayParts(q){
-  const key = dayKey(), d = stepDue(q, key), pct = q.goal ? Math.min(100, d.steps / q.goal * 100) : 0;
-  return { key, d, pct, goalText:q.goal ? `${fmt(d.steps)} / ${fmtU(q, q.goal)}` : fmtU(q, d.steps) };
-}
-function stepRow(q, t, label){
-  const key = dayKey(t), d = stepDue(q, key);
-  // a Tally's past days can be edited (tap the amount), so a late entry still counts
-  const amount = q.kind === 'tally'
-    ? `<button class="st-n st-edit" data-act="editday" data-q="${q.id}" data-day="${key}">${fmtU(q, d.steps)} <span>✎</span></button>`
-    : `<div class="st-n">${fmtU(q, d.steps)}</div>`;
-  return `<div class="st-row${d.units ? '' : ' dim'}">
-    <div class="st-l"><div class="st-date">${label || dayLabel(t)}</div><div class="st-line">${amount}${stepReward(q, key)}</div></div>
-    ${stepAction(q, key)}
-  </div>`;
-}
-function stepsCard(q){
-  const tp = todayParts(q);
-  const rows = []; for (let i = 1; i <= q.showDays; i++) rows.push(stepRow(q, addDays(startOfDay(), -i)));
-  return `<article class="card steps-card" data-q="${q.id}">${CORNERS}
-    <div class="st-head q-main" data-act="edit">
-      <div class="q-top"><h3>${esc(q.name)}</h3>${kindTag(q)}<span class="st-rate">${rateHtml(q)}</span></div>
-    </div>
-    <div class="st-today">
-      <div class="st-top"><span class="st-date">Today</span><span class="st-goal">${tp.goalText}</span></div>
-      <div class="st-bar${tp.pct >= 100 ? ' met' : ''}"><div style="width:${tp.pct}%"></div></div>
-      ${q.kind === 'tally'
-        ? `<div class="st-input"><input type="number" min="0" step="any" inputmode="decimal" value="${tp.d.steps || ''}" placeholder="Add today's ${esc(unitOf(q) || 'amount')}" data-stepinput="${q.id}" aria-label="Today's amount">${CURRENCY.includes(unitOf(q)) ? '' : `<span class="unit">${esc(unitOf(q))}</span>`}</div>`
-        : `<button class="st-sync" data-act="opensettings">${syncLine()}</button>`}
-      <div class="st-foot"><span class="st-rew">${stepReward(q, tp.key)}</span>${metaLine(cd(nextMidnight(), 'Reset: '))}<span class="st-act">${stepAction(q, tp.key)}</span></div>
-    </div>
-    ${rows.length ? `<div class="st-rows">${rows.join('')}</div>` : ''}
-    <button class="more" data-act="progress">Show more</button>
-  </article>`;
-}
-function updateTodayParts(card, q){
-  const tp = todayParts(q);
-  card.querySelector('.st-goal').textContent = tp.goalText;
-  const bar = card.querySelector('.st-bar'); bar.classList.toggle('met', tp.pct >= 100); bar.firstElementChild.style.width = tp.pct + '%';
-  card.querySelector('.st-rew').innerHTML = stepReward(q, tp.key);
-  card.querySelector('.st-act').innerHTML = stepAction(q, tp.key);
-}
 
 /* ---- Tally: type an amount whenever it happens, claim the reward ----
    Rewards come in steps (e.g. every $10). Whatever is left over carries to the next entry. */
@@ -427,21 +373,6 @@ function tallyNote(q, pv){
   if (pv.v && !pv.units) return `${fmtU(q, round2(q.chunk - pv.left))} more for the first reward`;
   if (pv.v) return pv.left ? `${fmtU(q, pv.left)} will carry over to next time` : '';
   return q.carry ? `${fmtU(q, q.carry)} carried over from last time` : '';
-}
-function tallyCard(q){
-  const pv = tallyPreview(q, ''), last = (q.log || []).length ? q.log[q.log.length - 1] : null;
-  return `<article class="card tally-card">${CORNERS}
-    <div class="q-main tl-head" data-act="edit">
-      <div class="q-top"><h3>${esc(q.name)}</h3>${kindTag(q)}<span class="st-rate">${rateHtml(q)}</span></div>
-      <div class="tl-total" title="${last ? `Last ${fmtU(q, last.v || 0)} on ${new Date(last.t).toLocaleDateString(undefined, { month:'short', day:'numeric' })}` : ''}">Total <b>${fmtU(q, q.total || 0)}</b></div>
-    </div>
-    <div class="tl-row">
-      <input type="number" min="0" step="any" inputmode="decimal" placeholder="Amount${CURRENCY.includes(unitOf(q)) || !unitOf(q) ? '' : ' (' + esc(unitOf(q)) + ')'}" data-tallyin="${q.id}" aria-label="Amount">
-      <span class="tl-rew">${rewardsHtml(pv.xp, pv.gold).replace('class="rewards"', 'class="rewards" style="opacity:.45"')}</span>
-      <button class="claim off" data-act="tally">Claim</button>
-    </div>
-    <div class="tl-note">${tallyNote(q, pv)}</div>
-  </article>`;
 }
 function updateTally(input){
   const q = byId(input.dataset.tallyin); if (!q) return;
@@ -461,23 +392,6 @@ function claimTally(q, input, rect){
   grant({ xp:pv.xp, gold:pv.gold }, rect, msg, q.id, null, 1 + Math.min(1.6, pv.units / 6));
 }
 
-function compactCard(q){
-  const hidden = !isVisible(q), p = parentOf(q);
-  return `<article class="card compact${hidden ? ' hidden-q' : ''}">${CORNERS}
-    <div class="grip" aria-label="Drag to reorder">${ico('i-grip','0 0 14 22')}</div>
-    <div class="cbody"><h3>${esc(q.name)}</h3>${p ? `<div class="note">Appears after ${esc(p.name)}</div>` : ''}</div>
-    ${kindTag(q)}
-  </article>`;
-}
-function card(q, fresh){
-  if (arranging) return compactCard(q);
-  if (q.kind === 'pair') return pairCard(q, fresh);
-  if (q.kind === 'scaling') return scalingCard(q, fresh);
-  if (q.kind === 'record') return recordCard(q, fresh);
-  if (isTracker(q)) return stepsCard(q);
-  if (q.kind === 'tally') return tallyCard(q);
-  return standardCard(q, fresh);
-}
 
 /* ================= Progress tab ================= */
 let weekOffset = 0, monthOffset = 0, selDay = null;
@@ -895,7 +809,8 @@ function openDeck(id){
   // fully decode the art before showing the pack, so flipping never stalls
   const ids = [...res.cards.map(c => c.id), deckOf(item).back, deckOf(item).backUR, ...(res.scene ? [res.scene.id] : [])];
   opening.imgs = ids.map(id => { const im = new Image(); im.src = cardImg(id); return im; });
-  Promise.all(opening.imgs.map(im => im.decode().catch(() => {}))).then(showOpening);
+  const mine = opening;   // show it only if this pack is still the one being opened (it may have been closed meanwhile)
+  Promise.all(opening.imgs.map(im => im.decode().catch(() => {}))).then(() => { if (opening === mine) showOpening(); });
 }
 function showOpening(){
   const o = opening, ov = $('#pack'); if (!o) return;
@@ -1263,7 +1178,7 @@ function renderPanel(){
     </div>`;
   }
 }
-function render(){ const sk = document.getElementById('skPop'); if (sk) sk.remove(); renderHeader(); renderTabs(); renderPanel(); fresh = { id:null, row:null };
+function render(){ repairClock(); const sk = document.getElementById('skPop'); if (sk) sk.remove(); renderHeader(); renderTabs(); renderPanel(); fresh = { id:null, row:null };
   const on = document.querySelector('.chip.on'); if (on){ const box = on.parentElement; box.scrollLeft = on.offsetLeft - (box.clientWidth - on.offsetWidth) / 2; } }
 
 /* ================= Actions ================= */
@@ -1362,6 +1277,7 @@ function pairCompleted(q){
   q.streak = streakNow(q) + 1; q.lastBoth = q.cycleEnd; q.bestStreak = Math.max(q.bestStreak || 0, q.streak);
 }
 function claimQuest(q, rect){
+  if (!isVisible(q)) return;   // a follow-up stays locked until its quest is done
   if (q.kind === 'scaling') claimScaling(q, rect);
   else if (q.kind === 'target' && (targetRoll(q), (q.hits || 0) < q.need)) targetHit(q, 1, rect);
   else if (q.kind === 'bounty') claimBounty(q, rect);
@@ -1390,6 +1306,7 @@ function claimScaling(q, rect){
 // Records pay one reward per full "step" beyond the point already paid for,
 // so 0.5 kg steps never lose the leftover between entries.
 function submitRecord(q, input, rect){
+  if (!isVisible(q)) return;
   const v = round2(parseFloat(input.value));
   if (!isFinite(v) || v <= 0 || v > VALUE_CAP){ shake(input); return; }
   snapshot();
@@ -1415,7 +1332,7 @@ function submitRecord(q, input, rect){
   grant(reward, rect, msg, q.id);
 }
 function dueTotals(q){
-  const keys = Object.keys(valsOf(q)).filter(k => stepDue(q, k).units > 0);
+  const today = dayKey(), keys = Object.keys(valsOf(q)).filter(k => k <= today && stepDue(q, k).units > 0);   // never a day that hasn't happened yet
   return { keys, xp:keys.reduce((a, k) => a + stepDue(q, k).xp, 0), gold:keys.reduce((a, k) => a + stepDue(q, k).gold, 0) };
 }
 // take back what was already paid for one day of steps (it can be claimed again afterwards)
@@ -1476,6 +1393,15 @@ function take(r){
   const newL = levelInfo(S.xp).L, paidTo = S.rewardedLevel || 1;
   for (let L = newL + 1; L <= Math.min(oldL, paidTo); L++) S.gold -= levelReward(L);
   if (paidTo > newL) S.rewardedLevel = newL;
+}
+// the opposite of take(): hands a reward back quietly (no effects), paying any level reward it reaches again
+function give(r){
+  const xp = +r.xp || 0, gold = +r.gold || 0;
+  bumpToday(xp, gold);
+  S.xp = Math.min(XP_CAP, S.xp + xp); S.gold += gold;
+  const L = levelInfo(S.xp).L;
+  for (let k = (S.rewardedLevel || 1) + 1; k <= L; k++) S.gold += levelReward(k);
+  if (L > (S.rewardedLevel || 1)) S.rewardedLevel = L;
 }
 async function reopen(q, key){
   if (q.kind === 'pair'){
@@ -1832,23 +1758,8 @@ $('#askYes').addEventListener('click', () => answer(true));
 $('#askNo').addEventListener('click', () => answer(false));
 $('#ask').addEventListener('click', e => { if (e.target.id === 'ask') answer(false); });
 
-/* ================= Drag to reorder (Arrange mode) ================= */
-let drag = null, dragScroll = null;
-function reorder(ids){
-  const slots = ids.map(id => S.quests.findIndex(q => q.id === id)).sort((a, b) => a - b);
-  const objs = ids.map(byId);
-  slots.forEach((slot, k) => S.quests[slot] = objs[k]);
-}
-function moveDrag(){
-  const { item, box, ph, dy, y } = drag;
-  item.style.top = (y - dy) + 'px';
-  const sibs = [...box.children].filter(c => c.classList.contains('item') && c !== item);
-  let before = null;
-  for (const s of sibs){ const r = s.getBoundingClientRect(); if (y < r.top + r.height / 2){ before = s; break; } }
-  if (before){ if (ph.nextElementSibling !== before) box.insertBefore(ph, before); }
-  else if (box.lastElementChild !== ph) box.appendChild(ph);
-}
-// Arrange board: drag a tile around its own group (2-D grid)
+/* ================= Arrange: drag tiles around their group (2-D grid) ================= */
+let dragScroll = null;
 let arDrag = null;
 // the dots start a drag at once; holding anywhere else on the tile starts it after a short hold (a quick swipe still scrolls)
 let arHold = null;
@@ -1894,36 +1805,6 @@ function arEnd(){
 }
 window.addEventListener('pointerup', arEnd);
 window.addEventListener('pointercancel', arEnd);
-$('#panel').addEventListener('pointerdown', e => {
-  const grip = e.target.closest('.grip'); if (!grip || !arranging) return;
-  e.preventDefault();
-  const item = grip.closest('.item'), box = item.parentElement, r = item.getBoundingClientRect();
-  const ph = document.createElement('div');
-  ph.className = 'ph'; ph.style.height = r.height + 'px';
-  box.insertBefore(ph, item);
-  Object.assign(item.style, { position:'fixed', left:r.left + 'px', top:r.top + 'px', width:r.width + 'px', zIndex:50, pointerEvents:'none' });
-  item.classList.add('dragging');
-  drag = { item, box, ph, dy:e.clientY - r.top, y:e.clientY };
-  vibrate(12);
-  dragScroll = setInterval(() => {
-    if (!drag) return;
-    if (drag.y < 170) window.scrollBy(0, -10);
-    else if (drag.y > innerHeight - 110) window.scrollBy(0, 10);
-    else return;
-    moveDrag();
-  }, 16);
-});
-window.addEventListener('pointermove', e => { if (!drag) return; drag.y = e.clientY; moveDrag(); });
-function endDrag(){
-  if (!drag) return;
-  const { item, box, ph } = drag;
-  box.insertBefore(item, ph); ph.remove();
-  item.removeAttribute('style'); item.classList.remove('dragging');
-  reorder([...box.children].filter(c => c.classList.contains('item')).map(c => c.dataset.id));
-  drag = null; clearInterval(dragScroll); save();
-}
-window.addEventListener('pointerup', endDrag);
-window.addEventListener('pointercancel', endDrag);
 
 /* ================= Post / edit sheet ================= */
 let editingId = null;
@@ -1936,7 +1817,7 @@ function isDescendant(q, ancestorId){ let p = parentOf(q), n = 0; while (p && n+
 
 function fillParentOptions(selfId, current){
   const opts = S.quests.filter(q => q.kind === 'standard' && q.id !== selfId && !(selfId && isDescendant(q, selfId)));
-  $('#fParent').innerHTML = `<option value="">Always visible</option>` + opts.map(q => `<option value="${q.id}"${q.id === current ? ' selected' : ''}>${esc(q.name)}</option>`).join('');
+  $('#fParent').innerHTML = `<option value="">Always available</option>` + opts.map(q => `<option value="${q.id}"${q.id === current ? ' selected' : ''}>${esc(q.name)}</option>`).join('');
 }
 // "Resets every": any number of days (1–60), with − / + and quick picks
 function setDays(n){
@@ -2010,7 +1891,7 @@ function openSheet(id){
   $('#histBtn').style.display = 'none';
   radios('kind').forEach(r => { r.checked = r.value === kind; r.disabled = !!q; });
   $('#fName').value = q ? q.name : '';
-  $('#fNote').value = q ? q.note : '';
+  $('#fNote').value = (q && q.note) || '';
   fillParentOptions(q ? q.id : null, q ? q.parent : null);
   setDays(q ? (q.kind === 'scaling' ? periodOf(q) : q.days || 1) : 1);
   const base = q && ['standard','scaling','target','bounty','avoid'].includes(q.kind) ? q : DEFAULTS[kind] || DEFAULTS.standard;
@@ -2133,7 +2014,7 @@ $('#deleteBtn').addEventListener('click', async () => {
   const q = byId(editingId); if (!q) return;
   const kids = S.quests.filter(c => c.parent === q.id);
   let msg = q.kind === 'steps' ? 'Your step history is kept for the Progress tab.' : q.kind === 'tally' ? 'Its entries and total will be lost.' : `Its count${q.kind === 'record' ? ' and history' : ''} will be lost.`;
-  if (kids.length) msg += ` ${kids.length} follow-up quest${kids.length > 1 ? 's' : ''} will become always visible.`;
+  if (kids.length) msg += ` ${kids.length} follow-up quest${kids.length > 1 ? 's' : ''} will become always available.`;
   if (!await ask(`Remove “${q.name}”?`, msg, 'Remove')) return;
   kids.forEach(c => c.parent = null);
   // a removed Steps quest leaves behind what it already paid, so adding it back can't pay those steps or goals twice
@@ -2153,7 +2034,7 @@ function renderSync(){
   $('#syncHelp').textContent = 'Sync your steps with Health Connect.';
   $('#syncConnect').textContent = on ? 'Disconnect' : 'Connect';
 }
-function openSettings(){ renderRanks(); renderSync(); renderBackup(); $('#reduceFx').checked = !!S.reduceFx; $('#settings').classList.add('open'); }
+function openSettings(){ renderSync(); renderBackup(); $('#reduceFx').checked = !!S.reduceFx; $('#settings').classList.add('open'); }
 $('#gearBtn').addEventListener('click', () => openSettings());
 $('#syncConnect').addEventListener('click', async () => {
   const n = native();
@@ -2263,6 +2144,7 @@ $('#panel').addEventListener('click', e => {
   }
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act, rect = el.getBoundingClientRect();
+  if (act === 'fold'){ const q = byId(el.dataset.id); if (!q) return; S.folded ||= {}; S.folded[q.id] = { open:folded(q), day:dayKey() }; save(); const y = scrollY; render(); scrollTo(0, y); vibrate(6); return; }
   if (act === 'stepsexact'){ stepsExact = !stepsExact; render(); return; }
   if (act === 'distunit'){ S.distUnit = S.distUnit === 'mi' ? 'km' : 'mi'; save(); render(); return; }
   if (act === 'pv'){ S.pview = el.dataset.pv; monthOffset = 0; selDay = null; save(); render(); return; }
@@ -2288,19 +2170,12 @@ $('#panel').addEventListener('click', e => {
   if (act === 'lastundo'){ const q = byId(el.dataset.q); if (q) undoLast(q); return; }
   if (act === 'dayundo'){ const q = byId(el.dataset.q); if (q) undoDay(q, el.dataset.day); return; }
   if (act === 'hxundo'){ const q = byId(el.dataset.q); if (q) reopen(q, el.dataset.k || undefined); return; }
-  if (act === 'editday'){
-    const q = byId(el.dataset.q); if (!q) return;
-    const v = valsOf(q)[el.dataset.day] || '';
-    el.outerHTML = `<input class="st-dayin" type="number" min="0" step="any" inputmode="decimal" value="${v}" data-stepinput="${q.id}" data-day="${el.dataset.day}" aria-label="Amount">`;
-    const inp = $(`.st-dayin[data-day="${el.dataset.day}"]`); inp.focus(); inp.select();
-    inp.addEventListener('blur', () => render(), { once:true });
-    return;
-  }
   if (act === 'claimall'){ const q = byId(el.dataset.q); if (q) claimAll(q, rect); return; }
   if (act === 'claimday'){ const q = byId(el.dataset.q); if (q) claimDay(q, el.dataset.day, rect); return; }
   if (act === 'goalclaim'){ const q = byId(el.dataset.q); if (q) claimGoal(q, el.dataset.day, rect); return; }
   const item = el.closest('.item'); if (!item) return;
   const q = byId(item.dataset.id); if (!q) return;
+  if (act !== 'edit' && act !== 'reopen' && !isVisible(q)){ vibrate(6); return; }   // locked follow-up: its quest isn't done yet
   if (act === 'edit') openSheet(q.id);
   else if (act === 'reopen') reopen(q, el.dataset.row);
   else if (act === 'record') submitRecord(q, el.closest('.card').querySelector('.rec-input input'), rect);
@@ -2315,24 +2190,14 @@ $('#panel').addEventListener('click', e => {
   else if (act === 'slip'){ slipAvoid(q);
   }
 });
-// typing today's steps updates the reward straight away
+// typing an amount (tally) or a value (record) updates its button straight away
 $('#panel').addEventListener('input', e => {
   const tin = e.target.closest('[data-tallyin]'); if (tin){ updateTally(tin); return; }
   const rin = e.target.closest('.rec-input input'); if (rin){ rin.parentElement.querySelector('[data-act="record"]').classList.toggle('off', !(parseFloat(rin.value) > 0)); return; }
-  const inp = e.target.closest('[data-stepinput]'); if (!inp) return;
-  const q = byId(inp.dataset.stepinput); if (!q) return;
-  const v = Math.max(0, Math.min(1e7, round2(parseFloat(inp.value) || 0))), key = inp.dataset.day || dayKey(), V = valsOf(q);
-  if (v) V[key] = v; else delete V[key];
-  save(); renderTabs();
-  if (!inp.dataset.day) updateTodayParts(inp.closest('.steps-card'), q);
-  else { const row = inp.closest('.st-row'); const d = stepDue(q, key);
-    row.classList.toggle('dim', !d.units); row.querySelector('.rewards').outerHTML = stepReward(q, key);
-    row.lastElementChild.outerHTML = stepAction(q, key); }
 });
 $('#panel').addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
   if (e.target.closest('[data-tallyin]')){ e.preventDefault(); e.target.closest('.card').querySelector('[data-act=tally]').click(); return; }
-  if (e.target.closest('[data-stepinput]')){ e.target.blur(); if (e.target.dataset.day) render(); return; }
   if (!e.target.closest('.rec-input')) return;
   e.preventDefault();
   e.target.closest('.rec-input').querySelector('[data-act=record]').click();
@@ -2395,10 +2260,10 @@ setInterval(() => {
     if (left <= 0) expired = true;
     el.textContent = el.dataset.pre + fmtLeft(left) + el.dataset.post;
   });
-  const busy = drag || document.querySelector('.modal.open') || document.activeElement?.closest?.('.rec-input, [data-stepinput], [data-tallyin]');
+  const busy = arDrag || document.querySelector('.modal.open') || document.activeElement?.closest?.('.rec-input, [data-tallyin]');
   if (expired && !busy) render();
 }, 1000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && !drag) render(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !arDrag) render(); });
 
 
 /* ================= Back button =================
@@ -2508,20 +2373,11 @@ document.addEventListener('click', e => { if (!e.target.closest('#lvlPop')) togg
 load();   // read the saved state; the first draw happens at the very end of the file, once everything is defined
 autoSync();
 
-/* ================= Cyber 2.0 quest layout =================
-   Plain quests become tiles (two per row), a Pair is two tiles joined by a live link with the
-   bonus in the middle, a Recurring quest is a stack of cards with a weekly meter.
-   These replace the list-style renderers above (a later function with the same name wins). */
-// full numbers on cards; only 10,000+ is shortened (12,345 → 12.34k)
+/* ================= Numbers and the quest form ================= */
 // rewards: under 10,000 in full (1,280); bigger ones shortened with 2 decimals, rounded down: 12.34k, 5.55M, 1.20B, 3.00T
 function cyNum(v){
   const a = Math.abs(v), u = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'k']].find(([n]) => a >= n && a >= 1e4);
   return u ? (Math.floor(v / u[0] * 100) / 100).toFixed(2) + u[1] : fmt(v);
-}
-function cyRew(xp, gold){ return `<div class="cy-rew"><span class="xp-r">${ico('i-gem')}+${cyNum(xp)}</span><span class="gold-r">${ico('i-coin')}+${cyNum(gold)}</span></div>`; }
-// one head row: name, type tag(s), (i) ... and the streak / total on the right
-function cyHead(q, tags, info, right, noEdit){
-  return `<div class="cy-head"><div class="cy-hl"><h3${noEdit ? '' : ' class="q-main" data-act="edit"'}>${esc(q.name)}</h3>${tags}${info}</div>${right || ''}</div>`;
 }
 // streak (top-right of regular quests and pairs): count + the reward bonus it gives
 function cyStreak(q){
@@ -2529,89 +2385,6 @@ function cyStreak(q){
   const n = streakNow(q), m = streakReward(q) ? streakMult(isDone(q) ? n : n + 1) : 1;
   const tier = n >= 200 ? 5 : n >= 100 ? 4 : n >= 30 ? 3 : n >= 10 ? 2 : n >= 3 ? 1 : 0;   // colour steps like TikTok streaks
   return `<span class="cy-count cy-streak t${tier}" title="Streak">${m > 1 ? `<em${m >= 3.5 ? ' class="ur"' : m >= 3 ? ' class="max"' : ''}>+${Math.round((m - 1) * 100)}%</em>` : ''}<b>${fmt(n)}</b>×</span>`;
-}
-function cyMeta(q, until){
-  const p = parentOf(q);
-  if (until) return metaLine(cd(until, 'Reset: '));
-  if (p && p.doneUntil > now()) return metaLine(cd(p.doneUntil, 'Reset: '));
-  if ((q.days || 1) === 1) return metaLine(cd(nextMidnight(), 'Reset: '));
-  return metaLine(q.days === MONTHLY ? cd(addMonths(now(), 1), 'Reset: ') : `${cycleName(q.days)} cycle`);
-}
-function standardCard(q, fresh){
-  const done = isDone(q);
-  return `<article class="card cy-tile${done ? ' done' : ''}">
-    ${cyHead(q, kindTag(q), '', cyStreak(q))}
-    ${q.note ? `<p class="note">${esc(q.note)}</p>` : ''}
-    ${(R => cyRew(R.xp, R.gold))(boosted(q, q.xp, q.gold))}
-    ${cyMeta(q, done ? q.doneUntil : 0)}
-    ${done ? `<button class="stamp cy-act${fresh ? ' new' : ''}" data-act="reopen">Done</button>` : `<button class="claim cy-act" data-act="claim">Claim</button>`}
-  </article>`;
-}
-function pairCard(q, fresh){
-  const t = now(), earned = q.bonusUntil > t, sc = showsCount(q), aD = q.a.until > t, bD = q.b.until > t;
-  const half = key => {
-    const r = q[key], d = r.until > t, f = fresh === key;
-    return `<div class="cy-half ${key}${d ? ' done' : ''}">
-      <div class="cy-top"><span class="pr-name">${esc(r.name)}</span></div>
-      ${(R => cyRew(R.xp, R.gold))(boosted(q, r.xp, r.gold))}
-      <div class="cy-gap"></div>
-      ${d ? `<button class="stamp cy-act${f ? ' new' : ''}" data-act="reopen" data-row="${key}">Done</button>` : `<button class="claim cy-act" data-act="claim" data-row="${key}">Claim</button>`}
-    </div>`;
-  };
-  const until = aD || bD ? q.cycleEnd : 0;
-  return `<article class="card cy-pair${earned ? ' earned' : ''}${aD && bD ? ' done' : ''}">
-    <div class="pair-head q-main" data-act="edit">
-      ${cyHead(q, kindTag(q) + daysTag(q.days), '', cyStreak(q), true)}
-      ${q.note ? `<p class="note">${esc(q.note)}</p>` : ''}
-    </div>
-    <div class="cy-link${aD ? ' la' : ''}${bD ? ' lb' : ''}${earned ? ' on' : ''}">
-      ${half('a')}${half('b')}
-      <i class="cy-wire wa"></i><i class="cy-wire wb"></i>
-      ${aD && bD && !earned
-        ? `<button class="cy-bonus ready" data-act="claim" data-row="bonus"><small>Claim</small>${(R => cyRew(R.xp, R.gold))(boosted(q, q.bonus.xp, q.bonus.gold))}</button>`
-        : `<div class="cy-bonus"><small>${earned ? 'Earned' : 'Bonus'}</small>${(R => cyRew(R.xp, R.gold))(boosted(q, q.bonus.xp, q.bonus.gold))}</div>`}
-    </div>
-    ${cyMeta(q, until)}
-  </article>`;
-}
-function scalingCard(q, fresh){
-  const n = weekClaims(q), next = scaledReward(q, n + 1);
-  const pips = Array.from({ length:7 }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
-  return `<article class="card cy-rec">
-    ${cyHead(q, kindTag(q), qInfo(`Each claim in the same ${periodWord(q)} pays ${q.growth}% more.`), '')}
-    ${q.note ? `<p class="note">${esc(q.note)}</p>` : ''}
-    <div class="cy-pips" title="Claims this week">${pips}${n > 7 ? `<em>+${n - 7}</em>` : ''}</div>
-    <div class="cy-recrow">
-      <div class="cy-recl"><div class="cy-next">${cyRew(next.xp, next.gold)}</div>${metaLine(cd(periodEnd(q), 'Reset: '))}</div>
-      <button class="claim cy-btn" data-act="claim">Claim</button>
-    </div>
-  </article>`;
-}
-// Tiles go two per row. A quest that has follow-ups (shown or not yet) always takes the full row,
-// and a tile left without a partner next to it also takes the full row, so there are no empty gaps.
-function pairUpTiles(list){
-  const ids = new Set(); let run = [];
-  const flush = () => { const n = run.length - run.length % 2; run.slice(0, n).forEach(id => ids.add(id)); run = []; };
-  list.forEach(q => {
-    const tile = q.kind === 'standard' && !S.quests.some(c => c.parent === q.id);
-    if (tile) run.push(q.id); else flush();
-  });
-  flush();
-  return ids;
-}
-function questTree(list){
-  const halfIds = pairUpTiles(list);
-  return list.map(q => {
-    const f = fresh.id === q.id ? (q.kind === 'pair' ? fresh.row : true) : false;
-    const kids = S.quests.filter(c => c.parent === q.id && (arranging || isVisible(c)));
-    let cls = '';
-    if (!arranging){
-      if (q.kind === 'standard' && halfIds.has(q.id)) cls = ' half';
-      else if (q.kind === 'standard') cls = ' wide';
-      else if (q.kind === 'scaling') cls = ` stacked s${Math.min(2, weekClaims(q))}${f ? ' pushed' : ''}`;
-    }
-    return `<div class="item${cls}" data-id="${q.id}">${card(q, f)}${kids.length ? `<div class="children">${questTree(kids)}</div>` : ''}</div>`;
-  }).join('');
 }
 
 // The pair bonus is no longer paid automatically: once both halves are done it becomes its own Claim button.
@@ -2769,7 +2542,7 @@ $('#panel').addEventListener('click', e => { if (performance.now() - invSwiped <
   });
 })();
 
-/* ---- Edit mode: no kind picker, no "recorded" line; custom dropdown for "Appears after" ---- */
+/* ---- Edit mode: no kind picker, no "recorded" line; custom dropdown for "Available after" ---- */
 (function cyberEdit(){
   const kindField = document.querySelector('#form input[name="kind"]').closest('.field');
   const orig = openSheet;
@@ -2794,7 +2567,7 @@ $('#panel').addEventListener('click', e => { if (performance.now() - invSwiped <
   const btn = box.querySelector('.cy-sel-btn'), list = box.querySelector('.cy-sel-list');
   window.cyParentSync = () => {
     const o = sel.options[sel.selectedIndex];
-    btn.querySelector('span').textContent = o ? o.textContent : 'Always visible';
+    btn.querySelector('span').textContent = o ? o.textContent : 'Always available';
     list.innerHTML = [...sel.options].map((x, i) => `<button type="button" data-i="${i}" class="${i === sel.selectedIndex ? 'on' : ''}">${i ? '' : '<i>◇</i>'}${esc(x.textContent)}</button>`).join('');
   };
   btn.addEventListener('click', e => { e.stopPropagation(); cyParentSync(); box.classList.toggle('open'); });
@@ -2836,55 +2609,8 @@ $('#panel').addEventListener('click', e => { if (performance.now() - invSwiped <
   document.querySelector('.sheet').addEventListener('scroll', hide, { passive:true });
 })();
 
-/* ---- Record card: stacked like the quest tiles, so it breathes on a phone ---- */
-function recordCard(q, fresh){
-  const done = isDone(q), last = q.entries.length ? q.entries[q.entries.length - 1].v : null, u = esc(q.unit);
-  const arrow = q.better === 'lower' ? '↓' : '↑';
-  const stats = q.best == null
-    ? '<div class="cy-recnote">First entry sets your starting point.</div>'
-    : `<div class="cy-stats"><span><small>Best</small><b>${fmt(q.best)}</b> ${u}</span>${last != null ? `<span><small>Last</small><b>${fmt(last)}</b> ${u}</span>` : ''}</div>`;
-  return `<article class="card cy-tile cy-record${done ? ' done' : ''}">
-    ${cyHead(q, kindTag(q), '', '')}
-    ${q.note ? `<p class="note">${esc(q.note)}</p>` : ''}
-    ${stats}
-    <div class="cy-rate">${cyRew(q.xpPer, q.goldPer)}<span>per ${fmt(q.step)} ${u} ${arrow}</span></div>
-    ${cyMeta(q, done ? q.doneUntil : 0)}
-    ${done ? `<button class="stamp cy-act${fresh ? ' new' : ''}" data-act="reopen">Done</button>`
-      : `<div class="rec-input"><input type="number" step="0.1" inputmode="decimal" placeholder="${last != null ? fmt(last) : 'Enter value'}" aria-label="Value"><span class="unit">${u}</span><button class="claim off" data-act="record">Record</button></div>`}
-  </article>`;
-}
-
-/* ---- small (i) next to a quest name: tap for how the quest pays ---- */
-function qInfo(text){ return `<button type="button" class="cy-qi" data-act="qinfo" data-tip="${esc(text)}" aria-label="How this quest works">i</button>`; }
-(function(){
-  const base = card;
-  card = function(q, fresh){
-    let h = base(q, fresh);
-    if (!arranging && (isTracker(q) || q.kind === 'tally')){
-      const rate = `<span class="st-rate">${rateHtml(q)}</span>`;
-      const t = `<span class="xp-r">+${fmt(q.xpPer)}${ico('i-gem')}</span> <span class="gold-r">+${fmt(q.goldPer)}${ico('i-coin')}</span> for every ${esc(fmtU(q, q.chunk))}`;
-      h = h.replace(rate, qInfo(t));
-    }
-    return h;
-  };
-  $('#panel').addEventListener('click', e => {
-    const b = e.target.closest('[data-act="qinfo"]'); if (!b) return;
-    e.stopPropagation();
-    const pop = document.querySelector('.cy-tip');
-    if (pop.classList.contains('open') && pop._for === b){ pop.classList.remove('open'); return; }
-    pop.innerHTML = b.dataset.tip; pop._for = b; pop.classList.add('open');
-    const r = b.getBoundingClientRect(), w = Math.min(260, innerWidth - 24);
-    pop.style.width = w + 'px';
-    pop.style.left = Math.max(12, Math.min(innerWidth - w - 12, r.left - 20)) + 'px';
-    pop.style.top = (r.bottom + 8) + 'px';
-  });
-  addEventListener('scroll', () => document.querySelector('.cy-tip')?.classList.remove('open'), { passive:true });
-})();
-
-
 /* ================= Quests board: summary on top, then tiles grouped by when they reset =================
-   Tap a tile to claim it (tap again to reopen). Tap the icon, or press and hold a tile, to edit it.
-   Arrange mode still uses the plain list (questTree). */
+   Tap a tile to claim it (tap again to undo). Tap the icon to edit it. */
 function qbIcons(){ return {
   standard:'<circle cx="12" cy="12" r="8"/><path d="M8.5 12.3l2.4 2.4 4.6-5"/>',
   pair:'<rect x="3" y="7" width="7.5" height="10" rx="1.6"/><rect x="13.5" y="7" width="7.5" height="10" rx="1.6"/><path d="M10.5 12h3"/>',
@@ -2918,8 +2644,8 @@ function qbSummary(){
 }
 // ---- one tile per quest ----
 function qbStandard(q, wide){
-  const done = isDone(q), R = boosted(q, q.xp, q.gold), b = qbBadge(done ? 'DONE' : 'CLAIM', done ? 'ok' : '');
-  return `<article class="card qb-t${done ? ' done' : ''}" data-act="${done ? 'reopen' : 'claim'}">
+  const done = isDone(q), locked = !done && !isVisible(q), R = boosted(q, q.xp, q.gold), b = qbBadge(done ? 'DONE' : locked ? 'LOCKED' : 'CLAIM', done ? 'ok' : locked ? 'dim' : '');
+  return `<article class="card qb-t${done ? ' done' : ''}${locked ? ' locked' : ''}"${locked ? '' : ` data-act="${done ? 'reopen' : 'claim'}"`}>
     ${wide ? qbTR(cyStreak(q), b) + qbHead(q) : `<div class="qb-top">${qbIcon(q)}${cyStreak(q)}</div><h4 class="qb-h2">${esc(q.name)}</h4>`}${q.note && wide ? `<p class="qb-note">${esc(q.note)}</p>` : ''}
     ${wide ? `<div class="qb-foot">${qbRew(R.xp, R.gold, done)}</div>` : `${qbRew(R.xp, R.gold, done)}<div class="qb-strk">${b}</div>`}
   </article>`;
@@ -2962,9 +2688,9 @@ function qbScaling(q){
 }
 function qbRecord(q){
   const done = isDone(q), p = parentOf(q), locked = p && !isVisible(q), last = q.entries.length ? q.entries[q.entries.length - 1].v : null, u = esc(q.unit);
-  return `<article class="card qb-t wide${p ? ' fol' : ''}${done ? ' done' : ''}${locked ? ' locked' : ''}"${done ? ' data-act="reopen"' : ''}>
+  return `<article class="card qb-t wide${done ? ' done' : ''}${locked ? ' locked' : ''}"${done ? ' data-act="reopen"' : ''}>
     ${done ? qbTR(qbBadge('DONE', 'ok')) : ''}
-    ${qbHead(q, p ? `<span class="qb-after">${locked ? 'Unlocks after' : 'After'}: ${esc(p.name)}</span>` : '')}
+    ${qbHead(q)}
     <div class="qb-tot">${q.best == null ? '<span>First entry sets your starting point</span>' : `<span>Best <b>${fmt(q.best)} ${u}</b></span>${last != null ? `<span>Last ${fmt(last)} ${u}</span>` : ''}`}</div>
     ${done || locked ? '' : `<div class="rec-input qb-in"><input type="number" step="0.1" inputmode="decimal" placeholder="${last != null ? fmt(last) : 'Enter value'}" aria-label="Value"><span class="unit">${u}</span><button class="claim off" data-act="record">Record</button></div>`}
     <div class="qb-foot">${qbRew(q.xpPer, q.goldPer, done || locked)}<span class="qb-sub">per ${fmt(q.step)} ${u} ${q.better === 'lower' ? 'below' : 'above'} best</span></div>
@@ -2980,7 +2706,9 @@ function qbTally(q){
     <div class="qb-foot"><span class="tl-rew">${rewardsHtml(pv.xp, pv.gold).replace('class="rewards"', 'class="rewards" style="opacity:.45"')}</span></div>
   </article>`;
 }
-function qbHead(q, sub = ''){ return `<div class="qb-hd">${qbIcon(q)}<div class="qb-hdt"><h4>${esc(q.name)}</h4>${sub}</div></div>`; }
+function qbHead(q, sub = ''){
+  const p = parentOf(q), after = p ? `<span class="qb-after">${isVisible(q) ? 'After' : 'Unlocks after'}: ${esc(p.name)}</span>` : '';   // follow-up quests say what they wait for
+  return `<div class="qb-hd">${qbIcon(q)}<div class="qb-hdt"><h4>${esc(q.name)}</h4>${after}${sub}</div></div>`; }
 function qbTR(...parts){ return `<div class="qb-tr">${parts.join('')}</div>`; }
 function qbTile(q, wide){
   if (q.kind === 'pair') return qbPair(q);
@@ -3002,15 +2730,7 @@ function qbGroupOf(q){
 }
 // Which quests can be half width, and the tile layout of a group: half tiles pair up; an odd one out takes the full row.
 // Arrange sets q.size: 'full', 'half' (stays half even alone), or nothing (half, but a lone one stretches).
-const canHalf = q => (q.kind === 'standard' || q.kind === 'bounty' || q.kind === 'avoid' || (q.kind === 'target' && q.need <= 10) || isTracker(q)) && !S.quests.some(c => c.parent === q.id);
-function layoutTiles(all){
-  const tiles = all.map(q => ({ q, w:!canHalf(q) || q.size === 'full' }));
-  let run = [];
-  // an odd one out stretches to the full row, unless it was set to HALF on purpose (then it stays half, with a gap)
-  const fix = () => { const last = run[run.length - 1]; if (run.length % 2 && last.q.size !== 'half') last.w = true; run = []; };
-  tiles.forEach(t => { if (t.w) fix(); else run.push(t); }); fix();
-  return tiles;
-}
+const canHalf = q => !q.parent && (q.kind === 'standard' || q.kind === 'bounty' || q.kind === 'avoid' || (q.kind === 'target' && q.need <= 10) || isTracker(q)) && !S.quests.some(c => c.parent === q.id);
 /* Free placement. Each group is a list of rows saved in S.layout[groupKey]:
    [id] = a full-width tile, [idL, idR] = two half slots (either may be null = an empty spot).
    Quests not placed yet are added at the end (halves pair up). A lone half that was never set to HALF stretches. */
@@ -3051,6 +2771,7 @@ function rowCells(rows, withGaps){
 function moveTile(key, list, id, tr, tc){
   const rows = groupRows(key, list).map(r => r.slice()), q = byId(id); if (!q) return;
   let sr = -1, sc = -1; rows.forEach((r, i) => { const j = r.indexOf(id); if (j >= 0){ sr = i; sc = j; } });
+  tr = Math.max(0, Math.min(rows.length, Math.floor(+tr) || 0)); tc = [-1, 0, 1].includes(+tc) ? +tc : -1;   // only real spots
   if (sr < 0 || (sr === tr && sc === tc)) return;
   if (tr >= rows.length) rows.push([null, null]);
   const T = rows[tr];
@@ -3072,10 +2793,10 @@ function boardGroups(){
    A bounty in "Due soon" is pinned (red, no dots). */
 const KIND_COL = { standard:'#ff8a45', pair:'#5cabff', scaling:'#ff7a7a', record:'#ff8fb1', tally:'#ffc94a', steps:'#2ee6d6', target:'#2ee6d6', bounty:'#ffb44a', avoid:'#ff8fb1' };
 function arrangeBoard(){
-  const withKids = q => [q, ...S.quests.filter(c => c.parent === q.id).flatMap(withKids)];
+  const kidsOf = (q, d = 1) => S.quests.filter(c => c.parent === q.id).flatMap(c => [{ q:c, d }, ...kidsOf(c, d + 1)]);   // follow-ups, one step in per level
   return `<div class="qb ar">${boardGroups().map(g => {
-    const pinned = g.key === 'a-due', kidsOf = q => S.quests.filter(c => c.parent === q.id).flatMap(withKids), tiles = [];
-    rowCells(groupRows(g.key, g.list), !pinned).forEach(c => { tiles.push(c); if (c.q) kidsOf(c.q).forEach(k => tiles.push({ q:k, w:true, kid:true })); });
+    const pinned = g.key === 'a-due', tiles = [];
+    rowCells(groupRows(g.key, g.list), !pinned).forEach(c => { tiles.push(c); if (c.q) kidsOf(c.q).forEach(k => tiles.push({ q:k.q, w:true, kid:k.d })); });
     return `<section class="qb-g${pinned ? ' due' : ''}"><div class="qb-gh"><b>${g.title}</b></div><div class="ar-grid" data-g="${g.key}">${tiles.map(({ q, w, r, c, gap, add, kid }) => {
       if (gap) return `<div class="ar-slot${add ? ' add w' : ''}" data-r="${r}" data-c="${c}">${add ? '+' : ''}</div>`;
       const p = parentOf(q), kind = (KIND_NAME[q.kind] || 'Quest').toUpperCase();
@@ -3083,11 +2804,28 @@ function arrangeBoard(){
         : p ? `${kind} · AFTER ${esc(p.name).toUpperCase()}` : q.kind === 'target' ? `${kind} · ${fmt(q.need)}` : kind;
       const size = canHalf(q) ? `<span class="ar-sz"><button data-act="arsize" data-id="${q.id}" data-size="half" class="${w ? '' : 'on'}">HALF</button><button data-act="arsize" data-id="${q.id}" data-size="full" class="${w ? 'on' : ''}">FULL</button></span>`
         : `<span class="ar-al">ALWAYS FULL</span>`;
-      return `<div class="item ar-t${w ? ' w' : ''}${pinned ? ' pin' : ''}" data-id="${q.id}"${kid ? '' : ` data-r="${r}" data-c="${w ? -1 : c}"`} style="--kc:${KIND_COL[q.kind] || '#ff8a45'}">
+      return `<div class="item ar-t${w ? ' w' : ''}${pinned ? ' pin' : ''}${kid ? ' fol' : ''}" data-id="${q.id}"${kid ? '' : ` data-r="${r}" data-c="${w ? -1 : c}"`} style="--kc:${KIND_COL[q.kind] || '#ff8a45'}${kid ? `;--fd:${Math.min(kid, 4)}` : ''}">
         <b class="ar-n">${esc(q.name)}</b>${pinned || p ? '' : '<span class="ar-grip" aria-label="Drag to move"></span>'}
         <div class="ar-ft"><span class="ar-k">${sub}</span>${pinned ? '' : size}</div></div>`;
     }).join('')}</div></section>`;
   }).join('')}</div>`;
+}
+// Follow-ups fold away behind their quest (the cut corner of a quest that has follow-ups is the button).
+// By default a quest's follow-ups stay folded until it's done; done, the next one shows (its own follow-ups still folded).
+// Opening or closing one by hand sticks for the rest of the day: S.folded[id] = { open, day }.
+const kidCount = q => S.quests.filter(c => c.parent === q.id).reduce((n, c) => n + 1 + kidCount(c), 0);
+function folded(q){
+  if (!S.quests.some(c => c.parent === q.id)) return false;
+  const o = S.folded && S.folded[q.id];
+  if (o && typeof o === 'object' && o.day === dayKey()) return !o.open;
+  return !isDone(q);
+}
+const FOLD_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg>';
+function foldBtn(html, q){
+  if (!S.quests.some(c => c.parent === q.id)) return html;
+  const n = kidCount(q), f = folded(q);
+  const btn = `<button type="button" class="qb-fold${f ? '' : ' open'}" data-act="fold" data-id="${q.id}" aria-label="${f ? 'Show' : 'Hide'} ${n} follow-up${n > 1 ? 's' : ''}">${FOLD_SVG}</button>`;
+  return html.replace(/<\/article>\s*$/, btn + '</article>');
 }
 function questBoard(){
   const groups = {};
@@ -3105,12 +2843,14 @@ function questBoard(){
       time = ends.length ? cd(Math.min(...ends)) : +g.key.slice(1) === MONTHLY ? cd(addMonths(now(), 1)) : `${cycleName(+g.key.slice(1))} cycle`; }
     const counted = all.filter(q => q.kind !== 'scaling' && q.kind !== 'tally' && q.kind !== 'bounty' && !isTracker(q) && isVisible(q));
     const cnt = g.key === 'z-tally' ? '' : counted.length ? `${counted.filter(isDone).length}/${counted.length}` : '';
-    const kidsOf = q => S.quests.filter(c => c.parent === q.id).flatMap(withKids);
+    // follow-ups (and their follow-ups) go under their quest, one step further in per level
+    // a folded quest hides its follow-ups (they show as a stack behind it)
+    const kidsOf = (q, d = 1) => folded(q) ? [] : S.quests.filter(c => c.parent === q.id).flatMap(c => [{ q:c, d }, ...kidsOf(c, d + 1)]);
     const tiles = [];
-    rowCells(groupRows(g.key, g.list), false).forEach(c => { tiles.push(c); if (c.q) kidsOf(c.q).forEach(k => tiles.push({ q:k, w:true, kid:true })); });
+    rowCells(groupRows(g.key, g.list), false).forEach(c => { tiles.push(c); if (c.q) kidsOf(c.q).forEach(k => tiles.push({ q:k.q, w:true, kid:k.d })); });
     const fresh_ = id => fresh.id === id ? ' fresh' : '';
     return `<section class="qb-g${g.key === 'a-due' ? ' due' : ''}"><div class="qb-gh"><b>${g.title}${cnt ? `<span>${cnt}</span>` : ''}</b>${time ? `<span class="qb-time">${ico('i-hourglass','0 0 16 16')}${time}</span>` : ''}</div>
-      <div class="qb-grid">${tiles.map(t => t.gap ? '<div class="qb-gap"></div>' : `<div class="item qb-item${t.w ? ' wide' : ''}${fresh_(t.q.id)}" data-id="${t.q.id}">${qbTile(t.q, t.w)}</div>`).join('')}</div></section>`;
+      <div class="qb-grid">${tiles.map(t => t.gap ? '<div class="qb-gap"></div>' : `<div class="item qb-item${t.w ? ' wide' : ''}${t.kid ? ' fol' : ''}${folded(t.q) ? ' qb-stacked' + (kidCount(t.q) > 1 ? ' qb-stacked2' : '') : ''}${fresh_(t.q.id)}" data-id="${t.q.id}"${t.kid ? ` style="--fd:${Math.min(t.kid, 4)}"` : ''}>${foldBtn(qbTile(t.q, t.w), t.q)}</div>`).join('')}</div></section>`;
   }).join('');
   return `<div class="qb">${S.vacation ? '<div class="vac-note">Vacation mode · streaks paused</div>' : ''}${qbSummary()}${html}</div>`;
 }
@@ -3235,8 +2975,8 @@ function questHero(q){
   }
   const tc = tier === -1 ? ['#ff5a5a', '255,90,90'] : tier === -2 ? ['#ffc94a', '255,201,74'] : tierCol(tier);   // recurring = red, tally = gold, streaks = flame colour
   const kp = q.kind === 'pair'
-    ? [[esc(q.a.name), fmt(q.a.count || 0) + '×'], [esc(q.b.name), fmt(q.b.count || 0) + '×'], ['Bonus', fmt(q.bonusCount || 0) + '×', 't']]
-    : [['Total', fmt(logs.filter(e => !e.slip).length)], ['XP earned', fmt(xp), 'x'], ['Gold', fmt(gold), 'g']];
+    ? [[esc(q.a.name), cyNum(q.a.count || 0) + '×'], [esc(q.b.name), cyNum(q.b.count || 0) + '×'], ['Bonus', cyNum(q.bonusCount || 0) + '×', 't']]
+    : [['Total', cyNum(logs.filter(e => !e.slip).length)], ['XP earned', cyNum(xp), 'x'], ['Gold', cyNum(gold), 'g']];   // big numbers shortened (12.34M) so they fit
   return `<div class="hx" style="--tc:${tc[0]};--tcr:${tc[1]}">
     <div class="hx-hero"><div><div class="hx-k">${k}${hasStreak(q) && streakReward(q) ? streakInfo() : ''}</div><div class="hx-big">${big}${unit ? `<small>${unit}</small>` : ''}</div><div class="hx-sub">${sub}</div></div><div class="hx-art">${art}</div></div>
     <div class="hx-kp">${kp.map(([l, v, c]) => `<div><span>${l}</span><b class="${c || ''}">${v}</b></div>`).join('')}</div>
@@ -3276,7 +3016,7 @@ $('#progPop').addEventListener('change', () => setTimeout(ppSync, 0));
 (function(){
   let s0 = null, swiped = 0;
   const order = () => ['steps', ...S.quests.filter(q => q.kind !== 'steps' && q.kind !== 'bounty' && isTracked(q)).map(q => q.id)];
-  $('#panel').addEventListener('pointerdown', e => { if (S.tab === 'progress' && !e.target.closest('.sh-cols, .chips, .chips2, input')) s0 = { x:e.clientX, y:e.clientY }; });
+  $('#panel').addEventListener('pointerdown', e => { if (S.tab === 'progress' && !e.target.closest('.sh-cols, .chips, input')) s0 = { x:e.clientX, y:e.clientY }; });
   $('#panel').addEventListener('pointercancel', () => { s0 = null; });
   $('#panel').addEventListener('pointerup', e => {
     const a = s0; s0 = null; if (!a) return;
@@ -3703,7 +3443,7 @@ autoBackupCheck(); scheduleMidnightBackup();
 setInterval(autoBackupCheck, 60000);   // a phone that slept through midnight catches up within a minute of waking
 document.addEventListener('visibilitychange', () => { if (!document.hidden){ autoBackupCheck(); scheduleMidnightBackup(); } });
 
-/* ---- Reduce effects (Settings, off by default): fewer particles, no looping glows ---- */
+/* ---- Reduce effects (Settings, off by default): fewer sparks, no glow, no bloom ---- */
 function applyReduceFx(){ document.documentElement.classList.toggle('reduce-fx', !!S.reduceFx); }
 $('#reduceFx').addEventListener('change', e => { S.reduceFx = e.target.checked; save(); applyReduceFx(); });
 applyReduceFx();
@@ -3736,6 +3476,7 @@ function qbTarget(q, wide){
     <div class="qb-foot">${qbRew(R.xp, R.gold, done)}</div></article>`;
 }
 function targetHit(q, n, rect){
+  if (!isVisible(q)) return;
   targetRoll(q); if (isDone(q) || !(n > 0)) return;
   snapshot();
   q.hits = Math.min(q.need, (q.hits || 0) + Math.floor(n));
@@ -3809,7 +3550,7 @@ async function undoSlip(q){
   const back = Math.max(0, Math.round((startOfDay() - u.since) / 864e5));
   if (!await ask('Undo the slip?', `Your count goes back to ${fmt(back)} ${back === 1 ? 'day' : 'days'}.${u.reward ? ' Today’s reward is given back.' : ''}`, 'Undo')) return;
   (q.slips || []).pop(); q.slipDay = null; q.since = u.since; q.best = u.best; q.doneUntil = u.doneUntil; q.slipUndo = null;
-  if (u.reward){ q.undo = u.reward; if (u.entry) (q.log ||= []).push(u.entry); q.count = (q.count || 0) + 1; S.xp += u.reward.xp || 0; S.gold += u.reward.gold || 0; bumpToday(u.reward.xp || 0, u.reward.gold || 0); }
+  if (u.reward){ q.undo = u.reward; if (u.entry) (q.log ||= []).push(u.entry); q.count = (q.count || 0) + 1; give(u.reward); }
   snap = null; save(); hideToast(); render();
 }
 async function slipAvoid(q){
@@ -4014,6 +3755,8 @@ function wSlot(q){
       sub:`${fmt(st)}${q.goal ? ' / ' + fmt(q.goal) : ''} steps`, pct: q.goal ? Math.min(100, Math.round(st / q.goal * 100)) : 0,
       note: due.keys.length ? `${due.keys.length} ${due.keys.length === 1 ? 'day' : 'days'} waiting` : 'all claimed', btn: due.keys.length ? [B('CLAIM', 'steps', 'or')] : [] });
   }
+  // a follow-up whose quest isn't done yet can't be claimed: show it locked (the native side treats an empty act as "open the app")
+  if (!done && !isVisible(q)){ const p = parentOf(q); Object.assign(base, { tap:'open', btn:[B('LOCKED', '', 'dim')], note:`after ${p.name}`, reset:null }); }
   return base;
 }
 function widgetSnapshot(){
@@ -4035,9 +3778,11 @@ async function applyWidgetActions(){
   let n = 0;
   list.sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(a => {
     const q = byId(a.qid); if (!q) return;
-    NOW_AT = Math.min(Date.now(), +a.t || Date.now());
+    const t = +a.t, real = Date.now();
+    NOW_AT = t > real - 14 * 864e5 && t <= real ? t : real;   // the tap's own time; junk (ancient or future) counts as now
     try {
       const v = round2(+a.v);
+      if (!isVisible(q)) return;   // a locked follow-up can't be claimed from the widget either
       if (a.act === 'claim'){ if (!isDone(q)){ claimQuest(q, null); n++; } }
       else if (a.act === 'hit' && q.kind === 'target'){ targetHit(q, 1, null); n++; }
       else if (a.act === 'slip' && q.kind === 'avoid'){ doSlip(q); n++; }
