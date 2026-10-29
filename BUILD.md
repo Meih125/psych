@@ -1,7 +1,8 @@
 # Building Psych (Windows)
 
 The app is the `www` folder: `index.html` (layout), `app.css` (look), `app.js` (logic).
-Double-click `www\index.html` to try it in Chrome.
+Double-click `www\index.html` to try it in Chrome, or build a one-file preview with test data:
+`node tools\make-preview.js` makes `Psych-preview.html` (open it on any device, even the phone).
 Everything else in this folder turns it into an Android app.
 
 ## One-time setup (new PC)

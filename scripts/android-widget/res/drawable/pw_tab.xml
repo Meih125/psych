@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- a 4x4 widget tab; pw_tab_on is the chosen one -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+  <solid android:color="#0D96C3C3"/><stroke android:width="1dp" android:color="#1FD2F0EC"/><corners android:radius="2dp"/>
+</shape>

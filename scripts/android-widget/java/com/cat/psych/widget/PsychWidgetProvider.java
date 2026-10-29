@@ -1,5 +1,6 @@
 package com.cat.psych.widget;
 
+import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
@@ -11,30 +12,43 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.RectF;
+import android.graphics.Typeface;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.RemoteViews;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
+import java.util.Locale;
 
 /**
  * Draws Psych home-screen widgets from the snapshot the app sends (PsychWidgetPlugin.update).
  * Every row is one home-screen cell high: one full quest, or two half quests (a 2-wide widget shows one half quest per row).
  * Tap anywhere on a quest = its main action (claim, +1 orb, add an amount...). Tap the quest's icon, or a finished
  * quest, to open the app. Taps are queued for the app (it applies them when it opens) and shown on the widget at once.
+ * The 4x4 is different: the whole Quests page with a tab per group and a scrolling list (buildBoard, PsychBoardService).
  */
 public abstract class PsychWidgetProvider extends AppWidgetProvider {
     public static final String PREFS = "psych_widget";
     public static final String ACTION_TAP = "com.cat.psych.widget.TAP";
     public static final String ACTION_PINNED = "com.cat.psych.widget.PINNED";
+    public static final String ACTION_TAB = "com.cat.psych.widget.TAB";
 
     protected abstract String size();
 
-    public static final Class<?>[] PROVIDERS = { Widget2x1.class, Widget4x1.class, Widget2x2.class, Widget4x2.class };
-    public static final String[] SIZES = { "2x1", "4x1", "2x2", "4x2" };
+    public static final Class<?>[] PROVIDERS = { Widget2x1.class, Widget4x1.class, Widget2x2.class, Widget4x2.class, Widget4x4.class };
+    public static final String[] SIZES = { "2x1", "4x1", "2x2", "4x2", "4x4" };
+
+    boolean isBoard() { return "4x4".equals(size()); }
 
     public static Class<?> providerFor(String size) {
         for (int i = 0; i < SIZES.length; i++) if (SIZES[i].equals(size)) return PROVIDERS[i];
@@ -54,22 +68,27 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
         }
     }
 
+    void redraw(Context c, AppWidgetManager m, int id) {
+        try {
+            if (isBoard()) { m.updateAppWidget(id, buildBoard(c, m, id)); m.notifyAppWidgetViewDataChanged(id, id(c, "b_list")); }
+            else m.updateAppWidget(id, build(c, m, id));
+        } catch (Exception ignored) {}
+    }
+
     @Override
     public void onUpdate(Context c, AppWidgetManager m, int[] ids) {
-        for (int id : ids) {
-            try { m.updateAppWidget(id, build(c, m, id)); } catch (Exception ignored) {}
-        }
+        for (int id : ids) redraw(c, m, id);
     }
 
     @Override
     public void onAppWidgetOptionsChanged(Context c, AppWidgetManager m, int id, Bundle opts) {
-        try { m.updateAppWidget(id, build(c, m, id)); } catch (Exception ignored) {}   // resized: redraw the orbs to fit
+        redraw(c, m, id);   // resized: redraw the orbs to fit
     }
 
     @Override
     public void onDeleted(Context c, int[] ids) {
         SharedPreferences.Editor e = prefs(c).edit();
-        for (int id : ids) e.remove("map_" + id);
+        for (int id : ids) { e.remove("map_" + id); e.remove("tab_" + id); }
         e.apply();
     }
 
@@ -81,6 +100,12 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
             String cfg = in.getStringExtra("configId");
             if (id != -1 && cfg != null) prefs(c).edit().putString("map_" + id, cfg).apply();
             refreshAll(c);
+            return;
+        }
+        if (ACTION_TAB.equals(a)) {   // 4x4: show another group
+            int id = in.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
+            String key = in.getStringExtra("tab");
+            if (id != -1 && key != null) { prefs(c).edit().putString("tab_" + id, key).apply(); redraw(c, AppWidgetManager.getInstance(c), id); }
             return;
         }
         if (ACTION_TAP.equals(a)) {
@@ -102,23 +127,67 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
             q.put(e);
             JSONObject snap = new JSONObject(p.getString("snapshot", "{}"));
             JSONArray ws = snap.optJSONArray("widgets");
-            if (ws != null) for (int i = 0; i < ws.length(); i++) {
-                JSONArray rows = ws.getJSONObject(i).optJSONArray("rows");
-                if (rows == null) continue;
-                for (int r = 0; r < rows.length(); r++) {
-                    JSONArray row = rows.getJSONArray(r);
-                    for (int k = 0; k < row.length(); k++) {
-                        JSONObject s = row.optJSONObject(k);
-                        if (s != null && qid.equals(s.optString("qid"))) applyLocally(s, act, value);
+            long addXp = 0, addGold = 0;
+            if (ws != null) {
+                for (int i = 0; i < ws.length(); i++)
+                    for (JSONObject s : slots(ws.getJSONObject(i))) {
+                        if (!qid.equals(s.optString("qid"))) continue;
+                        if ("claim".equals(act) && !s.optBoolean("done") && addXp == 0 && addGold == 0) { addXp = s.optLong("rawXp"); addGold = s.optLong("rawGold"); }
+                        applyLocally(s, act, value);
                     }
+                if (addXp > 0 || addGold > 0) for (int i = 0; i < ws.length(); i++) {
+                    JSONObject b = ws.getJSONObject(i).optJSONObject("board");
+                    if (b != null) addToHeader(b, addXp, addGold);
                 }
             }
             p.edit().putString("actions", q.toString()).putString("snapshot", snap.toString()).apply();
         } catch (Exception ignored) {}
     }
 
+    /** Every quest a widget shows: its spots, or for the 4x4 the steps and every tile of every tab. */
+    static List<JSONObject> slots(JSONObject w) {
+        List<JSONObject> out = new ArrayList<>();
+        addRows(out, w.optJSONArray("rows"));
+        JSONObject b = w.optJSONObject("board");
+        if (b != null) {
+            JSONObject st = b.optJSONObject("steps");
+            if (st != null) out.add(st);
+            JSONArray gs = b.optJSONArray("groups");
+            if (gs != null) for (int i = 0; i < gs.length(); i++) { JSONObject g = gs.optJSONObject(i); if (g != null) addRows(out, g.optJSONArray("rows")); }
+        }
+        return out;
+    }
+
+    static void addRows(List<JSONObject> out, JSONArray rows) {
+        if (rows == null) return;
+        for (int r = 0; r < rows.length(); r++) {
+            JSONArray row = rows.optJSONArray(r);
+            if (row == null) continue;
+            for (int k = 0; k < row.length(); k++) { JSONObject s = row.optJSONObject(k); if (s != null) out.add(s); }
+        }
+    }
+
     static JSONObject btn(String label, String act, String style) throws Exception {
         return new JSONObject().put("label", label).put("act", act).put("style", style);
+    }
+
+    // ---------- the 4x4 header after a widget claim (the app redoes it exactly when it opens) ----------
+    // keep in step with xpToNext / levelReward / levelInfo in app.js
+    static long xpToNext(int L) { long base = 100 + 25L * (L - 1); return L % 10 == 9 ? Math.round(base * 1.5 / 5) * 5 : base; }
+    static long levelReward(int L) { if (L < 2) return 0; int band = (L - 1) / 10, k = L - band * 10; return k == 10 ? 150 + 50L * band : 10L * k + 5L * band; }
+    /** { level, XP into it, XP it needs } */
+    static long[] levelInfo(long total) {
+        long r = Math.min(1000000000L, Math.max(0, total)); int L = 1;
+        while (r >= xpToNext(L)) { r -= xpToNext(L); L++; }
+        return new long[] { L, r, xpToNext(L) };
+    }
+    static void addToHeader(JSONObject b, long addXp, long addGold) throws Exception {
+        long xp = b.optLong("totalXp"), gold = b.optLong("totalGold") + addGold;
+        long[] before = levelInfo(xp), after = levelInfo(xp + addXp);
+        for (int L = (int) before[0] + 1; L <= after[0]; L++) gold += levelReward(L);   // gold for each level reached now, once
+        b.put("totalXp", xp + addXp).put("totalGold", gold).put("lv", after[0])
+         .put("xpPct", after[2] > 0 ? (int) Math.min(100, after[1] * 100 / after[2]) : 0)
+         .put("gold", String.format(Locale.US, "%,d", gold));
     }
 
     static long nextMidnight() {
@@ -138,7 +207,8 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
                 int n = s.optInt("segs") + 1;                       // claims this period, now including this one
                 double f = Math.pow(1 + s.optDouble("growth", 0) / 100.0, n);   // the next claim pays (1+g)^n of the base
                 int up = (int) Math.round((f - 1) * 100);
-                s.put("segs", n).put("xp", "+" + Math.round(s.optInt("baseXp") * f)).put("gold", "+" + Math.round(s.optInt("baseGold") * f))
+                long nx = Math.round(s.optInt("baseXp") * f), ng = Math.round(s.optInt("baseGold") * f);
+                s.put("segs", n).put("xp", "+" + nx).put("gold", "+" + ng).put("rawXp", nx).put("rawGold", ng)
                  .put("note", "Claimed \u00D7" + n + (up > 0 ? " \u00B7 Next pays +" + up + "%" : ""));
                 return;
             }
@@ -179,7 +249,9 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
     }
 
     // ---------- drawing ----------
-    JSONObject configFor(Context c, int appWidgetId) {
+    JSONObject configFor(Context c, int appWidgetId) { return findConfig(c, appWidgetId, size()); }
+
+    static JSONObject findConfig(Context c, int appWidgetId, String size) {
         try {
             JSONObject snap = new JSONObject(prefs(c).getString("snapshot", "{}"));
             JSONArray ws = snap.optJSONArray("widgets");
@@ -189,7 +261,7 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
             for (int i = 0; i < ws.length(); i++) {
                 JSONObject w = ws.getJSONObject(i);
                 if (want != null && want.equals(w.optString("id"))) return w;
-                if (sameSize == null && size().equals(w.optString("size"))) sameSize = w;
+                if (sameSize == null && size.equals(w.optString("size"))) sameSize = w;
             }
             return sameSize;   // added from the launcher's widget list: use the first one of this size
         } catch (Exception e) { return null; }
@@ -217,7 +289,12 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
         return PendingIntent.getBroadcast(c, req, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    int id(Context c, String name) { return c.getResources().getIdentifier(name, "id", c.getPackageName()); }
+    /** What tapping a view does. Home-screen tiles get their own intent; the 4x4's list rows override this (PsychBoardService). */
+    void click(Context c, RemoteViews rv, int vid, JSONObject s, String act, int req) {
+        if (vid != 0) rv.setOnClickPendingIntent(vid, action(c, s, act, req));
+    }
+
+    static int id(Context c, String name) { return c.getResources().getIdentifier(name, "id", c.getPackageName()); }
 
     RemoteViews build(Context c, AppWidgetManager m, int appWidgetId) {
         RemoteViews rv = new RemoteViews(c.getPackageName(), c.getResources().getIdentifier("psych_widget", "layout", c.getPackageName()));
@@ -235,6 +312,7 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
                 if (r >= rows.length()) { rv.setViewVisibility(id(c, p), View.GONE); continue; }
                 rv.setViewVisibility(id(c, p), View.VISIBLE);
                 JSONArray row = rows.getJSONArray(r);
+                vis(rv, id(c, p + "f"), false); vis(rv, id(c, p + "a"), false); vis(rv, id(c, p + "b"), false);
                 if (row.length() == 2) {
                     int halfW = (widthDp - 6) / 2;
                     tile(c, rv, p + "a", row.optJSONObject(0), appWidgetId, r * 10 + 1, true, halfW, dens);
@@ -317,9 +395,13 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
         rv.setInt(ic, "setColorFilter", color);
         rv.setInt(ic, "setBackgroundColor", (color & 0x00FFFFFF) | 0x26000000);
         text(rv, id(c, p + "_title"), s.optString("name"));
-        text(rv, id(c, p + "_streak"), s.optString("streak"));
+        String strk = s.optString("streak"), mlt = s.optString("mult");
+        text(rv, id(c, p + "_streak"), strk);
+        vis(rv, id(c, p + "_streak"), !strk.isEmpty());
         rv.setTextColor(id(c, p + "_streak"), parse(s.optString("streakColor"), Color.WHITE));
-        text(rv, id(c, p + "_mult"), s.optString("mult"));
+        text(rv, id(c, p + "_mult"), mlt);
+        vis(rv, id(c, p + "_mult"), !mlt.isEmpty());
+        rv.setTextColor(id(c, p + "_mult"), parse(s.optString("streakColor"), Color.parseColor("#F5C542")));   // the +% in its streak's colour
         text(rv, id(c, p + "_xp"), s.optString("xp"));
         text(rv, id(c, p + "_gold"), s.optString("gold"));
         // line under the name (steps), the steps bar, the note after the rewards (totals, best, bonus)
@@ -356,9 +438,24 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
                 rv.setTextViewText(id(c, q + "_x"), ho[k].optString("xp"));
                 rv.setTextViewText(id(c, q + "_g"), ho[k].optString("gold"));
                 for (String part : new String[] { "_gi", "_x", "_ci", "_g" }) vis(rv, id(c, q + part), !hd);   // a done half just shows its name
-                rv.setOnClickPendingIntent(id(c, q), action(c, s, hd ? "open" : hs[k][1], (wid * 100 + slot * 4 + 3 + k * 40) & 0x7fffffff));
+                click(c, rv, id(c, q), s, hd ? "open" : hs[k][1], (wid * 100 + slot * 4 + 3 + k * 40) & 0x7fffffff);
             }
         } else vis(rv, pair, false);
+        // bounty: the time left with a clock (at the right of the footer on a full tile, under the name on a half tile); due today / tomorrow = a red tile
+        String due = s.optString("due");
+        boolean urgent = s.optBoolean("urgent") && !done;
+        rv.setInt(box, "setBackgroundResource", c.getResources().getIdentifier(urgent ? "pw_card_red" : "pw_card", "drawable", c.getPackageName()));
+        int subV = id(c, p + "_sub"), dueV = id(c, p + "_due");
+        if (subV != 0) { rv.setTextColor(subV, 0xFFCFDEDC); rv.setTextViewCompoundDrawables(subV, 0, 0, 0, 0); }
+        vis(rv, dueV, false);
+        int dv = half ? subV : dueV;
+        if (!due.isEmpty() && !done && dv != 0) {
+            rv.setTextViewText(dv, due);
+            rv.setTextColor(dv, urgent ? 0xFFFF6B5E : 0xFFFF8A45);
+            rv.setTextViewCompoundDrawables(dv, c.getResources().getIdentifier(urgent ? "pw_clock_red" : "pw_clock", "drawable", c.getPackageName()), 0, 0, 0);
+            rv.setInt(dv, "setCompoundDrawablePadding", Math.round(4 * dens));
+            vis(rv, dv, true);
+        }
         int nb = buttons == null ? 0 : buttons.length();
         vis(rv, id(c, p + "_rew"), !(half && nb >= 2));
         // a finished quest fades, like on the board
@@ -367,8 +464,8 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
         rv.setTextColor(id(c, p + "_gold"), done ? 0x80FFC94A : 0xFFFFC94A);
         rv.setInt(ic, "setImageAlpha", done ? 128 : 255);
         // tap anywhere = the main action; the icon (or a finished quest) opens the app
-        rv.setOnClickPendingIntent(box, action(c, s, done ? "open" : tap, (wid * 100 + slot * 4) & 0x7fffffff));
-        rv.setOnClickPendingIntent(ic, openApp(c));
+        click(c, rv, box, s, done ? "open" : tap, (wid * 100 + slot * 4) & 0x7fffffff);
+        click(c, rv, ic, s, "open", 0);
         String[] ids = { p + "_b1", p + "_b2" };
         int n = buttons == null ? 0 : buttons.length();   // the last button is the main one, the one before it e.g. SLIP
         for (int k = 0; k < 2; k++) {
@@ -381,8 +478,181 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
             rv.setTextViewText(vid, b.optString("label"));
             rv.setTextColor(vid, Color.parseColor("ok".equals(st) ? "#3FD47A" : "red".equals(st) ? "#FF8A7F" : "cy".equals(st) ? "#2EE6D6" : "dim".equals(st) ? "#6F8482" : "#FF8A45"));
             rv.setInt(vid, "setBackgroundResource", c.getResources().getIdentifier("pw_btn_" + st, "drawable", c.getPackageName()));
-            rv.setOnClickPendingIntent(vid, action(c, s, act, (wid * 100 + slot * 4 + 1 + k) & 0x7fffffff));
+            click(c, rv, vid, s, act, (wid * 100 + slot * 4 + 1 + k) & 0x7fffffff);
         }
+    }
+
+    // ---------- the 4x4: the whole Quests page ----------
+    /** A finished quest whose reset time has passed counts as not done (the widget may be hours older than the app). */
+    static boolean doneNow(JSONObject s) {
+        long until = s.optLong("doneUntil", 0);
+        if (until > 0 && System.currentTimeMillis() >= until && s.optJSONObject("reset") != null) return false;
+        return s.optBoolean("done");
+    }
+
+    /** A group's done count, like the app's "3/5": counted tiles, plus counted quests it doesn't show (folded follow-ups). */
+    static int[] count(JSONObject g) {
+        int done = g.optInt("hidDone"), all = g.optInt("hidN");
+        List<JSONObject> list = new ArrayList<>();
+        addRows(list, g.optJSONArray("rows"));
+        for (JSONObject s : list) if (s.optBoolean("counts")) { all++; if (doneNow(s)) done++; }
+        return new int[] { done, all };
+    }
+
+    /** "4d 8h", "8h 30m" or "12m" */
+    static String left(long ms) {
+        long m = Math.max(0, ms / 60000), d = m / 1440, h = m % 1440 / 60;
+        return d > 0 ? d + "d " + h + "h" : h > 0 ? h + "h " + (m % 60) + "m" : (m % 60) + "m";
+    }
+
+    /** The tab this widget shows: the one picked, or the first group (if the picked one is gone). */
+    static JSONObject tabOf(Context c, int wid, JSONArray groups) {
+        if (groups == null || groups.length() == 0) return null;
+        String want = prefs(c).getString("tab_" + wid, null);
+        for (int i = 0; i < groups.length(); i++) { JSONObject g = groups.optJSONObject(i); if (g != null && g.optString("key").equals(want)) return g; }
+        return groups.optJSONObject(0);
+    }
+
+    static int widthDp(AppWidgetManager m, int wid) {
+        try { int w = m.getAppWidgetOptions(wid).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0); if (w > 0) return w; } catch (Exception ignored) {}
+        return 250;
+    }
+
+    /** The done ring: orange arc (green when all done) with "3/8" inside. */
+    static Bitmap ringBitmap(int done, int all, float dens) {
+        int sz = Math.round(40 * dens);
+        Bitmap bm = Bitmap.createBitmap(sz, sz, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(bm);
+        float sw = 4 * dens, in = sw / 2 + dens;
+        RectF r = new RectF(in, in, sz - in, sz - in);
+        Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG); bg.setStyle(Paint.Style.STROKE); bg.setStrokeWidth(sw); bg.setColor(0x14FFFFFF);
+        cv.drawArc(r, 0, 360, false, bg);
+        if (all > 0 && done > 0) {
+            Paint fg = new Paint(Paint.ANTI_ALIAS_FLAG); fg.setStyle(Paint.Style.STROKE); fg.setStrokeWidth(sw); fg.setStrokeCap(Paint.Cap.ROUND);
+            fg.setColor(done >= all ? Color.parseColor("#3FD47A") : Color.parseColor("#FF6B1A"));
+            cv.drawArc(r, -90, 360f * Math.min(done, all) / all, false, fg);
+        }
+        String t = done + "/" + all;
+        Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG); tp.setColor(Color.parseColor("#F2F7F6")); tp.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        tp.setTextSize((t.length() <= 3 ? 11 : t.length() == 4 ? 10 : t.length() == 5 ? 8.5f : 7.5f) * dens); tp.setTextAlign(Paint.Align.CENTER);
+        cv.drawText(t, sz / 2f, sz / 2f - (tp.descent() + tp.ascent()) / 2, tp);
+        return bm;
+    }
+
+    static int flagMutable() { return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : 0; }
+
+    RemoteViews buildBoard(Context c, AppWidgetManager m, int wid) {
+        RemoteViews rv = new RemoteViews(c.getPackageName(), c.getResources().getIdentifier("psych_widget_board", "layout", c.getPackageName()));
+        int list = id(c, "b_list");
+        rv.setOnClickPendingIntent(id(c, "b_top"), openApp(c));
+        rv.setOnClickPendingIntent(id(c, "b_sum"), openApp(c));
+        // the scrolling list: rows come from PsychBoardService; a tap on a row goes through WidgetTapActivity
+        Intent svc = new Intent(c, PsychBoardService.class).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, wid);
+        svc.setData(Uri.parse(svc.toUri(Intent.URI_INTENT_SCHEME)));   // one list per widget
+        rv.setRemoteAdapter(list, svc);
+        rv.setEmptyView(list, id(c, "b_empty"));
+        Intent tpl = new Intent(c, WidgetTapActivity.class);
+        rv.setPendingIntentTemplate(list, PendingIntent.getActivity(c, wid & 0x7fffffff, tpl, PendingIntent.FLAG_UPDATE_CURRENT | flagMutable()));
+        float dens = c.getResources().getDisplayMetrics().density;
+        JSONObject w = configFor(c, wid), b = w == null ? null : w.optJSONObject("board");
+        if (b == null) {
+            rv.setTextViewText(id(c, "b_empty"), "Open Psych to load your quests");
+            vis(rv, id(c, "b_tabs"), false); vis(rv, id(c, "b_gh"), false);
+            return rv;
+        }
+        rv.setTextViewText(id(c, "b_lv"), "Lv " + b.optInt("lv", 1));
+        rv.setProgressBar(id(c, "b_xp"), 100, Math.max(0, Math.min(100, b.optInt("xpPct"))), false);
+        rv.setTextViewText(id(c, "b_gold"), b.optString("gold"));
+        JSONArray groups = b.optJSONArray("groups");
+        // done ring: every group that counts
+        int done = 0, all = 0;
+        if (groups != null) for (int i = 0; i < groups.length(); i++) {
+            JSONObject g = groups.optJSONObject(i);
+            if (g == null || !g.optBoolean("count", true)) continue;
+            int[] n = count(g); done += n[0]; all += n[1];
+        }
+        rv.setImageViewBitmap(id(c, "b_ring"), ringBitmap(done, all, dens));
+        // time left today, ticking on its own
+        long now = System.currentTimeMillis();
+        rv.setChronometer(id(c, "b_timer"), SystemClock.elapsedRealtime() + (nextMidnight() - now), null, true);
+        rv.setChronometerCountDown(id(c, "b_timer"), true);
+        // steps: count, bar, when they last synced, CLAIM for days waiting
+        JSONObject st = b.optJSONObject("steps");
+        vis(rv, id(c, "b_srow"), st != null); vis(rv, id(c, "b_sbar"), st != null); vis(rv, id(c, "b_sync"), st != null);
+        boolean claim = false;
+        if (st != null) {
+            rv.setTextViewText(id(c, "b_steps"), st.optString("text"));
+            rv.setProgressBar(id(c, "b_sbar"), 100, Math.max(0, Math.min(100, st.optInt("pct"))), false);
+            long at = st.optLong("syncAt", -1), ago = (now - at) / 60000;
+            String sync = at < 0 ? "Sync off" : at == 0 ? "Not synced yet"
+                : "Synced " + (ago < 1 ? "just now" : ago < 60 ? ago + " min ago" : ago < 1440 ? Math.round(ago / 60.0) + " h ago" : Math.round(ago / 1440.0) + " d ago");
+            rv.setTextViewText(id(c, "b_sync"), sync);
+            rv.setTextColor(id(c, "b_sync"), at <= 0 || now - at > 3 * 3600e3 ? Color.parseColor("#FFB44A") : Color.parseColor("#7F9593"));
+            JSONArray sb = st.optJSONArray("btn");
+            claim = sb != null && sb.length() > 0;
+            if (claim) rv.setOnClickPendingIntent(id(c, "b_claim"), action(c, st, "steps", (wid * 100 + 97) & 0x7fffffff));
+        }
+        vis(rv, id(c, "b_claim"), claim);
+        // tabs (DUE, DAILY, CYCLES, OTHERS, whichever have quests), the picked one lit
+        JSONObject cur = tabOf(c, wid, groups);
+        int ng = groups == null ? 0 : groups.length();
+        vis(rv, id(c, "b_tabs"), ng > 0);
+        for (int i = 0; i < 6; i++) {
+            int tv = id(c, "b_t" + i);
+            JSONObject g = i < ng ? groups.optJSONObject(i) : null;
+            if (g == null) { vis(rv, tv, false); continue; }
+            int[] n = count(g);
+            boolean on = cur != null && g.optString("key").equals(cur.optString("key"));
+            rv.setViewVisibility(tv, View.VISIBLE);
+            rv.setTextViewText(tv, g.optString("tab") + (g.optBoolean("count", true) && n[1] > 0 ? "\n" + n[0] + "/" + n[1] : ""));
+            boolean red = g.optBoolean("red");   // DUE: something is due soon
+            rv.setTextColor(tv, Color.parseColor(red ? (on ? "#FF8A7F" : "#FF6B5E") : on ? "#2EE6D6" : "#8FA6A3"));
+            rv.setInt(tv, "setBackgroundResource", c.getResources().getIdentifier((red ? "pw_tab_red" : "pw_tab") + (on ? "_on" : ""), "drawable", c.getPackageName()));
+            Intent ti = new Intent(c, getClass()).setAction(ACTION_TAB).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, wid).putExtra("tab", g.optString("key"));
+            rv.setOnClickPendingIntent(tv, PendingIntent.getBroadcast(c, (wid * 100 + 80 + i) & 0x7fffffff, ti, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+        }
+        // the group's reset: a ticking clock within a day, "4d 8h" further out, or the cycle's name
+        long ends = cur == null ? 0 : cur.optLong("ends", 0);
+        String time = cur == null ? "" : cur.optString("time");
+        boolean ticking = ends > now && ends - now < 864e5, far = ends - now >= 864e5;
+        vis(rv, id(c, "b_gh"), ticking || far || (ends == 0 && !time.isEmpty()));
+        vis(rv, id(c, "b_gchrono"), ticking); vis(rv, id(c, "b_gclock"), ticking || far); vis(rv, id(c, "b_gtime"), !ticking);
+        if (ticking) { rv.setChronometer(id(c, "b_gchrono"), SystemClock.elapsedRealtime() + (ends - now), null, true); rv.setChronometerCountDown(id(c, "b_gchrono"), true); }
+        else rv.setTextViewText(id(c, "b_gtime"), far ? left(ends - now) : time);
+        rv.setTextViewText(id(c, "b_empty"), "Nothing here");
+        // redraw when a clock runs out (midnight, or the tab's reset), so it never counts below zero
+        try {
+            long at = Math.min(nextMidnight(), ticking ? ends : Long.MAX_VALUE) + 2000;
+            int[] ids = AppWidgetManager.getInstance(c).getAppWidgetIds(new ComponentName(c, getClass()));
+            Intent up = new Intent(c, getClass()).setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
+            AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+            if (am != null) am.set(AlarmManager.RTC, at, PendingIntent.getBroadcast(c, 4444, up, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+        } catch (Exception ignored) {}
+        return rv;
+    }
+
+    /** One row of the 4x4 list (a full quest, or two halves), drawn like the home-screen tiles. */
+    RemoteViews boardRow(Context c, JSONArray row, int wid, int pos, int widthDp) throws Exception {
+        RemoteViews rv = new RemoteViews(c.getPackageName(), c.getResources().getIdentifier("psych_widget_row", "layout", c.getPackageName()));
+        float dens = c.getResources().getDisplayMetrics().density;
+        int w = Math.max(120, widthDp - 20);
+        JSONObject first = row.optJSONObject(0);
+        if (first != null && first.optBoolean("isHdr")) {   // a subheader: "// WEEKLY" and when that cycle resets
+            long ends = first.optLong("ends"), now = System.currentTimeMillis();
+            String when = ends > now ? left(ends - now) : first.optString("time");
+            vis(rv, id(c, "r0_hdr"), true); vis(rv, id(c, "r0_content"), false);
+            text(rv, id(c, "r0_hdr_t"), first.optString("title"));
+            text(rv, id(c, "r0_hdr_time"), when); vis(rv, id(c, "r0_hdr_time"), !when.isEmpty());
+            return rv;
+        }
+        vis(rv, id(c, "r0_hdr"), false);
+        vis(rv, id(c, "r0_content"), true);
+        vis(rv, id(c, "r0f"), false); vis(rv, id(c, "r0a"), false); vis(rv, id(c, "r0b"), false);
+        if (row.length() == 2) {
+            tile(c, rv, "r0a", row.optJSONObject(0), wid, pos * 3 + 1, true, (w - 8) / 2, dens);
+            tile(c, rv, "r0b", row.optJSONObject(1), wid, pos * 3 + 2, true, (w - 8) / 2, dens);
+        } else tile(c, rv, "r0f", row.optJSONObject(0), wid, pos * 3, false, w, dens);
+        return rv;
     }
 
     static int parse(String s, int fallback) { try { return Color.parseColor(s); } catch (Exception e) { return fallback; } }

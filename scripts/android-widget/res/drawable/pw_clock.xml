@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the clock the app uses next to its timers -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="12dp" android:height="12dp" android:viewportWidth="16" android:viewportHeight="16">
+  <path android:pathData="M8,1.8a6.2,6.2 0,1 0,0.001 0z" android:fillColor="#00000000" android:strokeColor="#FFFF8A45" android:strokeWidth="1.5"/>
+  <path android:pathData="M8,4.6V8l2.4,1.6" android:fillColor="#00000000" android:strokeColor="#FFFF8A45" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+</vector>

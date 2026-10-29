@@ -22,8 +22,17 @@ const mf = path.join(main, 'AndroidManifest.xml');
 let s = fs.readFileSync(mf, 'utf8');
 // take out widget receivers from an earlier run (so a fixed version replaces them), then add the current ones
 const before = s;
-s = s.replace(/\s*<receiver android:name="\.widget\.Widget[^"]*"[\s\S]*?<\/receiver>/g, '');
-s = s.replace(/\s*<activity android:name="\.widget\.WidgetInputActivity"[^>]*\/>/g, '');
+// match each tag however it is laid out (Android Studio may put every attribute on its own line)
+const strip = (tag, name, selfClose) => {
+  const re = selfClose
+    ? new RegExp('\\s*<' + tag + '\\s+[^>]*?android:name="\\.widget\\.' + name + '"[^>]*?(\\/>|>[\\s\\S]*?<\\/' + tag + '>)', 'g')
+    : new RegExp('\\s*<' + tag + '\\s+[^>]*?android:name="\\.widget\\.' + name + '"[^>]*?>[\\s\\S]*?<\\/' + tag + '>', 'g');
+  s = s.replace(re, '');
+};
+strip('receiver', 'Widget[^"]*', false);
+strip('activity', 'WidgetInputActivity', true);
+strip('activity', 'WidgetTapActivity', true);
+strip('service', 'PsychBoardService', true);
 {
   const rec = sz => `
         <receiver android:name=".widget.Widget${sz}" android:exported="false" android:label="@string/pw_name_${sz}">
@@ -33,7 +42,11 @@ s = s.replace(/\s*<activity android:name="\.widget\.WidgetInputActivity"[^>]*\/>
   // the little "type an amount" box a Tally / Record widget opens over the home screen
   const input = `
         <activity android:name=".widget.WidgetInputActivity" android:exported="false" android:excludeFromRecents="true" android:taskAffinity="" android:noHistory="true" android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar" android:windowSoftInputMode="stateVisible" />`;
-  s = s.replace('</application>', ['2x1', '4x1', '2x2', '4x2'].map(rec).join('') + input + '\n    </application>');
+  // the 4x4: its scrolling list is filled by a service, and taps in the list go through an invisible activity
+  const board = `
+        <service android:name=".widget.PsychBoardService" android:exported="false" android:permission="android.permission.BIND_REMOTEVIEWS" />
+        <activity android:name=".widget.WidgetTapActivity" android:exported="false" android:excludeFromRecents="true" android:taskAffinity="" android:noHistory="true" android:theme="@android:style/Theme.NoDisplay" />`;
+  s = s.replace('</application>', ['2x1', '4x1', '2x2', '4x2', '4x4'].map(rec).join('') + input + board + '\n    </application>');
   fs.writeFileSync(mf, s);
   console.log(before.includes('.widget.Widget4x1') ? 'AndroidManifest.xml: widget receivers updated' : 'AndroidManifest.xml: widget receivers added');
 }

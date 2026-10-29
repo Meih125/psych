@@ -29,7 +29,8 @@
 
 | Update | Released | What changed |
 |:---:|:---:|:---:|
-| **[v1.1.2](https://github.com/Meih125/psych/releases/tag/v1.1.2)** (latest) | Oct 28, 2026 | **[Patch notes](docs/patch-notes/v1.1.2.md)** |
+| **[v1.2.0](https://github.com/Meih125/psych/releases/tag/v1.2.0)** (latest) | Oct 29, 2026 | **[Patch notes](docs/patch-notes/v1.2.0.md)** |
+| [v1.1.2](https://github.com/Meih125/psych/releases/tag/v1.1.2) | Oct 28, 2026 | [Patch notes](docs/patch-notes/v1.1.2.md) |
 | [v1.1.1](https://github.com/Meih125/psych/releases/tag/v1.1.1) | Oct 28, 2026 | [Patch notes](docs/patch-notes/v1.1.1.md) |
 | [v1.1.0](https://github.com/Meih125/psych/releases/tag/v1.1.0) | Oct 27, 2026 | [Patch notes](docs/patch-notes/v1.1.0.md) |
 
@@ -48,7 +49,8 @@
 - **Streaks** add a bonus to a quest's rewards the longer you keep them going.
 - **XP and gold.** Level up, and spend gold on card packs.
 - **Cards.** Two packs to collect, with rarities from C to UR. Finished sets pay a reward.
-- **Home-screen widgets** in four sizes. Claim quests without opening the app.
+- **Home-screen widgets** in five sizes, up to a 4×4 that shows every quest. Claim quests without opening the app.
+- **Daily login reward** with its own streak: gold, XP, or a card if you're lucky.
 - **Arrange** your board: move quests around and make them half or full width.
 - **Steps** sync from Health Connect (Samsung Health works through it).
 - **Backups** are plain JSON files on your phone: manual ones whenever you like, plus an automatic one every night.
@@ -61,7 +63,7 @@ No account, no server, no ads. Everything stays on your phone.
 2. Open it and allow **Install unknown apps** when asked.
 3. If Play Protect warns, choose **Install anyway**. The app isn't on the Play Store, so Android doesn't know it.
 
-Updating: install the new APK over the old one. Your data is kept.
+Updating: install the new APK over the old one. Your data is kept. Psych tells you when a new version is out.
 
 ## Build from source
 

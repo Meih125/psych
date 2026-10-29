@@ -9,10 +9,6 @@
         <ImageView android:id="@+id/r0f_ic" android:layout_width="30dp" android:layout_height="30dp" android:padding="6dp" android:background="@drawable/pw_icbox" android:src="@drawable/pw_k_standard"/>
         <TextView android:id="@+id/r0f_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="11dp" android:maxLines="1" android:ellipsize="end"
           android:fontFamily="monospace" android:textStyle="bold" android:textSize="14sp" android:textColor="#F2F7F6"/>
-        <TextView android:id="@+id/r0f_mult" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
-          android:paddingStart="4dp" android:paddingEnd="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:textColor="#F5C542" android:maxLines="1"/>
-        <TextView android:id="@+id/r0f_streak" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="5dp"
-          android:fontFamily="monospace" android:textStyle="bold" android:textSize="15sp" android:textColor="#F2F7F6" android:maxLines="1"/>
         <TextView android:id="@+id/r0f_b2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
           android:paddingStart="10dp" android:paddingEnd="10dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:background="@drawable/pw_btn_or"
           android:fontFamily="monospace" android:textStyle="bold" android:textSize="11sp" android:letterSpacing="0.06" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
@@ -56,6 +52,12 @@
           android:fontFamily="monospace" android:textSize="11sp" android:textColor="#8FA6A3" android:maxLines="1" android:ellipsize="end"/>
         <ImageView android:id="@+id/r0f_orbs" android:layout_width="wrap_content" android:layout_height="18dp" 
           android:scaleType="fitStart" android:visibility="gone"/>
+        <TextView android:id="@+id/r0f_mult" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
+          android:paddingStart="4dp" android:paddingEnd="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:textColor="#F5C542" android:maxLines="1" android:visibility="gone"/>
+        <TextView android:id="@+id/r0f_streak" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="5dp"
+          android:fontFamily="monospace" android:textStyle="bold" android:textSize="15sp" android:textColor="#F2F7F6" android:maxLines="1" android:visibility="gone"/>
+        <TextView android:id="@+id/r0f_due" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp"
+          android:drawablePadding="4dp" android:gravity="center_vertical" android:fontFamily="monospace" android:textStyle="bold" android:textSize="11sp" android:textColor="#FF8A45" android:maxLines="1" android:visibility="gone"/>
       </LinearLayout>
     </LinearLayout>
     <LinearLayout android:id="@+id/r0a" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"  android:orientation="vertical"
@@ -80,18 +82,18 @@
           android:scaleType="fitStart" android:visibility="gone"/>
       <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
         <LinearLayout android:id="@+id/r0a_rew" android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
-          <ImageView android:layout_width="15dp" android:layout_height="15dp" android:src="@drawable/pw_gem"/>
-          <TextView android:id="@+id/r0a_xp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="12sp" android:textColor="#8FD9CF" android:maxLines="1"/>
-          <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginStart="10dp" android:src="@drawable/pw_coin"/>
-          <TextView android:id="@+id/r0a_gold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="12sp" android:textColor="#FFC94A" android:maxLines="1"/>
+          <ImageView android:layout_width="12dp" android:layout_height="12dp" android:src="@drawable/pw_gem"/>
+          <TextView android:id="@+id/r0a_xp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#8FD9CF" android:maxLines="1"/>
+          <ImageView android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="6dp" android:src="@drawable/pw_coin"/>
+          <TextView android:id="@+id/r0a_gold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#FFC94A" android:maxLines="1"/>
         </LinearLayout>
         <TextView android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
-        <TextView android:id="@+id/r0a_b2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
-          android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:background="@drawable/pw_btn_or"
-          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:letterSpacing="0.06" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
-        <TextView android:id="@+id/r0a_b1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
-          android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:background="@drawable/pw_btn_or"
-          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:letterSpacing="0.06" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
+        <TextView android:id="@+id/r0a_b2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp"
+          android:paddingStart="6dp" android:paddingEnd="6dp" android:paddingTop="3dp" android:paddingBottom="3dp" android:background="@drawable/pw_btn_or"
+          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:letterSpacing="0" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
+        <TextView android:id="@+id/r0a_b1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp"
+          android:paddingStart="6dp" android:paddingEnd="6dp" android:paddingTop="3dp" android:paddingBottom="3dp" android:background="@drawable/pw_btn_or"
+          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:letterSpacing="0" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
       </LinearLayout>
     </LinearLayout>
     <LinearLayout android:id="@+id/r0b" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginStart="8dp" android:orientation="vertical"
@@ -116,18 +118,18 @@
           android:scaleType="fitStart" android:visibility="gone"/>
       <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
         <LinearLayout android:id="@+id/r0b_rew" android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
-          <ImageView android:layout_width="15dp" android:layout_height="15dp" android:src="@drawable/pw_gem"/>
-          <TextView android:id="@+id/r0b_xp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="12sp" android:textColor="#8FD9CF" android:maxLines="1"/>
-          <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginStart="10dp" android:src="@drawable/pw_coin"/>
-          <TextView android:id="@+id/r0b_gold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="12sp" android:textColor="#FFC94A" android:maxLines="1"/>
+          <ImageView android:layout_width="12dp" android:layout_height="12dp" android:src="@drawable/pw_gem"/>
+          <TextView android:id="@+id/r0b_xp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#8FD9CF" android:maxLines="1"/>
+          <ImageView android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="6dp" android:src="@drawable/pw_coin"/>
+          <TextView android:id="@+id/r0b_gold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#FFC94A" android:maxLines="1"/>
         </LinearLayout>
         <TextView android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
-        <TextView android:id="@+id/r0b_b2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
-          android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:background="@drawable/pw_btn_or"
-          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:letterSpacing="0.06" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
-        <TextView android:id="@+id/r0b_b1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
-          android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:background="@drawable/pw_btn_or"
-          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:letterSpacing="0.06" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
+        <TextView android:id="@+id/r0b_b2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp"
+          android:paddingStart="6dp" android:paddingEnd="6dp" android:paddingTop="3dp" android:paddingBottom="3dp" android:background="@drawable/pw_btn_or"
+          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:letterSpacing="0" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
+        <TextView android:id="@+id/r0b_b1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp"
+          android:paddingStart="6dp" android:paddingEnd="6dp" android:paddingTop="3dp" android:paddingBottom="3dp" android:background="@drawable/pw_btn_or"
+          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:letterSpacing="0" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
       </LinearLayout>
     </LinearLayout>
   </LinearLayout>
@@ -138,10 +140,6 @@
         <ImageView android:id="@+id/r1f_ic" android:layout_width="30dp" android:layout_height="30dp" android:padding="6dp" android:background="@drawable/pw_icbox" android:src="@drawable/pw_k_standard"/>
         <TextView android:id="@+id/r1f_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="11dp" android:maxLines="1" android:ellipsize="end"
           android:fontFamily="monospace" android:textStyle="bold" android:textSize="14sp" android:textColor="#F2F7F6"/>
-        <TextView android:id="@+id/r1f_mult" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
-          android:paddingStart="4dp" android:paddingEnd="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:textColor="#F5C542" android:maxLines="1"/>
-        <TextView android:id="@+id/r1f_streak" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="5dp"
-          android:fontFamily="monospace" android:textStyle="bold" android:textSize="15sp" android:textColor="#F2F7F6" android:maxLines="1"/>
         <TextView android:id="@+id/r1f_b2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
           android:paddingStart="10dp" android:paddingEnd="10dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:background="@drawable/pw_btn_or"
           android:fontFamily="monospace" android:textStyle="bold" android:textSize="11sp" android:letterSpacing="0.06" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
@@ -185,6 +183,12 @@
           android:fontFamily="monospace" android:textSize="11sp" android:textColor="#8FA6A3" android:maxLines="1" android:ellipsize="end"/>
         <ImageView android:id="@+id/r1f_orbs" android:layout_width="wrap_content" android:layout_height="18dp" 
           android:scaleType="fitStart" android:visibility="gone"/>
+        <TextView android:id="@+id/r1f_mult" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
+          android:paddingStart="4dp" android:paddingEnd="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:textColor="#F5C542" android:maxLines="1" android:visibility="gone"/>
+        <TextView android:id="@+id/r1f_streak" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="5dp"
+          android:fontFamily="monospace" android:textStyle="bold" android:textSize="15sp" android:textColor="#F2F7F6" android:maxLines="1" android:visibility="gone"/>
+        <TextView android:id="@+id/r1f_due" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp"
+          android:drawablePadding="4dp" android:gravity="center_vertical" android:fontFamily="monospace" android:textStyle="bold" android:textSize="11sp" android:textColor="#FF8A45" android:maxLines="1" android:visibility="gone"/>
       </LinearLayout>
     </LinearLayout>
     <LinearLayout android:id="@+id/r1a" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"  android:orientation="vertical"
@@ -209,18 +213,18 @@
           android:scaleType="fitStart" android:visibility="gone"/>
       <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
         <LinearLayout android:id="@+id/r1a_rew" android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
-          <ImageView android:layout_width="15dp" android:layout_height="15dp" android:src="@drawable/pw_gem"/>
-          <TextView android:id="@+id/r1a_xp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="12sp" android:textColor="#8FD9CF" android:maxLines="1"/>
-          <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginStart="10dp" android:src="@drawable/pw_coin"/>
-          <TextView android:id="@+id/r1a_gold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="12sp" android:textColor="#FFC94A" android:maxLines="1"/>
+          <ImageView android:layout_width="12dp" android:layout_height="12dp" android:src="@drawable/pw_gem"/>
+          <TextView android:id="@+id/r1a_xp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#8FD9CF" android:maxLines="1"/>
+          <ImageView android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="6dp" android:src="@drawable/pw_coin"/>
+          <TextView android:id="@+id/r1a_gold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#FFC94A" android:maxLines="1"/>
         </LinearLayout>
         <TextView android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
-        <TextView android:id="@+id/r1a_b2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
-          android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:background="@drawable/pw_btn_or"
-          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:letterSpacing="0.06" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
-        <TextView android:id="@+id/r1a_b1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
-          android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:background="@drawable/pw_btn_or"
-          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:letterSpacing="0.06" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
+        <TextView android:id="@+id/r1a_b2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp"
+          android:paddingStart="6dp" android:paddingEnd="6dp" android:paddingTop="3dp" android:paddingBottom="3dp" android:background="@drawable/pw_btn_or"
+          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:letterSpacing="0" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
+        <TextView android:id="@+id/r1a_b1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp"
+          android:paddingStart="6dp" android:paddingEnd="6dp" android:paddingTop="3dp" android:paddingBottom="3dp" android:background="@drawable/pw_btn_or"
+          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:letterSpacing="0" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
       </LinearLayout>
     </LinearLayout>
     <LinearLayout android:id="@+id/r1b" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginStart="8dp" android:orientation="vertical"
@@ -245,18 +249,18 @@
           android:scaleType="fitStart" android:visibility="gone"/>
       <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
         <LinearLayout android:id="@+id/r1b_rew" android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
-          <ImageView android:layout_width="15dp" android:layout_height="15dp" android:src="@drawable/pw_gem"/>
-          <TextView android:id="@+id/r1b_xp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="12sp" android:textColor="#8FD9CF" android:maxLines="1"/>
-          <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginStart="10dp" android:src="@drawable/pw_coin"/>
-          <TextView android:id="@+id/r1b_gold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="12sp" android:textColor="#FFC94A" android:maxLines="1"/>
+          <ImageView android:layout_width="12dp" android:layout_height="12dp" android:src="@drawable/pw_gem"/>
+          <TextView android:id="@+id/r1b_xp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#8FD9CF" android:maxLines="1"/>
+          <ImageView android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="6dp" android:src="@drawable/pw_coin"/>
+          <TextView android:id="@+id/r1b_gold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#FFC94A" android:maxLines="1"/>
         </LinearLayout>
         <TextView android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
-        <TextView android:id="@+id/r1b_b2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
-          android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:background="@drawable/pw_btn_or"
-          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:letterSpacing="0.06" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
-        <TextView android:id="@+id/r1b_b1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
-          android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:background="@drawable/pw_btn_or"
-          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:letterSpacing="0.06" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
+        <TextView android:id="@+id/r1b_b2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp"
+          android:paddingStart="6dp" android:paddingEnd="6dp" android:paddingTop="3dp" android:paddingBottom="3dp" android:background="@drawable/pw_btn_or"
+          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:letterSpacing="0" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
+        <TextView android:id="@+id/r1b_b1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp"
+          android:paddingStart="6dp" android:paddingEnd="6dp" android:paddingTop="3dp" android:paddingBottom="3dp" android:background="@drawable/pw_btn_or"
+          android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:letterSpacing="0" android:maxLines="1" android:textColor="#FF8A45" android:visibility="gone"/>
       </LinearLayout>
     </LinearLayout>
   </LinearLayout>

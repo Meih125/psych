@@ -4,8 +4,10 @@
   <string name="pw_desc_4x1">One full quest or two half quests</string>
   <string name="pw_desc_2x2">Two half quests stacked</string>
   <string name="pw_desc_4x2">Two rows of quests</string>
+  <string name="pw_desc_4x4">All of your quests</string>
   <string name="pw_name_2x1">Psych · 2×1</string>
   <string name="pw_name_4x1">Psych · 4×1</string>
   <string name="pw_name_2x2">Psych · 2×2</string>
   <string name="pw_name_4x2">Psych · 4×2</string>
+  <string name="pw_name_4x4">Psych · 4×4 Quests</string>
 </resources>

@@ -41,7 +41,7 @@ public class WidgetInputActivity extends Activity {
         box.addView(t);
         final EditText in = new EditText(this);
         in.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        in.setHint("record".equals(act) ? "Value" + (unit == null || unit.isEmpty() ? "" : " (" + unit + ")") : "Amount" + (unit == null || unit.isEmpty() ? "" : " (" + unit + ")"));
+        in.setHint("record".equals(act) ? "Value" + (unit == null || unit.isEmpty() ? "" : " (" + unit + ")") : "Amount");
         in.setTextSize(22);
         in.setTextColor(Color.parseColor("#F2F7F6")); in.setHintTextColor(Color.parseColor("#5F7472")); in.setTypeface(android.graphics.Typeface.MONOSPACE);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);

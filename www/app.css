@@ -1503,8 +1503,13 @@ body{font-family:var(--f-body);background:#071012}
 .cy-streak.t3{color:#b46ae0;text-shadow:0 0 9px rgba(180,106,224,.5)}
 .cy-streak.t4{color:#f08a24;text-shadow:0 0 9px rgba(240,138,36,.5)}
 .cy-streak.t5{color:#ff3b3b;text-shadow:0 0 10px rgba(255,59,59,.55)}
-.cy-streak em.max{color:#f08a24;border-color:rgba(240,138,36,.55);background:rgba(240,138,36,.12)}
-.cy-streak em.ur{color:#ff5a52;border-color:rgba(200,36,47,.6);background:rgba(200,36,47,.14)}
+/* the +% bonus in its streak's colour */
+.cy-streak.t0 em{color:#f2f7f6;border-color:rgba(242,247,246,.55);background:rgba(242,247,246,.12)}
+.cy-streak.t1 em{color:#3fd47a;border-color:rgba(63,212,122,.55);background:rgba(63,212,122,.12)}
+.cy-streak.t2 em{color:#1ea4e6;border-color:rgba(30,164,230,.55);background:rgba(30,164,230,.12)}
+.cy-streak.t3 em{color:#b46ae0;border-color:rgba(180,106,224,.55);background:rgba(180,106,224,.12)}
+.cy-streak.t4 em{color:#f08a24;border-color:rgba(240,138,36,.55);background:rgba(240,138,36,.12)}
+.cy-streak.t5 em{color:#ff3b3b;border-color:rgba(255,59,59,.55);background:rgba(255,59,59,.12)}
 /* ================= Quest form, less like a list ================= */
 .sheet .field{margin-top:16px}
 /* kind: icon tiles */
@@ -1634,7 +1639,8 @@ body{font-family:var(--f-body);background:#071012}
 #resetProgress{text-transform:uppercase;letter-spacing:1.2px}
 /* steps sync note on the Quests summary */
 .qb-stp > span{display:inline-flex;align-items:baseline;gap:5px;min-width:0;white-space:nowrap}
-.sync-tag{font:500 10.5px var(--f-num);color:#7f9593}
+.qb-tm{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sync-tag{font:500 10.5px var(--f-num);color:#7f9593;white-space:nowrap}
 .sync-tag.late,.sync-tag.off{color:#ffb44a}
 
 /* ===== Target / Bounty / Avoid ===== */
@@ -1665,8 +1671,7 @@ body{font-family:var(--f-body);background:#071012}
 .card.qb-t.urgent{border-color:rgba(255,59,48,.75) !important;background:linear-gradient(160deg,rgba(80,14,14,.92),rgba(26,8,8,.95)) !important;box-shadow:inset 0 0 18px rgba(255,59,48,.25)}
 .card.qb-t.urgent .bt-due{color:#ff8a7f}
 .qb-g.due .qb-gh b{color:#ff6b5e}
-.av-n{font:700 22px var(--f-num);color:#f2f7f6;line-height:1.1}.av-n small{margin-left:5px;font:600 11px var(--f-num);color:#9db2b0}
-.av-week i.on{background:#ff8fb1}.av-week.x i{background:rgba(255,59,48,.35)}
+.av-n{font:700 13.5px var(--f-num);color:#f2f7f6;line-height:1.25}.av-n small{margin-left:5px;font:600 11px var(--f-num);color:#9db2b0}
 .av-slip{border-color:rgba(255,107,94,.55);background:rgba(255,59,48,.06);color:#ff8a7f;margin-right:6px}
 .card.qb-t.slipped .av-n{color:#ff8a7f}
 .qb-tr .av-slip{margin-right:0}
@@ -2043,3 +2048,118 @@ body{font-family:var(--f-body);background:#071012}
 .up-banner{margin:0 0 10px;padding:10px 12px;display:flex;align-items:center;gap:10px;border:1px solid rgba(46,230,214,.35);background:rgba(46,230,214,.07);clip-path:var(--cut7)}
 .up-banner b{flex:none;font:700 12.5px var(--f-num);color:#2ee6d6;letter-spacing:.04em}.up-banner span{flex:1;min-width:0;font:500 12.5px var(--f-body);color:#cfdedc}
 .up-x{flex:none;padding:0 4px;border:0;background:none;color:#7f9593;font-size:20px;line-height:1}
+/* 4x4 widget preview: the whole Quests page, tabs + tiles, scrolls */
+.wb{display:flex;flex-direction:column;height:400px;background:rgba(10,20,21,.96);border:1px solid rgba(46,230,214,.28);clip-path:var(--cut10);color:#f2f7f6;overflow:hidden;text-align:left}
+.wb-top{display:flex;align-items:center;gap:8px;padding:10px 12px 8px;border-bottom:1px solid rgba(210,240,236,.1)}
+.wb-logo{font:800 12px var(--f-title);letter-spacing:2.5px}
+.wb-lv{font:700 10px var(--f-num);color:#8fa6a3;white-space:nowrap}
+.wb-xp{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}.wb-xp i{display:block;height:100%;background:#2ee6d6}
+.wb-top .gold-r{display:inline-flex;align-items:center;gap:3px;font:700 12px var(--f-num)}.wb-top .gold-r svg{width:13px;height:13px}
+.wb-sum{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(210,240,236,.1)}
+.wb-ring{position:relative;width:40px;height:40px;flex:none}.wb-ring svg{width:100%;height:100%}
+.wb-ring b{position:absolute;inset:0;display:grid;place-items:center;font:700 10px var(--f-num)}
+.wb-st{flex:1;min-width:0}
+.wb-l{display:flex;justify-content:space-between;gap:6px;font:600 10.5px var(--f-num);color:#8fa6a3}.wb-l b{color:#f2f7f6;white-space:nowrap}
+.wb-bar{display:block;height:4px;margin:5px 0;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}.wb-bar i{display:block;height:100%;background:#2ee6d6}
+.wb-ft{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.wb-tm{display:flex;flex-direction:column;gap:2px;min-width:0}
+.wb-tm small{font:500 10px var(--f-num);color:#7f9593;white-space:nowrap}.wb-tm small.warn{color:#ffb44a}
+.wb-clock{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--f-num);color:#ff8a45;white-space:nowrap}.wb-clock svg{width:11px;height:11px}
+.wb-tabs{display:flex;gap:4px;padding:7px 10px 6px;border-bottom:1px solid rgba(210,240,236,.1)}
+.wb-tabs button{flex:1;min-width:0;min-height:33px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:5px 0;border:1px solid rgba(210,240,236,.12);border-radius:2px;background:rgba(150,195,195,.05);color:#8fa6a3;cursor:pointer}
+.wb-tabs b{font:700 9px var(--f-num);letter-spacing:.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wb-tabs small{font:600 9px var(--f-num);opacity:.75}
+.wb-tabs button.on{color:#2ee6d6;border-color:rgba(46,230,214,.55);background:rgba(46,230,214,.08)}
+.wb-gh{display:flex;justify-content:space-between;align-items:center;padding:8px 12px 2px;font:700 10px var(--f-num);letter-spacing:1.5px;color:#8fa6a3}
+.wb-gh > span:last-child{letter-spacing:0}
+.wb-list{flex:1;min-height:0;overflow-y:auto;padding:6px 10px 10px;gap:6px !important;scrollbar-width:thin}
+.wb-list .wv-row{height:96px;gap:6px;flex:none}
+.wb-none{margin:24px 0;text-align:center;font:600 11px var(--f-num);color:#8fa6a3}
+.w-card .wb-tabs,.w-card .wb-list{pointer-events:auto}
+.w-shape.board{height:60px}.w-shape.board .w-srow i.t{height:7px}
+/* Daily login reward: the gift / flame next to the widgets button, and its pop-up (inside #pack, under the reveal effects) */
+.dl-btn{position:relative;align-self:center;width:40px;height:40px;margin:-5px 6px -5px auto;padding:0;display:grid;place-items:center;border:0;background:none;color:#cfdedc;cursor:pointer}
+.dl-btn[hidden]{display:none}
+.dl-btn:not([hidden]) + .w-btn{margin-left:0}
+.dl-btn svg.gift{width:26px;height:26px}
+.dl-btn.ready svg.gift{animation:dlBob 2.2s ease-in-out infinite}
+.dl-btn .dot{position:absolute;top:5px;right:4px;width:9px;height:9px;border-radius:50%;background:#2ee6d6;box-shadow:0 0 8px #2ee6d6}
+.dl-btn.burst svg.gift{animation:dlBurst .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes dlBob{50%{transform:translateY(-2px) rotate(-4deg)}}
+@keyframes dlBurst{40%{transform:scale(1.45) rotate(-8deg);filter:drop-shadow(0 0 10px #2ee6d6)}}
+.dl-fl{position:relative;display:block;width:40px;height:40px}
+.dl-fw{position:absolute;left:50%;top:-6px;line-height:0}
+.dl-num{position:absolute;left:50%;bottom:-3px;transform:translateX(-50%);filter:drop-shadow(0 1px 1px #000)}
+.dl-fl.pop{animation:dlIn .6s cubic-bezier(.2,1.6,.4,1)}
+@keyframes dlIn{from{transform:scale(.2);opacity:0}}
+.pack.dl{background:rgba(5,11,12,.82)}
+.dl-pop{position:relative;z-index:1;width:min(88vw,360px);min-height:380px;padding:18px 16px 16px;display:flex;flex-direction:column;align-items:center;background:linear-gradient(#0f1c1e,#0a1416);border:1px solid rgba(46,230,214,.35);clip-path:var(--cut10);cursor:pointer}
+.dl-head{display:flex;flex-direction:column;align-items:center;gap:2px}
+.dl-head small{font:700 10.5px var(--f-num);letter-spacing:2.5px;color:#8fa6a3;text-transform:uppercase}
+.dl-head b{font:800 20px var(--f-title);letter-spacing:1px;color:#f2f7f6}
+.dl-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px 0 8px}
+.dl-amt{display:flex;align-items:center;gap:14px;animation:dlAmt .5s cubic-bezier(.2,1.6,.4,1) .3s both}
+.dl-amt svg{width:84px;height:84px;filter:drop-shadow(0 0 16px rgba(255,201,74,.35))}
+.dl-amt.xp svg{filter:drop-shadow(0 0 16px rgba(143,217,207,.35))}
+.dl-amt b{font:800 52px var(--f-num);color:#ffc94a;text-shadow:0 0 18px rgba(255,201,74,.35)}
+.dl-amt.xp b{color:#8fd9cf;text-shadow:0 0 18px rgba(143,217,207,.35)}
+.dl-two{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.dl-two .dl-amt svg{width:60px;height:60px}.dl-two .dl-amt b{font-size:40px}
+.dl-two .dl-amt + .dl-amt{animation-delay:.42s}
+@keyframes dlAmt{from{transform:scale(.3);opacity:0}}
+.dl-hint{font:600 12px var(--f-num);letter-spacing:2px;color:#8fa6a3;text-transform:uppercase;animation:dlBlink 1.6s ease-in-out infinite}
+@keyframes dlBlink{50%{opacity:.45}}
+.dl-card.pk-card{position:relative;left:auto;top:auto;--cw:min(40vw,150px);--ch:calc(var(--cw) * 1.4);width:var(--cw);height:var(--ch);margin:6px 0 22px;animation:dlAmt .55s cubic-bezier(.2,1.5,.4,1) .3s both}
+.dl-glass{display:grid;place-items:center;background:linear-gradient(150deg,rgba(255,255,255,.16),rgba(255,255,255,.04) 45%,rgba(255,255,255,.1));border:1.5px solid rgba(255,255,255,.35);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:inset 0 0 22px rgba(255,255,255,.08),0 8px 18px rgba(0,0,0,.8)}
+.dl-glass::before{content:'';position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.22) 42%,transparent 55%);animation:dlSheen 3.2s ease-in-out infinite}
+@keyframes dlSheen{0%,40%{transform:translateX(-60%)}80%,100%{transform:translateX(60%)}}
+.dl-glass i{font:800 64px var(--f-title);font-style:normal;color:rgba(255,255,255,.85);text-shadow:0 0 18px rgba(var(--rc),.9)}
+.dl-card.r-common .dl-glass{box-shadow:0 0 14px 3px rgba(var(--rc),.55),inset 0 0 22px rgba(255,255,255,.08)}
+.reduce-fx .dl-btn.ready svg.gift,.reduce-fx .dl-glass::before{animation:none}
+/* the clock and countdown next to a bounty's due date sat a little high */
+.bt-due .bt-left{vertical-align:top}
+.bt-due .bt-clk{transform:none}
+/* widgets: a bounty's time left (with the clock), and the red tile when it's due today or tomorrow */
+.wt-due{display:inline-flex;align-items:center;gap:4px;flex:none;font:700 11px var(--f-num);color:#ff8a45;white-space:nowrap}
+.wt-due .bt-clk{width:12px;height:12px}
+.wt.h .wt-due{margin-top:4px}
+.wt.urgent{background:linear-gradient(160deg,rgba(80,14,14,.95),rgba(30,8,8,.97));border-color:rgba(255,70,58,.75)}
+.wt.urgent .wt-due{color:#ff6b5e}
+
+.wt-r2 .wt-due{margin-left:auto}
+.wt-r2 .wt-mult{margin-left:6px}.wt-r2 .wt-st{margin-left:4px}
+
+/* ---- Tally tile: TOTAL + carried note on one line, 10-segment meter, rewards | amount | ADD ---- */
+.tally-card .tl-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:2px}
+.tl-totbox{display:flex;align-items:baseline;gap:7px}
+.tl-totbox small{font:700 9.5px var(--f-num);letter-spacing:1.4px;color:#7f9593}
+.tl-total{font:700 13.5px/1.25 var(--f-num);color:#f2f7f6}
+.tally-card .tl-note{margin:0;min-height:0;font:600 12px var(--f-num);font-style:normal;color:#9db2b0;text-align:right}
+.tally-card .tl-note.on{color:#ffc94a}
+.tl-meter{margin:1px 0 1px}
+.tl-meter i.pop{animation:tlSeg .4s ease-out both;animation-delay:calc(var(--i) * 45ms)}
+@keyframes tlSeg{from{opacity:.2;transform:scaleY(.3)}}
+.tally-card .tl-in{gap:8px}
+.tally-card .tl-rew{flex:none}
+.tally-card .tl-rew .rewards{width:auto;min-width:48px;flex-direction:column;align-items:flex-start;gap:3px !important}
+.tally-card .tl-add{flex:none;min-width:72px;padding:8px 12px !important;font:700 12.5px var(--f-title) !important;letter-spacing:.8px;color:#ffc94a !important;border:1px solid rgba(255,201,74,.75) !important;border-radius:4px;background:rgba(255,201,74,.09) !important;box-shadow:none !important;text-shadow:none !important}
+.tally-card .tl-add:active{background:rgba(255,201,74,.22) !important}
+/* Recurring: same slanted segments as the other bars, thickness and colour unchanged */
+.qb-pips{gap:3px}
+.qb-pips i{border-radius:0;clip-path:polygon(1.4px 0,100% 0,calc(100% - 1.4px) 100%,0 100%)}
+.qb-pips i.on{box-shadow:none}
+
+/* ---- 4x4 Quests widget: red DUE tab (only while something is due soon), each cycle's own reset clock in its subheader ---- */
+.wb-tabs button.red{color:#ff6b5e;border-color:rgba(255,107,94,.5);background:rgba(255,59,48,.08)}
+.wb-tabs button.red.on{color:#ff8a7f;border-color:#ff6b5e;background:rgba(255,59,48,.22)}
+.wb-gh-time{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--f-num);color:#ff8a45;letter-spacing:0}
+.wb-gh-time svg{width:11px;height:11px}
+/* ---- Avoid (full tile): milestone badges 1D … 1Y; lit = earned, dashed = next; numbers at the quest name's size ---- */
+.av-ms{display:flex;gap:4px;margin:8px 0 4px}
+.av-ms span{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0 4px;border:1px solid rgba(210,240,236,.1);background:rgba(255,255,255,.02);
+  clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px);font:700 9px var(--f-num);color:#5f7472}
+.av-ms i{width:9px;height:9px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:rgba(255,255,255,.12)}
+.av-ms span.on{color:#ff8fb1;border-color:rgba(255,143,177,.45);background:rgba(255,143,177,.08)}.av-ms span.on i{background:#ff8fb1}
+.av-ms span.next{color:#f2f7f6;border:1px dashed rgba(255,143,177,.7)}.av-ms span.next i{background:none;box-shadow:inset 0 0 0 1.5px #ff8fb1}
+.av-ms.x span{opacity:.55}
+.av-next{margin-bottom:4px;font:600 11px var(--f-num);color:#9db2b0}.av-next b{color:#ff8fb1}

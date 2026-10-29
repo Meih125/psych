@@ -3,7 +3,7 @@
 // XP needed to go from level L to L+1: starts at 100 and rises 25 per level.
 // The step into every 10th level is a rank promotion trial: it costs 1.5× (8→9 = 275, 9→10 = 450, 10→11 = 325).
 const isBossStep = L => L % 10 === 9;
-const WSIZES_OK = ['2x1', '4x1', '2x2', '4x2'];
+const WSIZES_OK = ['2x1', '4x1', '2x2', '4x2', '4x4'];
 const XP_CAP = 1e9, GOLD_CAP = 1e12, REWARD_CAP = 1e6, VALUE_CAP = 1e7;
 const xpToNext = L => { const base = 100 + 25 * (L - 1); return isBossStep(L) ? Math.round(base * 1.5 / 5) * 5 : base; };
 // gold for reaching level L: 10 × its place in the band of 10, +5 per band;
@@ -20,7 +20,7 @@ const KIND_HELP = {
   standard:'Claim once per cycle. It resets at midnight after the number of days you pick.',
   pair:'Two quests that share one cycle. Each pays its own reward, and doing both in the same cycle pays a bonus.',
   scaling:'Claim as often as you like. Each extra claim in the same period pays more. Rewards drop back to the base when the period resets.',
-  record:'Log a number, like your weight. The first entry sets your starting point. You earn a reward for each step you beat your best by.',
+  record:'Log a number, like your weight. The first entry sets your starting point. You earn a reward each time you pass another step from that starting point, and never twice for the same one.',
   tally:'Whenever it happens, type the amount and claim, like a paycheque or pages read. No daily reset. Anything below the reward step carries over to next time.',
   target:'Hit it a number of times before its timer runs out, like the gym 5 times a week. Each tap lights one; claim when they are all lit.',
   bounty:'A one-off task with a due date. It jumps to the top in red when it is 2 days away, and disappears once claimed.',
@@ -152,9 +152,16 @@ function sanitizeState(){
     if (q.parent != null && (typeof q.parent !== 'string' || q.parent === q.id || !seen.has(q.parent))) q.parent = null;
   });
   if (S.layout && (typeof S.layout !== 'object' || Array.isArray(S.layout))) S.layout = {};
+  // daily login: last claim time, streak, and a reward waiting in its pop-up (gold/XP up to 25, or a real card)
+  if (S.daily != null){
+    const d = obj(S.daily) ? S.daily : {}, p = obj(d.pending) ? d.pending : null;
+    S.daily = { at: isFinite(+d.at) && +d.at > 0 ? +d.at : 0, streak: Math.round(fin(d.streak, 0, 0, 1e5)) };
+    if (p && p.kind === 'gold') S.daily.pending = { kind:'gold', gold:Math.round(fin(p.gold, 0, 0, 25)), xp:Math.round(fin(p.xp, 0, 0, 25)) };
+    else if (p && p.kind === 'card' && CARDS.some(c => c.id === p.id) && RARITY[p.rarity]) S.daily.pending = { kind:'card', id:p.id, rarity:p.rarity, fresh:!!p.fresh, milestone:!!p.milestone };
+  }
   if (S.widgets && !Array.isArray(S.widgets)) S.widgets = [];
   if (S.widgets) S.widgets = S.widgets.filter(w => w && typeof w === 'object' && WSIZES_OK.includes(w.size) && Array.isArray(w.rows))
-    .map(w => ({ id:String(w.id || uid()), name:String(w.name || '').slice(0, 24), size:w.size, rows:w.rows.filter(Array.isArray).slice(0, 2).map(r => r.slice(0, 2).map(x => typeof x === 'string' ? x : null)) }));
+    .map(w => ({ id:String(w.id || uid()), name:String(w.name || '').slice(0, 24), size:w.size, rows:w.size === '4x4' ? [] : w.rows.filter(Array.isArray).slice(0, 2).map(r => r.slice(0, 2).map(x => typeof x === 'string' ? x : null)) }));
   // break parent loops (A under B under A)
   const byIdMap = new Map(S.quests.map(q => [q.id, q]));
   S.quests.forEach(q => { const path = new Set([q.id]); let p = q.parent && byIdMap.get(q.parent);
@@ -296,12 +303,13 @@ async function syncNow(quiet){
   finally { syncing = false; }
 }
 // sync when the app opens or comes back to the front (at most once a minute), and every 5 minutes while open
-// next to "Steps" on the Quests summary: when Health Connect last shared steps (amber after 3 hours)
-function stepsSyncTag(){
-  if (!S.sync || !S.sync.connected) return ' <small class="sync-tag off">· sync off</small>';
-  const t = S.sync.last;
-  return ` <small class="sync-tag${!t || now() - t > 3 * 3600e3 ? ' late' : ''}">· ${t ? 'synced ' + timeAgo(t) : 'not synced yet'}</small>`;
+// under the timer on the Quests summary: when Health Connect last shared steps (amber after 3 hours)
+function stepsSync(){
+  if (!S.sync || !S.sync.connected) return { text:'Sync off', warn:true, cls:'off' };
+  const t = S.sync.last, late = !t || now() - t > 3 * 3600e3;
+  return { text: t ? 'Synced ' + timeAgo(t) : 'Not synced yet', warn:late, cls: late ? 'late' : '' };
 }
+function stepsSyncTag(){ const s = stepsSync(); return `<small class="sync-tag${s.cls ? ' ' + s.cls : ''}">${s.text}</small>`; }
 function autoSync(){ if (S.sync && S.sync.connected && now() - (S.sync.last || 0) > 60000) syncNow(true); }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) autoSync(); });
 setInterval(autoSync, 300000);
@@ -318,7 +326,6 @@ function allStepsDue(q){ return Object.keys(valsOf(q)).filter(k => stepDue(q, k)
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => Number(n).toLocaleString(undefined, { maximumFractionDigits:2 });
-const vibrate = p => { try { navigator.vibrate && navigator.vibrate(p); } catch(e){} };
 function levelInfo(total){ let L = 1, r = Math.min(XP_CAP, Math.max(0, +total || 0)); while (r >= xpToNext(L)) { r -= xpToNext(L); L++; } return { L, into:r, need:xpToNext(L) }; }
 const CORNERS = ['tl','tr','bl','br'].map(c => `<svg class="cn ${c}" viewBox="0 0 40 40"><use href="#i-corner"/></svg>`).join('');
 const ico = (id, vb = '0 0 32 32') => `<svg viewBox="${vb}"><use href="#${id}"/></svg>`;
@@ -372,14 +379,36 @@ function tallyPreview(q, typed){
 }
 function tallyNote(q, pv){
   if (pv.v && !pv.units) return `${fmtU(q, round2(q.chunk - pv.left))} more for the first reward`;
-  if (pv.v) return pv.left ? `${fmtU(q, pv.left)} will carry over to next time` : '';
-  return q.carry ? `${fmtU(q, q.carry)} carried over from last time` : '';
+  if (pv.v) return pv.left ? `${fmtU(q, pv.left)} will carry over` : '';
+  return q.carry ? `${fmtU(q, q.carry)} carried over` : '';
+}
+// the meter: 10 slanted segments (like the XP and Target bars). Gold = already carried toward the next reward,
+// the lighter gold = what this entry would add. A segment can be part-filled.
+function tallyMeter(q, pv){
+  const c = q.chunk || 1, carry = q.carry || 0, base = Math.min(1, carry / c);
+  if (!pv.v) return { base, end:base };
+  return { base, end:pv.units ? 1 : Math.min(1, (carry + pv.v) / c) };
+}
+function tallyMeterHtml(q, pv, fr){
+  const m = tallyMeter(q, pv), cl = x => Math.max(0, Math.min(1, x)), A = '#ffc94a', B = 'rgba(255,201,74,.4)', C = 'rgba(255,255,255,.08)';
+  return Array.from({ length:10 }, (_, i) => {
+    const F = cl(m.base * 10 - i) * 100, P = Math.max(F, cl(m.end * 10 - i) * 100);
+    return `<i${fr && F > 0 ? ' class="pop"' : ''} style="--i:${i};background:linear-gradient(90deg,${A} 0%,${A} ${F}%,${B} ${F}%,${B} ${P}%,${C} ${P}%,${C} 100%)"></i>`;
+  }).join('');
+}
+let tlFrom = null;   // set when an entry is added: the tile it came from animates its total and meter once
+function tallyCountUp(id, from, to){
+  const el = document.querySelector(`.tl-total[data-qid="${id}"]`), q = byId(id); if (!el || !q) return;
+  const t0 = performance.now(), D = 650;
+  (function tick(t){ const k = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmtU(q, k < 1 ? round2(from + (to - from) * e) : to); if (k < 1) requestAnimationFrame(tick); })(t0);
 }
 function updateTally(input){
   const q = byId(input.dataset.tallyin); if (!q) return;
   const card = input.closest('.tally-card'), pv = tallyPreview(q, input.value);
   card.querySelector('.tl-rew').innerHTML = rewardsHtml(pv.xp, pv.gold).replace('class="rewards"', `class="rewards"${pv.units ? '' : ' style="opacity:.45"'}`);
-  card.querySelector('.tl-note').textContent = tallyNote(q, pv);
+  const note = card.querySelector('.tl-note'); note.textContent = tallyNote(q, pv); note.classList.toggle('on', !!pv.v);
+  card.querySelector('.tl-meter').innerHTML = tallyMeterHtml(q, pv, null);
   card.querySelector('[data-act="tally"]').classList.toggle('off', !(parseFloat(input.value) > 0));
 }
 function claimTally(q, input, rect){
@@ -387,6 +416,7 @@ function claimTally(q, input, rect){
   if (!pv.v){ shake(input); return; }
   snapshot();
   const pc = q.carry || 0;
+  tlFrom = { id:q.id, base:Math.min(1, pc / (q.chunk || 1)), total:q.total || 0, units:pv.units };
   q.carry = pv.left; q.total = round2((q.total || 0) + pv.v); q.count = (q.count || 0) + 1;
   logClaim(q.log ||= [], pv.xp, pv.gold); Object.assign(q.log[q.log.length - 1], { v:pv.v, pc });
   const msg = pv.units ? `${q.name}: ${fmtU(q, pv.v)} logged` : `${fmtU(q, pv.v)} logged · ${fmtU(q, round2(q.chunk - pv.left))} more for a reward`;
@@ -697,13 +727,13 @@ function changeQty(id, d){
   const q = shopQty[id] = Math.max(1, Math.min(99, (shopQty[id] || 1) + d));
   document.querySelectorAll(`.sh-buy[data-item="${id}"]`).forEach(b => { b.querySelector('span').textContent = fmt(it.price * q); b.classList.toggle('short', S.gold < it.price * q); });
   document.querySelectorAll(`.sh-qty`).forEach(box => { const [dn, up] = box.querySelectorAll('button'); if (dn.dataset.item !== id) return; dn.disabled = q <= 1; up.disabled = q >= 99; box.querySelector('b').textContent = '×' + q; });
-  vibrate(6);
+
 }
 async function tryBuy(id, el){
   const it = SHOP.find(x => x.id === id); if (!it) return;
   const q = shopQty[id] || 1, cost = it.price * q, name = q > 1 ? `${q} ${it.name}s` : `the ${it.name}`;
-  if (S.gold < cost){ el.classList.remove('deny'); void el.offsetWidth; el.classList.add('deny'); vibrate([30, 40, 30]); return; }
-  vibrate(10);
+  if (S.gold < cost){ el.classList.remove('deny'); void el.offsetWidth; el.classList.add('deny'); return; }
+
   if (!await askBuy(it, q, cost)) return;
   snapshot();
   const host = el.closest('[data-buyhost]') || el, art = (host.querySelector('.art') || el).getBoundingClientRect();
@@ -715,7 +745,7 @@ async function tryBuy(id, el){
   const slot = document.querySelector(`.sh-row[data-item="${id}"]`) || document.querySelector(`[data-item="${id}"]`);
   const sa = slot && (slot.querySelector('.art') || slot);
   if (slot){ slot.classList.add('flash'); FX.burst(...mid(sa.getBoundingClientRect()), 1.4); }
-  vibrate([20, 40, 30]);
+
   showToast(`${q > 1 ? q + ' ' + it.name + 's' : it.name} added to your Inventory`, true);
 }
 // coins leave the purse and fly into the item you bought
@@ -830,7 +860,7 @@ function showOpening(){
       </button>`).join('')}</div>
     <div class="pk-actions"><div class="pk-hint">Double-tap anywhere to reveal all</div></div>`;
   ov.classList.add('open');
-  vibrate(15);
+
   ov.querySelectorAll('.pk-card').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); flipCard(+b.dataset.i); }));
 }
 // double-tap on empty space turns every card face up (taps on a card only affect that card)
@@ -892,16 +922,16 @@ function rarityLogo(txt, c1, c2, id){
 function rvLayer(cls, html = ''){ const el = document.createElement('div'); el.className = 'rv ' + cls; el.innerHTML = html; $('#pack').appendChild(el); return el; }
 function revealFX(btn, r, lite){
   const rect = btn.getBoundingClientRect(), [x, y] = mid(rect);
-  if (r === 'common'){ FX.burst(x, y, .6); vibrate(10); return; }
+  if (r === 'common'){ FX.burst(x, y, .6); return; }
   const pal = RV_PAL[r];
   btn.classList.add('rv-pop', 'rv-' + r);
   const TAGC = { epic:['#c07bff', '#6b2fd6'], legendary:['#ff9a2e', '#c2410c'], ultimate:['#ff4a3d', '#ffb02e'] };
   const tag = (txt, big) => { const t = rvLayer('rv-tag rv-t-' + r + (big ? ' big' : ''), rarityLogo(txt, ...TAGC[r], 'rl' + Math.random().toString(36).slice(2, 7))); t.style.left = x + 'px'; t.style.top = (rect.top - 6) + 'px'; setTimeout(() => t.remove(), 1600); };
   if (lite || S.reduceFx){ FX.burstC(x, y, r === 'rare' ? .8 : 1.2, pal); if (!lite && r !== 'rare') tag(r === 'epic' ? 'SR' : r === 'legendary' ? 'SSR' : 'UR', r !== 'epic'); return; }   // reveal-all / reduced effects: a small coloured burst (+ the rarity tag)
-  if (r === 'rare'){ FX.burstC(x, y, 1.1, pal); vibrate(12); return; }
+  if (r === 'rare'){ FX.burstC(x, y, 1.1, pal); return; }
   if (r === 'epic'){
     FX.burstC(x, y, 1.6, pal); FX.ringC(x, y, 130, .8, 3, pal[1], .12); FX.glints(rect.left - 20, rect.top - 20, rect.width + 40, rect.height + 40, 8);
-    tag('SR'); vibrate([15, 30, 15]); return;
+    tag('SR'); return;
   }
   const dim = r === 'ultimate' ? rvLayer('rv-dim') : null;   // UR: the room goes dark first
   const rays = rvLayer('rv-rays rv-r-' + r); rays.style.left = x + 'px'; rays.style.top = y + 'px';
@@ -909,7 +939,7 @@ function revealFX(btn, r, lite){
   if (r === 'legendary'){
     FX.burstC(x, y, 2.2, pal); FX.ringC(x, y, 160, .9, 4, pal[0]); FX.ringC(x, y, 220, 1, 2.5, pal[1], .18);
     FX.fountain(x, y, 18); FX.glints(rect.left - 30, rect.top - 30, rect.width + 60, rect.height + 60, 8);
-    tag('SSR', true); vibrate([25, 40, 25]);
+    tag('SSR', true);
     setTimeout(() => { rays.remove(); glow.remove(); }, 2200);
     return;
   }
@@ -917,7 +947,7 @@ function revealFX(btn, r, lite){
   FX.flash(x, y, 300, .8); FX.burstC(x, y, 3, pal);
   [0, .15, .3].forEach((d, i) => FX.ringC(x, y, 180 + i * 90, 1.1, 5 - i, pal[i % 2], d));
   FX.fountain(x, y, 26); FX.embersC(x, y, 16, pal); FX.glints(0, rect.top - 120, innerWidth, rect.height + 240, 12);
-  tag('UR', true); vibrate([40, 60, 80]);
+  tag('UR', true);
   setTimeout(() => { rays.remove(); glow.remove(); dim.remove(); }, 2600);
 }
 function revealAll(){
@@ -956,7 +986,7 @@ function showScene(sc){
     </div>`;
   setTimeout(() => { const r = ov.querySelector('.sc-img')?.getBoundingClientRect(); if (!r || !opening) return; FX.flash(...mid(r), 240, .7); FX.burst(...mid(r), 2); FX.glints(r.left, r.top, r.width, r.height, 10); }, 350);
   setTimeout(() => { if (opening === o) o.done = true; }, 700);   // short pause so a double tap doesn't skip it
-  vibrate([30, 50, 60]);
+
 }
 function closeOpening(){
   opening = null;
@@ -1137,6 +1167,7 @@ function renderPanel(){
   $('#openAllBtn').hidden = true;   // the Deck tab shows it when there is something to open
   $('#colSearchBtn').hidden = S.tab !== 'collection';
   $('#wBtn').hidden = S.tab !== 'quests' || arranging;
+  renderDaily();
   $('#arBtn').hidden = S.tab !== 'quests' || !S.quests.some(q => !q.parent);
   $('#arBtn').classList.toggle('on', arranging);
   $('#colSearchBtn').classList.toggle('on', colSearch);
@@ -1214,7 +1245,7 @@ function grant(reward, rect, msg, freshId, freshRow, power){
   render();
   renderHeader.hold = false;
   requestAnimationFrame(() => celebrate(reward, rect, freshId, power, newL, oldL, paid));
-  vibrate(paid ? [18, 40, 22] : 10);
+
   if (newL > oldL) setTimeout(() => showLevelUp(newL, lvGold), 1050);
 }
 function celebrate(reward, rect, freshId, power, newL, oldL, paid){
@@ -1306,6 +1337,16 @@ function claimScaling(q, rect){
 }
 // Records pay one reward per full "step" beyond the point already paid for,
 // so 0.5 kg steps never lose the leftover between entries.
+// the next milestone a Record quest pays at: one step past the last paid line (which starts at the first entry)
+function recNext(q){
+  if (q.best == null) return null;
+  const ref = q.paidTo ?? q.best;
+  return round2(q.better === 'lower' ? ref - q.step : ref + q.step);
+}
+function recSub(q){
+  const n = recNext(q), u = esc(q.unit), dir = q.better === 'lower' ? 'lower' : 'higher';
+  return n == null ? `per ${fmt(q.step)} ${u} from your first entry` : `per ${fmt(q.step)} ${u} ${dir} · next ${fmt(n)} ${u}`;
+}
 function submitRecord(q, input, rect){
   if (!isVisible(q)) return;
   const v = round2(parseFloat(input.value));
@@ -1426,6 +1467,7 @@ async function reopen(q, key){
 /* ================= Reset / testing ================= */
 function resetProgress(){
   S.xp = 0; S.gold = 0; S.steps = {}; S.inv = {}; S.pity = {}; S.cards = {}; S.scenes = {}; S.setClaims = {}; S.opened = {}; S.rewardedLevel = 1;
+  if (S.daily) S.daily = { at:S.daily.at, streak:0 };   // the login streak starts over (today's reward stays taken)
   S.quests.forEach(q => {
     q.count = 0; q.undo = null; q.streak = 0; q.bestStreak = 0; q.lastBoth = 0; q.streakUndo = null;
     if (q.log) q.log = [];
@@ -1706,7 +1748,7 @@ function showLevelUp(L, gold){
   $('#luTitle').innerHTML = [...(rankUp ? 'Rank Up' : 'Level Up')].map((c, i) => `<span style="animation-delay:${.35 + i * .06}s">${c === ' ' ? '&nbsp;' : c}</span>`).join('');
   lu.classList.remove('show', 'rankup'); void lu.offsetWidth;
   lu.classList.add('show'); lu.classList.toggle('rankup', rankUp);
-  vibrate(rankUp ? [40, 70, 40, 70, 90] : [40, 60, 60]);
+
   const r = $('#luEmblem').getBoundingClientRect(), [cx, cy] = mid(r);
   FX.flash(cx, cy, 260, .8);
   setTimeout(() => { FX.burst(cx, cy, 2.2); FX.fountain(cx, cy + 40, 30); }, 250);
@@ -1786,7 +1828,7 @@ function arStart(item, cx, cy){
   Object.assign(item.style, { position:'fixed', left:r.left + 'px', top:r.top + 'px', width:r.width + 'px', height:r.height + 'px', zIndex:50, pointerEvents:'none' });
   item.classList.add('drag');
   arDrag = { item, box, ph, dx:e.clientX - r.left, dy:e.clientY - r.top, x:e.clientX, y:e.clientY };
-  vibrate(12);
+
   dragScroll = setInterval(() => { if (!arDrag) return; if (arDrag.y < 170) scrollBy(0, -10); else if (arDrag.y > innerHeight - 110) scrollBy(0, 10); else return; arMove(); }, 16);
 }
 function arMove(){
@@ -1842,14 +1884,14 @@ function sizeOkForm(){
   const k = getRadio('kind'), q = editingId && byId(editingId);
   if (q && S.quests.some(c => c.parent === q.id)) return false;
   if ((k === 'standard') && $('#fParent').value) return false;
-  return k === 'standard' || k === 'avoid' || k === 'bounty' || k === 'steps' || (k === 'target' && +$('#fNeed').value <= 10);
+  return k === 'standard' || k === 'avoid' || k === 'bounty' || (k === 'target' && +$('#fNeed').value <= 10);
 }
 function renderFormSize(){
   const el = $('#khSize'); if (!el) return;
   el.hidden = !sizeOkForm();
   el.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sz === formSize));
 }
-$('#khSize').addEventListener('click', e => { const b = e.target.closest('[data-sz]'); if (!b) return; formSize = b.dataset.sz; formSizeSet = true; renderFormSize(); vibrate(6); });
+$('#khSize').addEventListener('click', e => { const b = e.target.closest('[data-sz]'); if (!b) return; formSize = b.dataset.sz; formSizeSet = true; renderFormSize(); });
 function updateForm(){
   renderFormSize();
   const kind = getRadio('kind');
@@ -1860,7 +1902,7 @@ function updateForm(){
     $('#startField').style.display = q ? 'none' : '';
     $('#histField').style.display = q && q.entries.length ? '' : 'none';
     const u = $('#fUnit').value.trim() || 'unit', st = parseFloat($('#fStep').value) || 1;
-    $('#stepHelp').textContent = `You earn the reward for every ${fmt(st)} ${u} you beat your best by.`;
+    $('#stepHelp').textContent = `You earn the reward each time you pass another ${fmt(st)} ${u} from your starting point, once per milestone.`;
     $('#fStepUnit') && ($('#fStepUnit').textContent = $('#fUnit').value.trim() || 'unit');
   }
   if (kind === 'steps' || kind === 'tally'){
@@ -2134,20 +2176,20 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape'){ if ($('#ask
 /* ================= Wiring ================= */
 document.addEventListener('click', e => { if (!e.target.closest('.info')) document.querySelectorAll('.info.open').forEach(x => x.classList.remove('open')); }, true);
 // the (i) next to the Shop title (outside the panel)
-$('#boardTitle').addEventListener('click', e => { const el = e.target.closest('.info'); if (!el) return; el.classList.toggle('open'); vibrate(6); });
+$('#boardTitle').addEventListener('click', e => { const el = e.target.closest('.info'); if (!el) return; el.classList.toggle('open'); });
 $('#panel').addEventListener('click', e => {
   if (e.target.closest('#postBtn')) return openSheet(null);
   if (e.target.closest('#arrangeBtn')){ arranging = false; render(); window.scrollTo({ top:0 }); return; }
   if (arranging){
     const sz = e.target.closest('[data-act="arsize"]');
-    if (sz){ const q = byId(sz.dataset.id); if (q){ q.size = sz.dataset.size === 'full' ? 'full' : 'half'; save(); const y = scrollY; render(); scrollTo(0, y); vibrate(6); } }
+    if (sz){ const q = byId(sz.dataset.id); if (q){ q.size = sz.dataset.size === 'full' ? 'full' : 'half'; save(); const y = scrollY; render(); scrollTo(0, y); } }
     return;
   }
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act, rect = el.getBoundingClientRect();
   if (act === 'upget'){ openUpdate(); return; }
   if (act === 'upclose'){ if (S.update){ S.update.dismissed = S.update.latest; save(); } render(); return; }
-  if (act === 'fold'){ const q = byId(el.dataset.id); if (!q) return; S.folded ||= {}; S.folded[q.id] = { open:folded(q), day:dayKey() }; save(); const y = scrollY; render(); scrollTo(0, y); vibrate(6); return; }
+  if (act === 'fold'){ const q = byId(el.dataset.id); if (!q) return; S.folded ||= {}; S.folded[q.id] = { open:folded(q), day:dayKey() }; save(); const y = scrollY; render(); scrollTo(0, y); return; }
   if (act === 'stepsexact'){ stepsExact = !stepsExact; render(); return; }
   if (act === 'distunit'){ S.distUnit = S.distUnit === 'mi' ? 'km' : 'mi'; save(); render(); return; }
   if (act === 'pv'){ S.pview = el.dataset.pv; monthOffset = 0; selDay = null; save(); render(); return; }
@@ -2157,7 +2199,7 @@ $('#panel').addEventListener('click', e => {
   if (act === 'wk-prev'){ weekOffset++; render(); return; }
   if (act === 'wk-next'){ weekOffset = Math.max(0, weekOffset - 1); render(); return; }
   if (act === 'progress'){ S.tab = 'progress'; weekOffset = 0; save(); render(); window.scrollTo({ top:0 }); return; }
-  if (act === 'info'){ const open = el.classList.toggle('open'); document.querySelectorAll('.info.open').forEach(x => x !== el && x.classList.remove('open')); if (open) vibrate(6); return; }
+  if (act === 'info'){ const open = el.classList.toggle('open'); document.querySelectorAll('.info.open').forEach(x => x !== el && x.classList.remove('open')); if (open) return; }
   if (act === 'qty'){ changeQty(el.dataset.item, +el.dataset.d); return; }
   if (act === 'buy'){ tryBuy(el.dataset.item, el); return; }
   if (act === 'useitem'){ useItem(el.dataset.item); return; }
@@ -2178,7 +2220,7 @@ $('#panel').addEventListener('click', e => {
   if (act === 'goalclaim'){ const q = byId(el.dataset.q); if (q) claimGoal(q, el.dataset.day, rect); return; }
   const item = el.closest('.item'); if (!item) return;
   const q = byId(item.dataset.id); if (!q) return;
-  if (act !== 'edit' && act !== 'reopen' && !isVisible(q)){ vibrate(6); return; }   // locked follow-up: its quest isn't done yet
+  if (act !== 'edit' && act !== 'reopen' && !isVisible(q)){ return; }   // locked follow-up: its quest isn't done yet
   if (act === 'edit') openSheet(q.id);
   else if (act === 'reopen') reopen(q, el.dataset.row);
   else if (act === 'record') submitRecord(q, el.closest('.card').querySelector('.rec-input input'), rect);
@@ -2231,7 +2273,7 @@ $('#levelup').addEventListener('click', hideLevelUp);
   document.addEventListener('pointerdown', e => {
     const t = e.target.closest('#panel [data-act="inspect"]'); if (!t) return;
     sx = e.clientX; sy = e.clientY; clearTimeout(timer);
-    timer = setTimeout(() => { on = true; quiet = performance.now(); inspectCard(t.dataset.id, !!t.dataset.scene); $('#inspect').classList.add('art'); vibrate(10); }, 350);
+    timer = setTimeout(() => { on = true; quiet = performance.now(); inspectCard(t.dataset.id, !!t.dataset.scene); $('#inspect').classList.add('art'); }, 350);
   });
   document.addEventListener('pointermove', e => { if (!on && Math.hypot(e.clientX - sx, e.clientY - sy) > 12) clearTimeout(timer); }, { passive:true });
   const up = () => { clearTimeout(timer); if (on){ on = false; quiet = performance.now(); $('#inspect').classList.remove('art'); } };
@@ -2247,7 +2289,7 @@ $('#levelup').addEventListener('click', hideLevelUp);
   ov.addEventListener('pointerdown', e => {
     if (!e.target.closest('.in-card')) return;
     sx = e.clientX; sy = e.clientY; clearTimeout(timer);
-    timer = setTimeout(() => { held = performance.now(); ov.classList.add('art'); vibrate(10); }, 350);
+    timer = setTimeout(() => { held = performance.now(); ov.classList.add('art'); }, 350);
   });
   ov.addEventListener('pointermove', e => { if (!ov.classList.contains('art') && Math.hypot(e.clientX - sx, e.clientY - sy) > 12) clearTimeout(timer); }, { passive:true });
   ['pointerup','pointercancel','pointerleave'].forEach(t => ov.addEventListener(t, () => { if (ov.classList.contains('art')) held = performance.now(); end(); }));
@@ -2279,6 +2321,7 @@ function handleBack(){
     if (opening.done) return afterReveal();
     return;
   }
+  if ($('#pack').classList.contains('dl')){ const pk = $('#pack'); if (pk.onclick) pk.onclick(); return; }   // daily reward: back = tap (open the card, then continue)
   if ($('#levelup').classList.contains('show')) return hideLevelUp();
   if ($('#lvlPop').classList.contains('open')) return toggleLvlPop(false);
   if ($('#ask').classList.contains('open')) return answer(false);
@@ -2315,7 +2358,7 @@ function toggleLvlPop(force){
   if (open) renderLvlPop();
   p.classList.toggle('open', open);
 }
-$('#lvlEmblem').addEventListener('click', e => { e.stopPropagation(); toggleLvlPop(); vibrate(6); });
+$('#lvlEmblem').addEventListener('click', e => { e.stopPropagation(); toggleLvlPop(); });
 document.addEventListener('click', e => { if (!e.target.closest('#lvlPop')) toggleLvlPop(false); });
 
 /* ================= Phone app (Capacitor) bridge =================
@@ -2387,7 +2430,7 @@ function cyStreak(q){
   if (!hasStreak(q)) return '';
   const n = streakNow(q), m = streakReward(q) ? streakMult(isDone(q) ? n : n + 1) : 1;
   const tier = n >= 200 ? 5 : n >= 100 ? 4 : n >= 30 ? 3 : n >= 10 ? 2 : n >= 3 ? 1 : 0;   // colour steps like TikTok streaks
-  return `<span class="cy-count cy-streak t${tier}" title="Streak">${m > 1 ? `<em${m >= 3.5 ? ' class="ur"' : m >= 3 ? ' class="max"' : ''}>+${Math.round((m - 1) * 100)}%</em>` : ''}<b>${fmt(n)}</b>×</span>`;
+  return `<span class="cy-count cy-streak t${tier}" title="Streak">${m > 1 ? `<em>+${Math.round((m - 1) * 100)}%</em>` : ''}<b>${fmt(n)}</b>×</span>`;
 }
 
 // The pair bonus is no longer paid automatically: once both halves are done it becomes its own Claim button.
@@ -2474,7 +2517,7 @@ setInterval(() => {
 let invSw = null, invSwiped = 0;
 // the new deck slides in from the side you swiped toward
 function invGo(d){ invIdx += d; render(); const st = document.querySelector('.inv-stack'); if (st) st.classList.add(d > 0 ? 'in-r' : 'in-l');
-  const nm = document.querySelector('.inv-name'); if (nm) nm.classList.add('in'); vibrate(6); }
+  const nm = document.querySelector('.inv-name'); if (nm) nm.classList.add('in'); }
 function invItems(){ return SHOP.filter(it => !it.soon); }
 // the whole Deck screen is the swipe area; the deck follows your finger
 $('#panel').addEventListener('pointerdown', e => {
@@ -2641,8 +2684,8 @@ function qbSummary(){
   const sq = firstSteps(), st = sq ? stepDue(sq, dayKey()).steps : 0, due = sq ? dueTotals(sq) : { keys:[] };
   return `<div class="qb-sum"${sq ? ` data-holdedit="${sq.id}"` : ''}>${qbRing(done, vis.length)}<div class="qb-st">
     <div class="ln">Earned today <b><span class="xp-r">${ico('i-gem')}${fmt(T.xp)}</span><span class="gold-r">${ico('i-coin')}${fmt(T.gold)}</span></b></div>
-    ${sq ? `<div class="ln qb-stp"><span>Steps${stepsSyncTag()}</span><b>${fmt(st)}${sq.goal ? ' / ' + fmt(sq.goal) : ''}</b></div><div class="qb-bar"><i style="width:${sq.goal ? Math.min(100, st / sq.goal * 100) : 0}%"></i></div>` : ''}
-    ${sq ? `<div class="qb-sumft"><span class="qb-time">${ico('i-hourglass','0 0 16 16')}${cd(nextMidnight())}</span>
+    ${sq ? `<div class="ln qb-stp"><span>Steps</span><b>${fmt(st)}${sq.goal ? ' / ' + fmt(sq.goal) : ''}</b></div><div class="qb-bar"><i style="width:${sq.goal ? Math.min(100, st / sq.goal * 100) : 0}%"></i></div>` : ''}
+    ${sq ? `<div class="qb-sumft"><span class="qb-tm"><span class="qb-time">${ico('i-hourglass','0 0 16 16')}${cd(nextMidnight())}</span>${stepsSyncTag()}</span>
       ${due.keys.length ? `<button class="qb-sclaim" data-act="claimall" data-q="${sq.id}" title="+${fmt(due.xp)} XP, +${fmt(due.gold)} gold">Claim</button>` : ''}</div>` : ''}</div></div>`;
 }
 // ---- one tile per quest ----
@@ -2696,17 +2739,20 @@ function qbRecord(q){
     ${qbHead(q)}
     <div class="qb-tot">${q.best == null ? '<span>First entry sets your starting point</span>' : `<span>Best <b>${fmt(q.best)} ${u}</b></span>${last != null ? `<span>Last ${fmt(last)} ${u}</span>` : ''}`}</div>
     ${done || locked ? '' : `<div class="rec-input qb-in"><input type="number" step="0.1" inputmode="decimal" placeholder="${last != null ? fmt(last) : 'Enter value'}" aria-label="Value"><span class="unit">${u}</span><button class="claim off" data-act="record">Record</button></div>`}
-    <div class="qb-foot">${qbRew(q.xpPer, q.goldPer, done || locked)}<span class="qb-sub">per ${fmt(q.step)} ${u} ${q.better === 'lower' ? 'below' : 'above'} best</span></div>
+    <div class="qb-foot">${qbRew(q.xpPer, q.goldPer, done || locked)}<span class="qb-sub">${recSub(q)}</span></div>
   </article>`;
 }
 function qbTally(q){
-  const pv = tallyPreview(q, '');
+  const mine = tlFrom && tlFrom.id === q.id ? tlFrom : null, fr = mine && !S.reduceFx ? mine : null;
+  if (mine) tlFrom = null;   // used once
+  const pv = tallyPreview(q, ''), total = q.total || 0, ph = 'Amount';
+  if (fr) requestAnimationFrame(() => tallyCountUp(q.id, fr.total, total));
   return `<article class="card qb-t wide tally-card">
     ${qbTR(qbBadge(`+${fmt(q.xpPer)} / ${esc(fmtU(q, q.chunk))}`))}
     ${qbHead(q)}
-    <div class="qb-tot"><span>Total <b>${fmtU(q, q.total || 0)}</b></span><span class="tl-note">${tallyNote(q, pv)}</span></div>
-    <div class="qb-in"><input type="number" min="0" step="any" inputmode="decimal" placeholder="Add an amount${CURRENCY.includes(unitOf(q)) || !unitOf(q) ? '' : ' (' + esc(unitOf(q)) + ')'}" data-tallyin="${q.id}" aria-label="Amount"><button class="claim off" data-act="tally">Add</button></div>
-    <div class="qb-foot"><span class="tl-rew">${rewardsHtml(pv.xp, pv.gold).replace('class="rewards"', 'class="rewards" style="opacity:.45"')}</span></div>
+    <div class="tl-top"><div class="tl-totbox"><small>TOTAL</small><b class="tl-total" data-qid="${q.id}">${fr ? fmtU(q, fr.total) : fmtU(q, total)}</b></div><span class="tl-note">${tallyNote(q, pv)}</span></div>
+    <div class="tl-meter tg-seg">${tallyMeterHtml(q, pv, fr)}</div>
+    <div class="qb-in tl-in"><span class="tl-rew">${rewardsHtml(pv.xp, pv.gold).replace('class="rewards"', 'class="rewards" style="opacity:.45"')}</span><input type="number" min="0" step="any" inputmode="decimal" placeholder="${ph}" data-tallyin="${q.id}" aria-label="Amount"><button class="claim tl-add off" data-act="tally">ADD</button></div>
   </article>`;
 }
 function qbHead(q, sub = ''){
@@ -2830,7 +2876,9 @@ function foldBtn(html, q){
   const btn = `<button type="button" class="qb-fold${f ? '' : ' open'}" data-act="fold" data-id="${q.id}" aria-label="${f ? 'Show' : 'Hide'} ${n} follow-up${n > 1 ? 's' : ''}">${FOLD_SVG}</button>`;
   return html.replace(/<\/article>\s*$/, btn + '</article>');
 }
-function questBoard(){
+// The Quests board, group by group: the tiles in their arranged order (follow-ups under their quest), the done count and the reset time.
+// Used by the Quests page and by the 4x4 widget.
+function boardSections(){
   const groups = {};
   S.quests.forEach(targetRoll);
   // steps live in the summary card; a claimed bounty stays until midnight, then it's gone
@@ -2838,12 +2886,13 @@ function questBoard(){
     const g = qbGroupOf(q); (groups[g.key] ||= { ...g, list:[] }).list.push(q);
   });
   const withKids = q => [q, ...S.quests.filter(c => c.parent === q.id).flatMap(withKids)];
-  const html = Object.values(groups).sort((a, b) => a.order - b.order).map(g => {
+  return Object.values(groups).sort((a, b) => a.order - b.order).map(g => {
     const all = g.list.flatMap(withKids);
     // multi-day groups: count down to the soonest reset of a finished quest, else just say the cycle
-    let time = g.time;
-    if (!time && g.key[0] === 'd'){ const ends = all.map(q => q.kind === 'pair' || q.kind === 'target' ? q.cycleEnd : q.kind === 'scaling' ? periodEnd(q) : q.doneUntil).filter(x => x > now());
-      time = ends.length ? cd(Math.min(...ends)) : +g.key.slice(1) === MONTHLY ? cd(addMonths(now(), 1)) : `${cycleName(+g.key.slice(1))} cycle`; }
+    let time = g.time, ends = g.key === 'd1' ? nextMidnight() : null;
+    if (!time && g.key[0] === 'd'){ const e = all.map(q => q.kind === 'pair' || q.kind === 'target' ? q.cycleEnd : q.kind === 'scaling' ? periodEnd(q) : q.doneUntil).filter(x => x > now());
+      ends = e.length ? Math.min(...e) : +g.key.slice(1) === MONTHLY ? addMonths(now(), 1) : null;
+      time = ends ? cd(ends) : `${cycleName(+g.key.slice(1))} cycle`; }
     const counted = all.filter(q => q.kind !== 'scaling' && q.kind !== 'tally' && q.kind !== 'bounty' && !isTracker(q) && isVisible(q));
     const cnt = g.key === 'z-tally' ? '' : counted.length ? `${counted.filter(isDone).length}/${counted.length}` : '';
     // follow-ups (and their follow-ups) go under their quest, one step further in per level
@@ -2851,6 +2900,11 @@ function questBoard(){
     const kidsOf = (q, d = 1) => folded(q) ? [] : S.quests.filter(c => c.parent === q.id).flatMap(c => [{ q:c, d }, ...kidsOf(c, d + 1)]);
     const tiles = [];
     rowCells(groupRows(g.key, g.list), false).forEach(c => { tiles.push(c); if (c.q) kidsOf(c.q).forEach(k => tiles.push({ q:k.q, w:true, kid:k.d })); });
+    return { g, time, ends, counted, cnt, tiles };
+  });
+}
+function questBoard(){
+  const html = boardSections().map(({ g, time, cnt, tiles }) => {
     const fresh_ = id => fresh.id === id ? ' fresh' : '';
     return `<section class="qb-g${g.key === 'a-due' ? ' due' : ''}"><div class="qb-gh"><b>${g.title}${cnt ? `<span>${cnt}</span>` : ''}</b>${time ? `<span class="qb-time">${ico('i-hourglass','0 0 16 16')}${time}</span>` : ''}</div>
       <div class="qb-grid">${tiles.map(t => t.gap ? '<div class="qb-gap"></div>' : `<div class="item qb-item${t.w ? ' wide' : ''}${t.kid ? ' fol' : ''}${folded(t.q) ? ' qb-stacked' + (kidCount(t.q) > 1 ? ' qb-stacked2' : '') : ''}${fresh_(t.q.id)}" data-id="${t.q.id}"${t.kid ? ` style="--fd:${Math.min(t.kid, 4)}"` : ''}>${foldBtn(qbTile(t.q, t.w), t.q)}</div>`).join('')}</div></section>`;
@@ -2864,7 +2918,7 @@ function questBoard(){
   $('#panel').addEventListener('pointerdown', e => {
     const it = e.target.closest('.qb-item, [data-holdedit]'); if (!it || e.target.closest('input')) return;
     clearTimeout(timer); sx = e.clientX; sy = e.clientY;
-    timer = setTimeout(() => { held = performance.now(); vibrate(15); openSheet(it.dataset.id || it.dataset.holdedit); }, 500);
+    timer = setTimeout(() => { held = performance.now(); openSheet(it.dataset.id || it.dataset.holdedit); }, 500);
   });
   ['pointerup','pointercancel'].forEach(t => $('#panel').addEventListener(t, () => clearTimeout(timer)));
   // a finger always wobbles a little: only a real drag (scrolling) cancels the hold
@@ -2947,7 +3001,7 @@ function toggleSkPop(el){
   pop = document.createElement('div'); pop.id = 'skPop'; pop.className = 'info-pop sk-pop'; pop.dataset.for = 'on';
   pop.innerHTML = el.querySelector('template').innerHTML; pop._for = el;
   pop.style.top = (r.bottom + scrollY + 6) + 'px'; pop.style.left = Math.max(8, Math.min(innerWidth - 216, r.left - 2)) + 'px';
-  document.body.appendChild(pop); vibrate(6);
+  document.body.appendChild(pop);
 }
 document.addEventListener('click', e => { const p = $('#skPop'); if (p && !e.target.closest('#skPop, .sk-info')) p.remove(); }, true);
 document.addEventListener('scroll', () => { const p = $('#skPop'); if (p) p.remove(); }, true);
@@ -2968,7 +3022,7 @@ function questHero(q){
     tier = flameTier(n); k = q.kind === 'pair' ? 'Both-done streak' : q.kind === 'avoid' ? 'Days clean' : q.kind === 'target' ? 'Targets hit in a row' : 'Current streak'; big = fmt(n);
     unit = q.kind === 'target' ? (n === 1 ? 'time' : 'times') : n === 1 ? 'day' : 'days';
     if (q.kind === 'avoid') q.best = Math.max(q.best || 0, n);
-    sub = `Best ${fmt(q.kind === 'avoid' ? q.best : best)}${q.kind === 'avoid' && (q.slips || []).length ? ` · slipped ${q.slips.length}×` : ''}${m > 1 ? ` · +${Math.round((m - 1) * 100)}% reward bonus` : ''}`; art = FLAME(tier, 64);
+    sub = `Best ${fmt(q.kind === 'avoid' ? q.best : best)}${q.kind === 'avoid' && (q.slips || []).length ? ` · slipped ${q.slips.length}×` : ''}${m > 1 ? ` · <b style="color:${tierCol(tier)[0]}">+${Math.round((m - 1) * 100)}%</b> reward bonus` : ''}`; art = FLAME(tier, 64);
   } else if (q.kind === 'scaling'){
     const w = weekClaims(q); tier = -1; k = `This ${periodOf(q) === 1 ? 'day' : periodWord(q)}`; big = '×' + w; unit = '';
     sub = `Next claim pays ${scaledReward(q, w + 1).xp} XP · resets ${new Date(periodEnd(q)).toLocaleDateString(undefined, { weekday:'short' })}`; art = `<div class="hx-ic">${qbIcon(q)}</div>`;
@@ -3030,7 +3084,7 @@ $('#progPop').addEventListener('change', () => setTimeout(ppSync, 0));
     S.pview = L[j]; monthOffset = 0; selDay = null; weekOffset = 0; save(); render();
     const body = document.querySelector('#panel .hx, #panel .shx, #panel > .list:last-child'); if (body) body.classList.add(dx < 0 ? 'pv-in-r' : 'pv-in-l');
     document.querySelector('#panel .chips .chip.on')?.scrollIntoView({ inline:'center', block:'nearest', behavior:'smooth' });
-    vibrate(6);
+
   });
   $('#panel').addEventListener('click', e => { if (performance.now() - swiped < 400 && S.tab === 'progress'){ e.stopPropagation(); e.preventDefault(); } }, true);
 })();
@@ -3044,7 +3098,7 @@ $('#progPop').addEventListener('change', () => setTimeout(ppSync, 0));
     if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
     swiped = performance.now();
     if (dx > 0) weekOffset++; else if (weekOffset > 0) weekOffset--; else return;
-    render(); const c = document.querySelector('.sh-cols'); if (c) c.classList.add(dx > 0 ? 'in-l' : 'in-r'); vibrate(6);
+    render(); const c = document.querySelector('.sh-cols'); if (c) c.classList.add(dx > 0 ? 'in-l' : 'in-r');
   });
   $('#panel').addEventListener('pointercancel', () => { s0 = null; });
   $('#panel').addEventListener('click', e => { if (performance.now() - swiped < 400 && e.target.closest('.sh-cols')){ e.stopPropagation(); e.preventDefault(); } }, true);
@@ -3210,7 +3264,7 @@ function oaNext(){
   $('#oaTray').insertAdjacentHTML('afterbegin', `<img class="r-${c.rarity}" style="--rc:${RARITY[c.rarity].glow}" src="${cardImg(c.id)}" alt="">`);
   o.idx++;
   if (o.idx >= o.cards.length) return oaSummary();
-  oaLayout(); vibrate(6);
+  oaLayout();
 }
 function oaSummary(){
   const o = opening; if (!o) return;
@@ -3485,11 +3539,11 @@ function targetHit(q, n, rect){
   q.hits = Math.min(q.need, (q.hits || 0) + Math.floor(n));
   save(); render();
   if (rect) FX.small(...mid(rect), 'blue');
-  vibrate(8);
+
 }
 function targetUnhit(q){
   targetRoll(q); if (isDone(q) || !(q.hits > 0)) return;
-  snapshot(); q.hits--; save(); render(); vibrate(8);
+  snapshot(); q.hits--; save(); render();
 }
 function targetType(q, btn){
   btn.outerHTML = `<input class="tg-in" type="number" min="1" inputmode="numeric" placeholder="+" aria-label="Add">`;
@@ -3529,17 +3583,20 @@ function claimBounty(q, rect){
   grant({ xp:q.xp, gold:q.gold }, rect, `${q.name}: Bounty claimed`, q.id, null, 1.8);
 }
 // Avoid: days clean since the start; claim once a day; Slipped starts over
+var AV_MILESTONES = [[1, '1D', '1 day'], [3, '3D', '3 days'], [7, '1W', '1 week'], [14, '2W', '2 weeks'], [30, '1M', '1 month'],
+  [90, '3M', '3 months'], [182, '6M', '6 months'], [365, '1Y', '1 year']].map(([d, k, name]) => ({ d, k, name }));
 function qbAvoid(q, wide){
   const slip = slippedToday(q), done = isDone(q), n = daysClean(q), R = boosted(q, q.xp, q.gold);
   const best = Math.max(q.best || 0, n);
   const badge = slip ? `<span class="qb-badge red" data-act="unslip">SLIPPED</span>` : qbBadge(done ? 'DONE' : 'CLAIM', done ? 'ok' : '');
   const slipBtn = slip ? '' : `<button class="av-slip" data-act="slip">${wide ? 'SLIPPED' : 'SLIP'}</button>`;
   const big = `<div class="av-n">${fmt(n)}<small>${n === 1 ? 'day' : 'days'} clean${wide ? ` · best ${fmt(best)}` : ''}</small></div>`;
+  // full tile: milestone badges (1 day … 1 year), earned ones lit, the next one dashed with how long is left
   let strip = '';
   if (wide){
-    // fills from the left, one segment per clean day in the current run (today counts once claimed), 7+ = full
-    const lit = slip ? 0 : Math.min(7, n + (done ? 1 : 0));
-    strip = `<div class="qb-pips av-week${slip ? ' x' : ''}">${Array.from({ length:7 }, (_, i) => `<i class="${i < lit ? 'on' : ''}"></i>`).join('')}</div>`;
+    const run = slip ? 0 : n + (done ? 1 : 0), next = AV_MILESTONES.find(m => m.d > run);   // today counts once claimed
+    strip = `<div class="av-ms${slip ? ' x' : ''}">${AV_MILESTONES.map(m => `<span class="${run >= m.d ? 'on' : m === next ? 'next' : ''}"><i></i>${m.k}</span>`).join('')}</div>
+      <div class="av-next">${slip ? 'Starts again tomorrow' : next ? `Next: <b>${next.name}</b> in ${fmt(next.d - run)} ${next.d - run === 1 ? 'day' : 'days'}` : 'Every milestone reached'}</div>`;
   }
   const act = slip ? '' : ` data-act="${done ? 'reopen' : 'claim'}"`;
   return `<article class="card qb-t${wide ? ' wide' : ''}${done ? ' done' : ''}${slip ? ' slipped' : ''}"${act}>
@@ -3685,7 +3742,7 @@ $('#vacation').addEventListener('change', e => {
    Newer than this version: Settings > App shows it with its notes and a Download button (opens the APK in the browser),
    the gear gets a dot, and a small banner sits on top of Quests until it's closed (× hides it for that version).
    No notifications. APP_VERSION is kept in step with package.json by scripts/android-version.js (npm run sync). */
-const APP_VERSION = '1.1.2';
+const APP_VERSION = '1.2.0';
 const UPDATE_REPO = 'Meih125/psych';
 let appVersion = APP_VERSION, upChecking = false;
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
@@ -3731,10 +3788,142 @@ $('#upBtn').addEventListener('click', () => { if (updateReady()) openUpdate(); e
   if (!S.update || !(now() - (S.update.checked || 0) < 864e5)) setTimeout(() => checkUpdate(false), 2500);   // once a day, quietly
 })();
 
+/* ================= Daily login reward =================
+   Once a day, the gift next to the widgets button: 50% 5 gold + 5 XP, 25% 10 gold, 15% 25 gold, 10% a card
+   (any pack, rarity at pack odds, no Rare guarantee). The days the streak flame changes (3, 10, 30, 100) give an SSR,
+   day 200 a UR, without saying so (it should feel like luck). Miss a day and it starts over at day 1 (vacation days don't count). After claiming, the gift turns
+   into the streak's flame and number.
+   S.daily = { at: time of the last claim, streak, pending: the reward until its pop-up is closed (so closing the
+   app mid-way never loses it) }. Gold and XP are paid on "tap to continue"; a card is added at once. */
+const DL_MILESTONE = { 3:'legendary', 10:'legendary', 30:'legendary', 100:'legendary', 200:'ultimate' };
+const DL_GIFT = '<svg class="gift" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M4.5 11h15v9.5h-15z"/><path d="M3.5 7.5h17V11h-17z"/><path d="M12 7.5v13"/><path d="M12 7.5C10.5 4 7 3.6 7.2 5.8 7.4 7.4 10.4 7.5 12 7.5zM12 7.5c1.5-3.5 5-3.9 4.8-1.7-.2 1.6-3.2 1.7-4.8 1.7z"/></svg>';
+// claimed today? (a claim "in the future" after the clock was moved back counts as today, so it can't be claimed twice)
+const dlClaimed = () => { const a = S.daily && S.daily.at; return !!a && (dayKey(a) === dayKey() || a > now()); };
+// the streak as it stands: kept while yesterday (or today) was claimed
+function dlStreak(){
+  const d = S.daily; if (!d || !d.at || !d.streak) return 0;
+  return d.at > now() || now() < addDays(startOfDay(d.at), 2 + vacationDays(d.at, now())) ? d.streak : 0;
+}
+// same odds as one card in a pack: UR 1.1, SSR 4, SR 10, R 25, C the rest
+function dlRarity(){ const o = SHOP[0].odds, r = Math.random() * 100;
+  return r < o.ultimate ? 'ultimate' : r < o.ultimate + o.legendary ? 'legendary' : r < o.ultimate + o.legendary + o.epic ? 'epic' : r < o.ultimate + o.legendary + o.epic + o.rare ? 'rare' : 'common'; }
+function dlRoll(day){
+  if (DL_MILESTONE[day]) return { kind:'card', rarity:DL_MILESTONE[day], milestone:true };
+  if (dlRoll.force) return dlRoll.force(day);   // the preview's test bar picks the outcome
+  const r = Math.random() * 100;
+  return r < 10 ? { kind:'card', rarity:dlRarity() } : r < 25 ? { kind:'gold', gold:25, xp:0 } : r < 50 ? { kind:'gold', gold:10, xp:0 } : { kind:'gold', gold:5, xp:5 };
+}
+// a card of that rarity from any pack; like packs, a UR or SSR you don't own yet comes first
+function dlCard(rarity){
+  const decks = SHOP.map(s => s.deck || 'tarot'), pool = POOL[pickFrom(decks)][rarity];
+  const missing = rarity === 'ultimate' || rarity === 'legendary' ? pool.filter(c => !ownedCard(c.id)) : [];
+  return pickFrom(missing.length ? missing : pool);
+}
+// the streak number in the same angular chrome lettering as the UR / SSR pop-ups, in the flame's colours
+const DGLY = {
+  0:'M15 0H35L43 8V62L35 70H15L7 62V8Z', 1:'M13 13L26 0V70', 2:'M7 8L15 0H35L43 8V27L35 35H15L7 43V70H43',
+  3:'M7 8L15 0H35L43 8V27L35 35H20M35 35L43 43V62L35 70H15L7 62', 4:'M33 70V0L7 46V50H43', 5:'M43 0H7V35H35L43 43V62L35 70H15L7 62',
+  6:'M43 8L35 0H15L7 8V62L15 70H35L43 62V43L35 35H7', 7:'M7 0H43V8L20 70', 8:'M15 35L7 27V8L15 0H35L43 8V27L35 35H15L7 43V62L15 70H35L43 62V43L35 35',
+  9:'M7 62L15 70H35L43 62V8L35 0H15L7 8V27L15 35H43'
+};
+const DL_COL = [['#9db2b0','#5f7472'],['#7dffb0','#178a4a'],['#9fe2ff','#0b5f9c'],['#ecc2ff','#6b2fa6'],['#ffe08a','#b8430f'],['#fff1c2','#c8242f']];
+function streakNum(n, tier, h){
+  const txt = String(n), W = 50, gap = 12, w = txt.length * W + (txt.length - 1) * gap + 20, H = 94, id = 'sn' + Math.random().toString(36).slice(2, 7);
+  const [c1, c2] = DL_COL[tier], d = [...txt].map((ch, i) => `<path d="${DGLY[ch]}" transform="translate(${10 + i * (W + gap)} 12)"/>`).join('');
+  return `<svg class="dl-num" viewBox="0 0 ${w} ${H}" height="${h}" width="${(h * w / H).toFixed(1)}" style="overflow:visible"><defs>
+    <linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".22" stop-color="#ffffff"/><stop offset=".48" stop-color="${c1}"/><stop offset=".5" stop-color="${c2}"/><stop offset=".53" stop-color="#ffffff" stop-opacity=".9"/><stop offset=".62" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>
+    <filter id="${id}f" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="6"/></filter></defs>
+    <g transform="skewX(-12) translate(10 0)" fill="none" stroke-linejoin="miter" stroke-linecap="square" stroke-miterlimit="4">
+    <g stroke="${c1}" stroke-width="18" filter="url(#${id}f)" opacity=".9">${d}</g><g stroke="#120806" stroke-width="19">${d}</g><g stroke="url(#${id}g)" stroke-width="13">${d}</g></g></svg>`;
+}
+// the button: a gift (with a dot) until today's reward is taken, then the streak's flame with its number.
+// Smaller flames sit lower in their box, so each one is lifted to look centred.
+function renderDaily(pop){
+  const b = $('#dlBtn'); if (!b) return;
+  b.hidden = S.tab !== 'quests' || arranging;
+  const ready = !dlClaimed() || !!(S.daily && S.daily.pending);
+  b.classList.toggle('ready', ready);
+  const key = ready ? 'gift' : 'f' + dlStreak();
+  if (b.dataset.k === key && !pop) return;
+  b.dataset.k = key;
+  if (ready){ b.innerHTML = DL_GIFT + '<span class="dot"></span>'; return; }
+  const n = dlStreak(), t = flameTier(n), lift = (28 * (1 - [.72, .78, .86, .94, 1, 1.06][t]) * 38 / 64).toFixed(1);   // negative for the 200+ flame (it's bigger)
+  b.innerHTML = `<span class="dl-fl${pop ? ' pop' : ''}"><span class="dl-fw" style="transform:translate(-50%,${-lift}px)">${FLAME(t, 38)}</span>${streakNum(n, t, 19)}</span>`;
+}
+let dlBusy = false;
+$('#dlBtn').addEventListener('click', () => {
+  if (dlBusy || opening) return;
+  const d = S.daily || {};
+  if (dlClaimed() && !d.pending){
+    showToast(`Day ${dlStreak()} streak · come back tomorrow`, false);
+    return;
+  }
+  if (!d.pending){
+    const day = dlStreak() + 1, rw = dlRoll(day);
+    if (rw.kind === 'card'){ const c = dlCard(rw.rarity); rw.id = c.id; rw.fresh = !ownedCard(c.id); gainCard(c.id); }
+    S.daily = { at:now(), streak:day, pending:rw };
+    save();
+  }
+  dlOpen();
+});
+function dlOpen(){
+  const d = S.daily, rw = d.pending, day = d.streak, pk = $('#pack'), btn = $('#dlBtn').getBoundingClientRect();
+  dlBusy = true;
+  // the gift pops and sparks, then the pop-up grows out of it
+  $('#dlBtn').classList.add('burst'); setTimeout(() => $('#dlBtn').classList.remove('burst'), 500);
+  FX.burstC(...mid(btn), .9, ['46,230,214', '150,240,230', '230,255,250', '20,180,170']);
+  const amt = (icon, n, xp) => `<div class="dl-amt${xp ? ' xp' : ''}"><svg viewBox="0 0 32 32"><use href="#${icon}"/></svg><b>${n}</b></div>`;
+  let body, hint = 'Tap to continue', card = null;
+  if (rw.kind === 'card'){
+    card = CARDS.find(c => c.id === rw.id);
+    body = `<button type="button" class="pk-card dl-card r-${rw.rarity}${rw.rarity === 'ultimate' ? ' gold' : ''}" style="--rc:${RARITY[rw.rarity].glow}">
+      <span class="pk-aura"></span><span class="pk-inner"><span class="pk-back dl-glass"><i>?</i></span>
+      <span class="pk-front"><img src="${cardImg(rw.id)}" alt="${esc(card ? card.name : '')}"></span></span><span class="pk-tag"></span><span class="pk-set">${esc(card ? setLabel(card.set) : '')}</span></button>`;
+    hint = 'Tap to open';
+  } else body = rw.xp ? `<div class="dl-two">${amt('i-coin', rw.gold)}${amt('i-gem', rw.xp, true)}</div>` : amt('i-coin', rw.gold);
+  pk.innerHTML = `<div class="dl-pop"><div class="dl-head"><small>Daily login</small><b>Day ${day}</b></div><div class="dl-body">${body}</div><div class="dl-hint">${hint}</div></div>`;
+  pk.classList.add('open', 'dl');
+  const pop = pk.querySelector('.dl-pop'), r = pop.getBoundingClientRect();
+  const dx = btn.left + btn.width / 2 - (r.left + r.width / 2), dy = btn.top + btn.height / 2 - (r.top + r.height / 2);
+  pop.animate([{ transform:`translate(${dx}px,${dy}px) scale(.06)`, opacity:0 }, { transform:`translate(${dx * .1}px,${dy * .1}px) scale(1.04)`, opacity:1, offset:.7 }, { transform:'none', opacity:1 }],
+    { duration:480, easing:'cubic-bezier(.2,.9,.3,1.1)' });
+  setTimeout(() => { dlBusy = false; const a = pk.querySelector('.dl-amt, .dl-card'); if (a) FX.burst(...mid(a.getBoundingClientRect()), .7); }, 420);
+  let flipped = rw.kind !== 'card';
+  pk.onclick = () => {   // a tap anywhere opens the card, then continues
+    if (dlBusy) return;
+    if (!flipped){   // turn the card over, like in a pack
+      flipped = true;
+      const c = pop.querySelector('.dl-card'); c.classList.add('flipped');
+      c.querySelector('.pk-tag').innerHTML = rw.fresh ? 'NEW' : `<em>×${ownedCard(rw.id)}</em>`;
+      setTimeout(() => revealFX(c, rw.rarity), 180);
+      pop.querySelector('.dl-hint').textContent = 'Tap to continue';
+      dlBusy = true; setTimeout(() => { dlBusy = false; }, 700);
+      return;
+    }
+    dlClose(pop, rw);
+  };
+}
+function dlClose(pop, rw){
+  dlBusy = true;
+  const pk = $('#pack'), from = (pop.querySelector('.dl-amt') || pop.querySelector('.dl-card') || pop).getBoundingClientRect();
+  if (S.daily) delete S.daily.pending;
+  pop.animate([{ transform:'none', opacity:1 }, { transform:'scale(.85)', opacity:0 }], { duration:220, easing:'ease-in', fill:'forwards' });
+  setTimeout(() => {
+    pk.classList.remove('open', 'dl'); pk.innerHTML = ''; pk.onclick = null;
+    if (rw.kind === 'gold'){ celebrate.swirl = true; grant({ xp:rw.xp || 0, gold:rw.gold }, from, 'Daily reward'); }   // coins to the purse, gems to the XP bar
+    else { save(); render(); }
+    renderDaily(true);
+    const b = $('#dlBtn').getBoundingClientRect(), t = flameTier(dlStreak());
+    setTimeout(() => FX.burstC(...mid(b), .8, RV_PAL[['rare', 'rare', 'rare', 'epic', 'legendary', 'ultimate'][t]]), 120);
+    dlBusy = false;
+  }, 200);
+}
+
 /* ================= Home-screen widgets =================
-   S.widgets = [{ id, name, size:'2x1'|'4x1'|'2x2'|'4x2', rows }]. Every row is one home-screen cell high:
+   S.widgets = [{ id, name, size:'2x1'|'4x1'|'2x2'|'4x2'|'4x4', rows }]. Every row is one home-screen cell high:
      a row is [id] (one full-width quest, or one half quest in a 2-wide widget) or [a, b] (two half quests).
-   Shapes: 2x1 [[h]] · 4x1 [[f]] or [[h,h]] · 2x2 [[h],[h]] · 4x2 [[f],[f]], [[f],[h,h]] or [[h,h],[h,h]].
+   Shapes: 2x1 [[h]] · 4x1 [[f]] or [[h,h]] · 2x2 [[h],[h]] · 4x2 [[f],[f]], [[f],[h,h]] or [[h,h],[h,h]] · 4x4 (whole page).
+   4x4 has no spots (rows []): it shows the whole Quests page, a tab per group, and scrolls.
    Each spot looks like the quest's tile. The app sends a ready-to-draw snapshot to the phone (PsychWidget plugin,
    Android code in scripts/android-widget); taps there are queued and applied when the app opens. */
 // the phone side, found the same way as the other phone plugins (Capacitor.Plugins); null in the browser
@@ -3754,8 +3943,11 @@ const W_SHAPES = [
   { key:'2x2',   size:'2x2', rows:[[0], [0]],    name:'2×2',            sub:'2 half quests stacked',   draw:[[['h']],[['h']]], w:2 },
   { key:'4x2ff', size:'4x2', rows:[[0], [0]],    name:'4×2 full',       sub:'2 full quests',           draw:[[['f']],[['f']]], w:4 },
   { key:'4x2fh', size:'4x2', rows:[[0], [0, 0]], name:'4×2 mixed',      sub:'1 full + 2 half',         draw:[[['f']],[['h','h']]], w:4 },
+  { key:'4x2hh', size:'4x2', rows:[[0, 0], [0, 0]], name:'4×2 halves',  sub:'4 half quests',           draw:[[['h','h']],[['h','h']]], w:4 },
+  { key:'4x4',   size:'4x4', rows:[],            name:'4×4 Quests',     sub:'all quests, scrolls',     draw:[[['t','t','t']],[['h','h']],[['f']]], w:4, board:true },
 ];
 const wWidth = w => w.size === '2x1' || w.size === '2x2' ? 2 : 4;
+const isBoardW = w => w.size === '4x4';
 function wShapeOf(w){
   const pat = (w.rows || []).map(r => r.length).join(',');
   return W_SHAPES.find(t => t.size === w.size && t.rows.map(r => r.length).join(',') === pat) || W_SHAPES.find(t => t.size === w.size) || W_SHAPES[1];
@@ -3771,6 +3963,7 @@ function wSlot(q){
   const B = (label, act, style) => ({ label, act, style });
   const base = { qid:q.id, name:q.name, kind:q.kind, color:KIND_COL[q.kind] || '#ff8a45', streak:hasStreak(q) ? fmt(n) + '×' : '',
     streakColor:STREAK_COL[flameTier(n)], mult:m > 1 ? `+${Math.round((m - 1) * 100)}%` : '', xp:'+' + cyNum(R.xp), gold:'+' + cyNum(R.gold),
+    rawXp:R.xp, rawGold:R.gold,   // exact numbers for the phone to move the 4x4 header on a claim (xp / gold are display text)
     sub:'', done, tap:'claim', btn:[], doneUntil:0, reset:null };
   if (q.kind === 'avoid'){
     const slip = slippedToday(q);
@@ -3783,12 +3976,12 @@ function wSlot(q){
       reset:{ btn:[B(`0/${q.need}`, 'hit', 'cy')], hits:0, tap:'hit' } });
   } else if (q.kind === 'scaling'){
     const w = weekClaims(q), R2 = scaledReward(q, w + 1), up = Math.round((Math.pow(1 + q.growth / 100, w) - 1) * 100);
-    Object.assign(base, { done:false, xp:'+' + cyNum(R2.xp), gold:'+' + cyNum(R2.gold), streak:'', btn:[B('CLAIM', 'claim', 'or')], growth:q.growth || 0, baseXp:q.xp || 0, baseGold:q.gold || 0,
+    Object.assign(base, { done:false, xp:'+' + cyNum(R2.xp), gold:'+' + cyNum(R2.gold), rawXp:R2.xp, rawGold:R2.gold, streak:'', btn:[B('CLAIM', 'claim', 'or')], growth:q.growth || 0, baseXp:q.xp || 0, baseGold:q.gold || 0,
       segs:w, segMax:7, note: w ? `Claimed ×${w}${up ? ` · Next pays +${up}%` : ''}` : `Each claim pays ${q.growth}% more` });
   } else if (q.kind === 'bounty'){
-    const d = dueIn(q);
-    Object.assign(base, { streak: done ? '' : d < 0 ? 'LATE' : d === 0 ? 'TODAY' : d === 1 ? 'TMRW' : shortDate(q.due), streakColor: d <= 1 ? '#ff6b5e' : '#9db2b0',
-      btn: done ? [B('DONE', '', 'ok')] : [B('CLAIM', 'claim', 'or')] });
+    // the time left goes with a clock where the note sits (under the name on a half tile); due today or tomorrow = a red tile, like on the board
+    const urgent = bountyUrgent(q);
+    Object.assign(base, { streak:'', due: done ? '' : bountyLeft(q), urgent, btn: done ? [B('DONE', '', 'ok')] : [B('CLAIM', 'claim', urgent ? 'red' : 'or')] });
   } else if (q.kind === 'standard'){
     Object.assign(base, { btn: done ? [B('DONE', '', 'ok')] : [B('CLAIM', 'claim', 'or')], doneUntil: done ? q.doneUntil : 0, reset:{ btn:[B('CLAIM', 'claim', 'or')] } });
   } else if (q.kind === 'tally'){
@@ -3796,7 +3989,7 @@ function wSlot(q){
       xp:'+' + cyNum(q.xpPer), gold:'+' + cyNum(q.goldPer), sub:`${fmtU(q, q.total || 0)} total`, note:`per ${fmtU(q, q.chunk)}`, btn:[B('+ ADD', 'tally', 'or')] });
   } else if (q.kind === 'record'){
     Object.assign(base, { tap: done ? 'open' : 'record', unit:q.unit || '', xp:'+' + cyNum(q.xpPer), gold:'+' + cyNum(q.goldPer),
-      note: q.best != null ? `per ${fmt(q.step)} ${q.unit} · best ${fmt(q.best)}` : 'no entries yet', btn: done ? [B('DONE', '', 'ok')] : [B('RECORD', 'record', 'or')] });
+      note: q.best != null ? `per ${fmt(q.step)} ${q.unit} · next ${fmt(recNext(q))}` : 'no entries yet', btn: done ? [B('DONE', '', 'ok')] : [B('RECORD', 'record', 'or')] });
   } else if (q.kind === 'pair'){
     // the two halves as boxes (each tappable); the rewards line is the bonus for doing both
     const H = (h, key) => { const r = boosted(q, h.xp || 0, h.gold || 0); return { label:h.name, done:h.until > now(), act:'pair' + key, xp:'+' + cyNum(r.xp), gold:'+' + cyNum(r.gold) }; };
@@ -3813,9 +4006,53 @@ function wSlot(q){
   if (!done && !isVisible(q)){ const p = parentOf(q); Object.assign(base, { tap:'open', btn:[B('LOCKED', '', 'dim')], note:`after ${p.name}`, reset:null }); }
   return base;
 }
+// 4x4: the Quests page as data. Header (level, gold, steps, done ring), then up to 4 tabs, each a list of rows:
+// [full] or [half, half] (null = an empty half), or a subheader row [{ isHdr, title, ends, time }].
+//   DUE (red, only while something is due soon) · DAILY · CYCLES (every other reset: 2–60 days, weekly, monthly; a subheader
+//   per cycle with its own reset clock) · OTHERS (bounties, tallies; a subheader each).
+// The phone counts the ring and the tab counts from the tiles (counts:true), plus hidN / hidDone for counted quests it
+// doesn't show (follow-ups folded away). totalXp / totalGold let the phone move the header right after a widget claim.
+function wBoard(){
+  const L = levelInfo(S.xp), sq = firstSteps(), secs = boardSections();
+  const cell = (q, half) => { const sl = wSlot(q); sl.half = half; sl.counts = q.kind !== 'scaling' && q.kind !== 'tally' && q.kind !== 'bounty' && isVisible(q); return sl; };
+  // one section's tiles as widget rows, and the counted quests it doesn't show
+  const rowsOf = sec => {
+    const rows = []; let open = null;
+    sec.tiles.forEach(t => {
+      if (t.w){ open = null; rows.push([cell(t.q, false)]); return; }
+      const sl = t.gap ? null : cell(t.q, true);
+      if (open && t.c === 1){ open[1] = sl; open = null; return; }
+      const r = t.c === 1 ? [null, sl] : [sl, null]; rows.push(r); open = t.c === 1 ? null : r;
+    });
+    const out = rows.filter(r => r.some(Boolean)), shown = new Set(out.flat().filter(Boolean).map(sl => sl.qid)), hid = sec.counted.filter(q => !shown.has(q.id));
+    return { rows:out, hidN:hid.length, hidDone:hid.filter(isDone).length };
+  };
+  // several sections in one tab, each under its own subheader
+  const tab = (key, name, list, more) => {
+    const rows = []; let hidN = 0, hidDone = 0;
+    list.forEach(sec => { const r = rowsOf(sec); if (!r.rows.length) return;
+      if (more.hdr) rows.push([{ isHdr:true, title:'// ' + sec.g.title.toUpperCase(), ends: more.clock ? sec.ends || 0 : 0, time:'' }]);   // a clock only when the cycle has a set reset
+      rows.push(...r.rows); hidN += r.hidN; hidDone += r.hidDone; });
+    return rows.length ? Object.assign({ key, tab:name, count:true, ends:0, time:'', hidN, hidDone, rows }, more.g) : null;
+  };
+  const isCycle = s => s.g.key.startsWith('d');
+  const groups = [
+    tab('due', 'DUE', secs.filter(s => s.g.key === 'a-due'), { g:{ red:true, count:false } }),
+    tab('daily', 'DAILY', secs.filter(s => s.g.key === 'd1'), { g:{ ends:nextMidnight() } }),
+    tab('cycles', 'CYCLES', secs.filter(s => isCycle(s) && s.g.key !== 'd1'), { hdr:true, clock:true }),
+    tab('others', 'OTHERS', secs.filter(s => !isCycle(s) && s.g.key !== 'a-due'), { hdr:true, g:{ count:false } }),
+  ].filter(Boolean);
+  let steps = null;
+  if (sq){ const st = stepDue(sq, dayKey()).steps, sy = stepsSync();
+    steps = Object.assign(wSlot(sq), { text:`${fmt(st)}${sq.goal ? ' / ' + fmt(sq.goal) : ''}`, pct: sq.goal ? Math.min(100, Math.round(st / sq.goal * 100)) : 0, sync:sy.text, syncWarn:sy.warn,
+      syncAt: S.sync && S.sync.connected ? S.sync.last || 0 : -1 }); }   // the phone writes "Synced 3 min ago" itself, so it stays right
+  return { lv:L.L, xpPct: L.need ? Math.min(100, Math.round(L.into / L.need * 100)) : 0, gold:fmt(S.gold), totalXp:S.xp || 0, totalGold:S.gold || 0,
+    reset:nextMidnight(), steps, groups };
+}
 function widgetSnapshot(){
-  return { updated:now(), widgets:(S.widgets || []).map(w => ({ id:w.id, size:w.size, width:wWidth(w),
-    rows:(w.rows || []).map((r, ri) => r.map(id => { const sl = wSlot(id && byId(id)); if (sl) sl.half = wHalfSpot(w, ri); return sl; })) })) };
+  let board = null;
+  return { updated:now(), widgets:(S.widgets || []).map(w => isBoardW(w) ? { id:w.id, size:w.size, width:4, rows:[], board: board ||= wBoard() } : { id:w.id, size:w.size, width:wWidth(w),
+    rows:(w.rows || []).map((r, ri) => r.map(id => { const sl = wSlot(id && byId(id)); if (sl) sl.half = wHalfSpot(w, ri); return sl; })) }) };
 }
 let _wpush = 0;
 function pushWidgets(){
@@ -3829,7 +4066,6 @@ async function applyWidgetActions(){
   let list = [];
   try { const r = await P.takeActions(); list = JSON.parse((r && r.actions) || '[]'); } catch(e){ return; }
   if (!Array.isArray(list) || !list.length) return;
-  let n = 0;
   list.sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(a => {
     const q = byId(a.qid); if (!q) return;
     const t = +a.t, real = Date.now();
@@ -3837,18 +4073,17 @@ async function applyWidgetActions(){
     try {
       const v = round2(+a.v);
       if (!isVisible(q)) return;   // a locked follow-up can't be claimed from the widget either
-      if (a.act === 'claim'){ if (!isDone(q)){ claimQuest(q, null); n++; } }
-      else if (a.act === 'hit' && q.kind === 'target'){ targetHit(q, 1, null); n++; }
-      else if (a.act === 'slip' && q.kind === 'avoid'){ doSlip(q); n++; }
-      else if (a.act === 'tally' && q.kind === 'tally' && v > 0 && v <= VALUE_CAP){ claimTally(q, { value:String(v) }, null); n++; }
-      else if (a.act === 'record' && q.kind === 'record' && v > 0 && v <= VALUE_CAP && !isDone(q)){ submitRecord(q, { value:String(v) }, null); n++; }
-      else if ((a.act === 'pairA' || a.act === 'pairB') && q.kind === 'pair'){ claimPair(q, a.act === 'pairA' ? 'a' : 'b', null); n++; }
-      else if (a.act === 'steps' && isTracker(q)){ claimAll(q, null); n++; }
+      if (a.act === 'claim'){ if (!isDone(q)){ claimQuest(q, null); } }
+      else if (a.act === 'hit' && q.kind === 'target'){ targetHit(q, 1, null); }
+      else if (a.act === 'slip' && q.kind === 'avoid'){ doSlip(q); }
+      else if (a.act === 'tally' && q.kind === 'tally' && v > 0 && v <= VALUE_CAP){ claimTally(q, { value:String(v) }, null); }
+      else if (a.act === 'record' && q.kind === 'record' && v > 0 && v <= VALUE_CAP && !isDone(q)){ submitRecord(q, { value:String(v) }, null); }
+      else if ((a.act === 'pairA' || a.act === 'pairB') && q.kind === 'pair'){ claimPair(q, a.act === 'pairA' ? 'a' : 'b', null); }
+      else if (a.act === 'steps' && isTracker(q)){ claimAll(q, null); }
     } catch(e){}
     NOW_AT = 0;
   });
   NOW_AT = 0; snap = null; save(); render();
-  if (n) showToast(`${n} ${n === 1 ? 'tap' : 'taps'} from your widget added`, false);
 }
 
 /* ---- Widgets screen (the button next to the Quests title) ---- */
@@ -3861,14 +4096,43 @@ function wTileHTML(sl, half){
   const orbs = sl.need ? `<span class="wt-orbs">${Array.from({ length:sl.need }, (_, i) => `<i class="${i < sl.hits ? 'on' : ''}${sl.hits >= sl.need ? ' gold' : ''}"></i>`).join('')}</span>` : '';
   const rew = `<span class="wt-rew"><span class="xp-r">${ico('i-gem')}${esc(sl.xp)}</span><span class="gold-r">${ico('i-coin')}${esc(sl.gold)}</span></span>`;
   const icon = `<span class="wt-ic" style="--kc:${sl.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${qbIcons()[sl.kind] || qbIcons().standard}</svg></span>`;
-  const st = `${sl.mult ? `<span class="wt-mult">${esc(sl.mult)}</span>` : ''}<span class="wt-st" style="color:${sl.streakColor}">${esc(sl.streak || '')}</span>`;
-  const sub = sl.sub ? `<span class="wt-sub">${esc(sl.sub)}</span>` : '', bar = sl.pct != null ? `<span class="wt-bar"><i style="width:${sl.pct}%"></i></span>` : '';
+  const st = `${sl.mult ? `<span class="wt-mult" style="color:${sl.streakColor}">${esc(sl.mult)}</span>` : ''}<span class="wt-st" style="color:${sl.streakColor}">${esc(sl.streak || '')}</span>`;
+  const clk = sl.due ? `<span class="wt-due">${CLOCK}${esc(sl.due)}</span>` : '';
+  const sub = sl.sub ? `<span class="wt-sub">${esc(sl.sub)}</span>` : half ? clk : '', bar = sl.pct != null ? `<span class="wt-bar"><i style="width:${sl.pct}%"></i></span>` : '';
   const segs = sl.segs != null ? `<span class="wt-segs">${Array.from({ length:sl.segMax || 7 }, (_, i) => `<i class="${i < sl.segs ? 'on' : ''}"></i>`).join('')}</span>` : '';
-  if (half) return `<div class="wt h${sl.done ? ' done' : ''}"><div class="wt-r1">${icon}<span class="wt-gap"></span>${st}</div><b class="wt-t">${esc(sl.name)}</b>${sub}${bar}<span class="wt-fill"></span>${orbs ? `<div class="wt-r3 orb">${orbs}</div>` : ''}<div class="wt-r3">${(sl.btn || []).length >= 2 ? '' : rew}<span class="wt-gap"></span>${btns}</div></div>`;
+  if (half) return `<div class="wt h${sl.done ? ' done' : ''}${sl.urgent ? ' urgent' : ''}"><div class="wt-r1">${icon}<span class="wt-gap"></span>${st}</div><b class="wt-t">${esc(sl.name)}</b>${sub}${bar}<span class="wt-fill"></span>${orbs ? `<div class="wt-r3 orb">${orbs}</div>` : ''}<div class="wt-r3">${(sl.btn || []).length >= 2 ? '' : rew}<span class="wt-gap"></span>${btns}</div></div>`;
   const pair = sl.pa ? `<div class="wt-pair">${[sl.pa, sl.pb].map(h => `<span class="${h.done ? 'd' : ''}"><b>${h.done ? '●' : '○'}&nbsp; ${esc(h.label)}</b>${h.done ? '' : `<em class="xp-r">${ico('i-gem')}${esc(h.xp)}</em><em class="gold-r">${ico('i-coin')}${esc(h.gold)}</em>`}</span>`).join('')}</div>` : '';
-  return `<div class="wt f${sl.done ? ' done' : ''}"><div class="wt-r1">${icon}<b class="wt-t">${esc(sl.name)}</b>${st}${btns}</div><span class="wt-fill"></span>${sub}${bar}${segs}${pair}<span class="wt-fill"></span><div class="wt-r2">${rew}<span class="wt-note">${esc(sl.note || '')}</span>${orbs}</div></div>`;
+  return `<div class="wt f${sl.done ? ' done' : ''}${sl.urgent ? ' urgent' : ''}"><div class="wt-r1">${icon}<b class="wt-t">${esc(sl.name)}</b>${btns}</div><span class="wt-fill"></span>${sub}${bar}${segs}${pair}<span class="wt-fill"></span><div class="wt-r2">${rew}<span class="wt-note">${esc(sl.note || '')}</span>${orbs}${clk}${st}</div></div>`;
+}
+// 4x4 preview, drawn from the same data as the phone: tab counts and the ring are counted the same way too
+const wTab = {};   // the tab shown in each 4x4 preview
+const wLeft = ms => { const m = Math.max(0, Math.floor(ms / 6e4)), d = Math.floor(m / 1440), h = Math.floor(m % 1440 / 60);
+  return d ? `${d}d ${h}h` : h ? `${h}h ${m % 60}m` : `${m % 60}m`; };
+const wClock = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 3600)}:${pad2(Math.floor(s % 3600 / 60))}:${pad2(s % 60)}`; };
+function wCount(g){ const sl = g.rows.flat().filter(x => x && x.counts); return [sl.filter(x => x.done).length + g.hidDone, sl.length + g.hidN]; }
+function wBoardHTML(w){
+  const b = wBoard(), tabKey = b.groups.some(g => g.key === wTab[w.id]) ? wTab[w.id] : (b.groups[0] || {}).key, g = b.groups.find(x => x.key === tabKey);
+  const tot = b.groups.filter(x => x.count).map(wCount).reduce((a, c) => [a[0] + c[0], a[1] + c[1]], [0, 0]);
+  const r = 15, c = 2 * Math.PI * r, k = tot[1] ? tot[0] / tot[1] : 0, full = tot[1] > 0 && tot[0] >= tot[1];
+  const ring = `<span class="wb-ring"><svg viewBox="0 0 38 38"><circle cx="19" cy="19" r="${r}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/><circle cx="19" cy="19" r="${r}" fill="none" stroke="${full ? '#3fd47a' : '#ff6b1a'}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(c * k).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 19 19)"/></svg><b>${tot[0]}/${tot[1]}</b></span>`;
+  const clock = `<span class="wb-clock">${ico('i-hourglass', '0 0 16 16')}`, st = b.steps;
+  const sum = `<div class="wb-sum">${ring}<div class="wb-st">
+    ${st ? `<div class="wb-l"><span>Steps</span><b>${esc(st.text)}</b></div><span class="wb-bar"><i style="width:${st.pct}%"></i></span>` : ''}
+    <div class="wb-ft"><span class="wb-tm">${clock}${wClock(b.reset - now())}</span>${st ? `<small class="${st.syncWarn ? 'warn' : ''}">${esc(st.sync)}</small>` : ''}</span>
+    ${st && (st.btn || []).length ? `<span class="wt-b cy">CLAIM</span>` : ''}</div></div></div>`;
+  const tabs = `<div class="wb-tabs">${b.groups.map(x => { const n = wCount(x); return `<button type="button" class="${x.key === tabKey ? 'on' : ''}${x.red ? ' red' : ''}" data-wtab="${x.key}" data-wid="${w.id}"><b>${esc(x.tab)}</b>${x.count && n[1] ? `<small>${n[0]}/${n[1]}</small>` : ''}</button>`; }).join('')}</div>`;
+  const leftOf = (ends, time) => ends > now() ? (ends - now() < 864e5 ? wClock(ends - now()) : wLeft(ends - now())) : time || '';
+  const left = g ? leftOf(g.ends, g.time) : '';
+  const gh = g && left ? `<div class="wb-gh"><span>// RESETS IN</span>${g.ends ? `${clock}${left}</span>` : `<span>${esc(left)}</span>`}</div>` : '';
+  const list = g && g.rows.length ? g.rows.map(row => row[0] && row[0].isHdr
+    ? `<div class="wb-gh"><span>${esc(row[0].title)}</span>${leftOf(row[0].ends, row[0].time) ? `<span class="wb-gh-time">${clock}${esc(leftOf(row[0].ends, row[0].time))}</span></span>` : ''}</div>`
+    : `<div class="wv-row${row.length === 2 ? ' two' : ''}">${row.map(sl => `<div class="wv-cell">${sl ? wTileHTML(sl, sl.half) : ''}</div>`).join('')}</div>`).join('')
+    : '<p class="wb-none">No quests yet</p>';
+  return `<div class="wb"><div class="wb-top"><b class="wb-logo">PSYCH</b><span class="wb-lv">Lv ${b.lv}</span><span class="wb-xp"><i style="width:${b.xpPct}%"></i></span><span class="gold-r">${ico('i-coin')}${esc(b.gold)}</span></div>
+    ${sum}${b.groups.length ? tabs : ''}${gh}<div class="wb-list wv">${list}</div></div>`;
 }
 function wPreview(w, edit){
+  if (isBoardW(w)) return wBoardHTML(w);
   const two = wWidth(w) === 2;
   const spot = (id, r, c, half) => { const sl = wSlot(id && byId(id));
     const inner = sl ? wTileHTML(sl, half) : `<div class="wv-add">${edit ? '+' : ''}</div>`;
@@ -3885,7 +4149,7 @@ async function refreshPlaced(){
     wPlaced = set; if (!wEdit && $('#widgets').classList.contains('open')) renderWidgets();
   } catch(e){}
 }
-const wShapeDraw = t => `<span class="w-shape${t.w === 2 ? ' narrow' : ''}">${t.draw.map(r => `<span class="w-srow">${r[0].map(k => `<i class="${k}"></i>`).join('')}</span>`).join('')}</span>`;
+const wShapeDraw = t => `<span class="w-shape${t.w === 2 ? ' narrow' : ''}${t.board ? ' board' : ''}">${t.draw.map(r => `<span class="w-srow">${r[0].map(k => `<i class="${k}"></i>`).join('')}</span>`).join('')}</span>`;
 function renderWidgets(){
   const box = $('#wBody');
   if (!wEdit){
@@ -3901,11 +4165,11 @@ function renderWidgets(){
   }
   const w = wEdit, cur = wShapeOf(w).key, editing = (S.widgets || []).some(x => x.id === w.id);
   box.innerHTML = `<h2>${editing ? 'Edit widget' : 'New widget'}</h2>
-    <p class="help">Pick a size, then tap a spot on the preview to put a quest in it.</p>
+    <p class="help">${isBoardW(w) ? 'Pick a size. 4×4 shows the whole Quests page: a tab for each group, and it scrolls.' : 'Pick a size, then tap a spot on the preview to put a quest in it.'}</p>
     <div class="w-lab">Name</div><input class="w-name" id="wName" maxlength="24" value="${esc(w.name || '')}" placeholder="Morning, Gym…">
     <div class="w-lab">Size</div>
     <div class="w-sizes">${W_SHAPES.map(t => `<button class="w-sc${cur === t.key ? ' on' : ''}" data-wshape="${t.key}">${wShapeDraw(t)}<b>${t.name}</b><small>${t.sub}</small></button>`).join('')}</div>
-    <div class="w-lab">Tap a spot</div><div class="w-prev">${wPreview(w, true)}</div>
+    <div class="w-lab">${isBoardW(w) ? 'Preview' : 'Tap a spot'}</div><div class="w-prev">${wPreview(w, true)}</div>
     <div class="w-acts"><button class="w-place" data-wsave="place">Save &amp; place on home screen</button>
       <button class="w-save" data-wsave="1">Save</button>
       ${editing ? '<button class="w-del" data-wdel="1">Delete</button>' : ''}
@@ -3930,7 +4194,8 @@ function wPickOpen(r, c){
 }
 $('#widgets').addEventListener('click', async e => {
   if (e.target.id === 'widgets' || e.target.closest('[data-wclose]')) return closeWidgets();
-  const t = e.target.closest('[data-wslot], [data-wedit], button'); if (!t) return;
+  const t = e.target.closest('[data-wtab], [data-wslot], [data-wedit], button'); if (!t) return;
+  if (t.dataset.wtab){ wTab[t.dataset.wid] = t.dataset.wtab; return renderWidgets(); }   // switch tabs in a 4x4 preview
   const keepName = () => { const n = $('#wName'); if (n && wEdit) wEdit.name = n.value.trim().slice(0, 24); };
   if (t.dataset.wnew){ wEdit = { id:uid(), name:'', size:'4x1', rows:[[null]] }; return renderWidgets(); }
   if (t.dataset.wedit){ const w = (S.widgets || []).find(x => x.id === t.dataset.wedit); if (w){ wEdit = JSON.parse(JSON.stringify(w)); renderWidgets(); } return; }
@@ -3941,7 +4206,7 @@ $('#widgets').addEventListener('click', async e => {
     S.widgets = (S.widgets || []).filter(x => x.id !== wEdit.id); save(); wEdit = null; return renderWidgets(); }
   if (t.dataset.wsave){
     keepName();
-    if (!wEdit.rows.flat().some(Boolean)){ showToast('Add at least one quest', false); return; }
+    if (!isBoardW(wEdit) && !wEdit.rows.flat().some(Boolean)){ showToast('Add at least one quest', false); return; }
     S.widgets ||= []; const i = S.widgets.findIndex(x => x.id === wEdit.id);
     if (i >= 0) S.widgets[i] = wEdit; else S.widgets.push(wEdit);
     save();
@@ -3966,7 +4231,7 @@ $('#wPick').addEventListener('click', e => {
 });
 $('#wBtn').addEventListener('click', openWidgets);
 // in Arrange the same icon saves and goes back to the quests
-$('#arBtn').addEventListener('click', () => { arranging = !arranging; save(); render(); window.scrollTo({ top:0 }); vibrate(6); });
+$('#arBtn').addEventListener('click', () => { arranging = !arranging; save(); render(); window.scrollTo({ top:0 }); });
 { const P0 = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App;
   if (P0 && P0.addListener){ P0.addListener('resume', () => applyWidgetActions()); P0.addListener('appStateChange', st => { if (st && st.isActive) applyWidgetActions(); }); } }
 setTimeout(() => { applyWidgetActions(); pushWidgets(); }, 600);

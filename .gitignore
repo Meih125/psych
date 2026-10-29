@@ -15,3 +15,8 @@ desktop.ini
 .DS_Store
 # Your personal backup files, if you ever copy one in here
 Psych-*backup*.json
+# One-file preview made by tools/make-preview.js
+Psych-preview.html
+# Notes for AI assistants (kept on this PC, not on GitHub)
+AGENTS.md
+HANDOFF.md

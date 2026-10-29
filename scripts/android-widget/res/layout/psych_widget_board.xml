@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The 4x4 widget: the whole Quests page. Header (level, gold), the summary (done ring, steps, time left today),
+     a tab per board group, and that group's quests in a scrolling list (rows from psych_widget_row.xml, filled by PsychBoardService). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/root" android:layout_width="match_parent" android:layout_height="match_parent"
+  android:orientation="vertical" android:background="@drawable/pw_card" android:paddingStart="10dp" android:paddingEnd="10dp" android:paddingTop="8dp" android:paddingBottom="8dp">
+  <LinearLayout android:id="@+id/b_top" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="2dp" android:paddingBottom="7dp">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="PSYCH" android:textStyle="bold" android:textSize="12sp" android:letterSpacing="0.2" android:textColor="#F2F7F6"/>
+    <TextView android:id="@+id/b_lv" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:textColor="#8FA6A3"/>
+    <ProgressBar android:id="@+id/b_xp" style="?android:attr/progressBarStyleHorizontal" android:layout_width="0dp" android:layout_height="5dp" android:layout_weight="1" android:layout_marginStart="8dp"
+      android:max="100" android:progress="0" android:progressDrawable="@drawable/pw_bar"/>
+    <ImageView android:layout_width="13dp" android:layout_height="13dp" android:layout_marginStart="9dp" android:src="@drawable/pw_coin"/>
+    <TextView android:id="@+id/b_gold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="12sp" android:textColor="#FFC94A"/>
+  </LinearLayout>
+  <ImageView android:layout_width="match_parent" android:layout_height="1dp" android:background="#1AD2F0EC"/>
+  <LinearLayout android:id="@+id/b_sum" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingTop="7dp" android:paddingBottom="7dp" android:paddingStart="2dp">
+    <ImageView android:id="@+id/b_ring" android:layout_width="40dp" android:layout_height="40dp"/>
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="10dp" android:orientation="vertical">
+      <LinearLayout android:id="@+id/b_srow" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Steps" android:fontFamily="monospace" android:textSize="10.5sp" android:textColor="#8FA6A3"/>
+        <TextView android:id="@+id/b_steps" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#F2F7F6" android:maxLines="1"/>
+      </LinearLayout>
+      <ProgressBar android:id="@+id/b_sbar" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="4dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp"
+        android:max="100" android:progress="0" android:progressDrawable="@drawable/pw_bar"/>
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+          <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+            <ImageView android:layout_width="11dp" android:layout_height="11dp" android:src="@drawable/pw_clock"/>
+            <Chronometer android:id="@+id/b_timer" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#FF8A45"/>
+          </LinearLayout>
+          <TextView android:id="@+id/b_sync" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:fontFamily="monospace" android:textSize="10sp" android:textColor="#7F9593" android:maxLines="1"/>
+        </LinearLayout>
+        <TextView android:id="@+id/b_claim" android:layout_width="wrap_content" android:layout_height="wrap_content" android:paddingStart="10dp" android:paddingEnd="10dp" android:paddingTop="4dp" android:paddingBottom="4dp"
+          android:background="@drawable/pw_btn_cy" android:text="CLAIM" android:fontFamily="monospace" android:textStyle="bold" android:textSize="11sp" android:letterSpacing="0.06" android:textColor="#2EE6D6" android:visibility="gone"/>
+      </LinearLayout>
+    </LinearLayout>
+  </LinearLayout>
+  <ImageView android:layout_width="match_parent" android:layout_height="1dp" android:background="#1AD2F0EC"/>
+  <LinearLayout android:id="@+id/b_tabs" android:layout_width="match_parent" android:layout_height="wrap_content" android:baselineAligned="false" android:orientation="horizontal" android:paddingTop="7dp" android:paddingBottom="2dp">
+    <TextView android:id="@+id/b_t0" android:layout_width="0dp" android:layout_height="30dp" android:layout_weight="1" android:paddingTop="2dp" android:paddingBottom="2dp"
+      android:background="@drawable/pw_tab" android:gravity="center" android:maxLines="2" android:ellipsize="end" android:fontFamily="monospace" android:textStyle="bold" android:textSize="9sp" android:textColor="#8FA6A3" android:visibility="gone"/>
+    <TextView android:id="@+id/b_t1" android:layout_width="0dp" android:layout_height="30dp" android:layout_weight="1" android:layout_marginStart="4dp" android:paddingTop="2dp" android:paddingBottom="2dp"
+      android:background="@drawable/pw_tab" android:gravity="center" android:maxLines="2" android:ellipsize="end" android:fontFamily="monospace" android:textStyle="bold" android:textSize="9sp" android:textColor="#8FA6A3" android:visibility="gone"/>
+    <TextView android:id="@+id/b_t2" android:layout_width="0dp" android:layout_height="30dp" android:layout_weight="1" android:layout_marginStart="4dp" android:paddingTop="2dp" android:paddingBottom="2dp"
+      android:background="@drawable/pw_tab" android:gravity="center" android:maxLines="2" android:ellipsize="end" android:fontFamily="monospace" android:textStyle="bold" android:textSize="9sp" android:textColor="#8FA6A3" android:visibility="gone"/>
+    <TextView android:id="@+id/b_t3" android:layout_width="0dp" android:layout_height="30dp" android:layout_weight="1" android:layout_marginStart="4dp" android:paddingTop="2dp" android:paddingBottom="2dp"
+      android:background="@drawable/pw_tab" android:gravity="center" android:maxLines="2" android:ellipsize="end" android:fontFamily="monospace" android:textStyle="bold" android:textSize="9sp" android:textColor="#8FA6A3" android:visibility="gone"/>
+    <TextView android:id="@+id/b_t4" android:layout_width="0dp" android:layout_height="30dp" android:layout_weight="1" android:layout_marginStart="4dp" android:paddingTop="2dp" android:paddingBottom="2dp"
+      android:background="@drawable/pw_tab" android:gravity="center" android:maxLines="2" android:ellipsize="end" android:fontFamily="monospace" android:textStyle="bold" android:textSize="9sp" android:textColor="#8FA6A3" android:visibility="gone"/>
+    <TextView android:id="@+id/b_t5" android:layout_width="0dp" android:layout_height="30dp" android:layout_weight="1" android:layout_marginStart="4dp" android:paddingTop="2dp" android:paddingBottom="2dp"
+      android:background="@drawable/pw_tab" android:gravity="center" android:maxLines="2" android:ellipsize="end" android:fontFamily="monospace" android:textStyle="bold" android:textSize="9sp" android:textColor="#8FA6A3" android:visibility="gone"/>
+  </LinearLayout>
+  <LinearLayout android:id="@+id/b_gh" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="2dp" android:paddingTop="6dp" android:paddingBottom="4dp">
+    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="// RESETS IN" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:letterSpacing="0.12" android:textColor="#8FA6A3"/>
+    <ImageView android:id="@+id/b_gclock" android:layout_width="11dp" android:layout_height="11dp" android:src="@drawable/pw_clock"/>
+    <Chronometer android:id="@+id/b_gchrono" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#FF8A45"/>
+    <TextView android:id="@+id/b_gtime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#FF8A45"/>
+  </LinearLayout>
+  <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="2dp">
+    <ListView android:id="@+id/b_list" android:layout_width="match_parent" android:layout_height="match_parent" android:divider="@null" android:dividerHeight="0dp" android:scrollbarSize="2dp" android:fadingEdgeLength="16dp" android:requiresFadingEdge="vertical"/>
+    <TextView android:id="@+id/b_empty" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="Open Psych to load your quests"
+      android:fontFamily="monospace" android:textSize="11sp" android:textColor="#8FA6A3"/>
+  </FrameLayout>
+</LinearLayout>
