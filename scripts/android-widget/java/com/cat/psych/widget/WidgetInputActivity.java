@@ -40,13 +40,29 @@ public class WidgetInputActivity extends Activity {
         t.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
         box.addView(t);
         final EditText in = new EditText(this);
-        in.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        in.setHint("record".equals(act) ? "Value" + (unit == null || unit.isEmpty() ? "" : " (" + unit + ")") : "Amount");
+        in.setInputType("hits".equals(act) ? InputType.TYPE_CLASS_NUMBER : InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        in.setHint("hits".equals(act) ? "How many?" : "record".equals(act) ? "Value" + (unit == null || unit.isEmpty() ? "" : " (" + unit + ")") : "Amount");
         in.setTextSize(22);
         in.setTextColor(Color.parseColor("#F2F7F6")); in.setHintTextColor(Color.parseColor("#5F7472")); in.setTypeface(android.graphics.Typeface.MONOSPACE);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.topMargin = dp(10);
         box.addView(in, lp);
+        // a big target: quick amounts, tap one to fill the box
+        if ("hits".equals(act)) {
+            LinearLayout chips = new LinearLayout(this);
+            chips.setOrientation(LinearLayout.HORIZONTAL);
+            for (final int n : new int[] { 1, 5, 10, 25 }) {
+                TextView ch = button("+" + n, "#2EE6D6");
+                ch.setPadding(dp(4), dp(8), dp(4), dp(8));
+                ch.setOnClickListener(v -> { in.setText(String.valueOf(n)); in.setSelection(in.getText().length()); });
+                LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+                cp.leftMargin = dp(4); cp.rightMargin = dp(4);
+                chips.addView(ch, cp);
+            }
+            LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            cl.topMargin = dp(10);
+            box.addView(chips, cl);
+        }
         // Tally: show what the amount will pay as you type (rewards come in steps; the leftover carries over)
         final double chunk = getIntent().getDoubleExtra("chunk", 0), carry = getIntent().getDoubleExtra("carry", 0);
         final int xpPer = getIntent().getIntExtra("xpPer", 0), goldPer = getIntent().getIntExtra("goldPer", 0);
@@ -87,7 +103,7 @@ public class WidgetInputActivity extends Activity {
             try { val = Double.parseDouble(in.getText().toString().replace(',', '.').trim()); } catch (Exception e) { val = 0; }
             if (!(val > 0) || val > 1e7) { in.setError("Enter a number above 0"); return; }
             PsychWidgetProvider.handleTap(this, qid, act, val);
-            PsychWidgetProvider.refreshAll(this);
+            PsychWidgetProvider.refreshAll(this, true);
             finish();
         });
     }

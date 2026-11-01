@@ -50,14 +50,19 @@
       android:background="@drawable/pw_tab" android:gravity="center" android:maxLines="2" android:ellipsize="end" android:fontFamily="monospace" android:textStyle="bold" android:textSize="9sp" android:textColor="#8FA6A3" android:visibility="gone"/>
   </LinearLayout>
   <LinearLayout android:id="@+id/b_gh" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="2dp" android:paddingTop="6dp" android:paddingBottom="4dp">
-    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="// RESETS IN" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:letterSpacing="0.12" android:textColor="#8FA6A3"/>
-    <ImageView android:id="@+id/b_gclock" android:layout_width="11dp" android:layout_height="11dp" android:src="@drawable/pw_clock"/>
-    <Chronometer android:id="@+id/b_gchrono" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#FF8A45"/>
-    <TextView android:id="@+id/b_gtime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#FF8A45"/>
+    <TextView android:id="@+id/b_gl" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="// RESETS IN" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10sp" android:letterSpacing="0.12" android:textColor="#8FA6A3"/>
+    
+    <TextView android:id="@+id/b_gtime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:drawableStart="@drawable/pw_clock" android:drawablePadding="4dp" android:gravity="center_vertical" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#FF8A45"/>
   </LinearLayout>
   <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="2dp">
-    <ListView android:id="@+id/b_list" android:layout_width="match_parent" android:layout_height="match_parent" android:divider="@null" android:dividerHeight="0dp" android:scrollbarSize="2dp" android:fadingEdgeLength="16dp" android:requiresFadingEdge="vertical"/>
+    <LinearLayout android:id="@+id/b_body" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical"/>
     <TextView android:id="@+id/b_empty" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="Open Psych to load your quests"
       android:fontFamily="monospace" android:textSize="11sp" android:textColor="#8FA6A3"/>
   </FrameLayout>
+  <!-- page turner: shown only when the tab needs more than one page -->
+  <LinearLayout android:id="@+id/b_pager" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:paddingTop="6dp" android:visibility="gone">
+    <TextView android:id="@+id/b_prev" android:layout_width="46dp" android:layout_height="28dp" android:background="@drawable/pw_tab_on" android:gravity="center" android:text="‹" android:fontFamily="monospace" android:textStyle="bold" android:textSize="18sp" android:textColor="#2EE6D6"/>
+    <TextView android:id="@+id/b_dots" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:fontFamily="monospace" android:textSize="12sp" android:textColor="#2A4546"/>
+    <TextView android:id="@+id/b_next" android:layout_width="46dp" android:layout_height="28dp" android:background="@drawable/pw_tab_on" android:gravity="center" android:text="›" android:fontFamily="monospace" android:textStyle="bold" android:textSize="18sp" android:textColor="#2EE6D6"/>
+  </LinearLayout>
 </LinearLayout>

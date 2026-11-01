@@ -16,7 +16,8 @@ copyDir(path.join(src, 'res'), path.join(main, 'res'));
 // files from earlier versions of the widget that are no longer used
 ['res/layout/psych_widget_4x1.xml', 'res/layout/psych_widget_4x2.xml', 'res/layout/psych_widget_2x2.xml',
  'res/drawable/pw_bg.xml', 'res/drawable/pw_half.xml', 'res/drawable/pw_logo.xml', 'res/drawable/pw_card.xml',
- 'res/drawable/pw_btn_or.xml', 'res/drawable/pw_btn_ok.xml', 'res/drawable/pw_btn_red.xml', 'res/drawable/pw_btn_cy.xml'].forEach(f => { for (const base of [main, src]) { try { fs.unlinkSync(path.join(base, f)); } catch(e){} } });   // after copying, so old copies in scripts/ can't come back
+ 'res/drawable/pw_btn_or.xml', 'res/drawable/pw_btn_ok.xml', 'res/drawable/pw_btn_red.xml', 'res/drawable/pw_btn_cy.xml',
+ 'java/com/cat/psych/widget/PsychBoardService.java', 'java/com/cat/psych/widget/WidgetTapActivity.java'].forEach(f => { for (const base of [main, src]) { try { fs.unlinkSync(path.join(base, f)); } catch(e){} } });   // after copying, so old copies in scripts/ can't come back
 
 const mf = path.join(main, 'AndroidManifest.xml');
 let s = fs.readFileSync(mf, 'utf8');
@@ -33,6 +34,11 @@ strip('receiver', 'Widget[^"]*', false);
 strip('activity', 'WidgetInputActivity', true);
 strip('activity', 'WidgetTapActivity', true);
 strip('service', 'PsychBoardService', true);
+strip('service', 'PsychStepsJob', true);
+// the background step sync's permissions (added once, before <application>; an earlier copy, however laid out, is taken out first)
+const PERMS = ['android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND', 'android.permission.RECEIVE_BOOT_COMPLETED'];
+PERMS.forEach(n => { s = s.replace(new RegExp('\\s*<uses-permission\\s+[^>]*?android:name="' + n.replace(/\./g, '\\.') + '"[^>]*?\\/>', 'g'), ''); });
+s = s.replace(/(\s*)<application\b/, (m, sp) => PERMS.map(n => `${sp}<uses-permission android:name="${n}" />`).join('') + m);
 {
   const rec = sz => `
         <receiver android:name=".widget.Widget${sz}" android:exported="false" android:label="@string/pw_name_${sz}">
@@ -42,11 +48,10 @@ strip('service', 'PsychBoardService', true);
   // the little "type an amount" box a Tally / Record widget opens over the home screen
   const input = `
         <activity android:name=".widget.WidgetInputActivity" android:exported="false" android:excludeFromRecents="true" android:taskAffinity="" android:noHistory="true" android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar" android:windowSoftInputMode="stateVisible" />`;
-  // the 4x4: its scrolling list is filled by a service, and taps in the list go through an invisible activity
-  const board = `
-        <service android:name=".widget.PsychBoardService" android:exported="false" android:permission="android.permission.BIND_REMOTEVIEWS" />
-        <activity android:name=".widget.WidgetTapActivity" android:exported="false" android:excludeFromRecents="true" android:taskAffinity="" android:noHistory="true" android:theme="@android:style/Theme.NoDisplay" />`;
-  s = s.replace('</application>', ['2x1', '4x1', '2x2', '4x2', '4x4'].map(rec).join('') + input + board + '\n    </application>');
+  // background step sync: Android runs this job about every 15 minutes (Settings > Step sync > Sync in the background)
+  const job = `
+        <service android:name=".widget.PsychStepsJob" android:exported="false" android:permission="android.permission.BIND_JOB_SERVICE" />`;
+  s = s.replace('</application>', ['2x1', '4x1', '2x2', '4x2', '4x4'].map(rec).join('') + input + job + '\n    </application>');
   fs.writeFileSync(mf, s);
   console.log(before.includes('.widget.Widget4x1') ? 'AndroidManifest.xml: widget receivers updated' : 'AndroidManifest.xml: widget receivers added');
 }

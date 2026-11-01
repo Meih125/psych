@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A full-size quest on the 4x4 as one slim line: icon, name, streak, rewards, button. The bounty's time left sits on a line above. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/s0" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingBottom="5dp">
+  <TextView android:id="@+id/s0_due" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:layout_marginBottom="3dp" android:drawableStart="@drawable/pw_clock" android:drawablePadding="4dp"
+    android:gravity="center_vertical" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:textColor="#FF8A45" android:visibility="gone"/>
+  <LinearLayout android:id="@+id/s0_card" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="40dp" android:orientation="horizontal" android:gravity="center_vertical"
+    android:paddingStart="9dp" android:paddingEnd="7dp" android:paddingTop="6dp" android:paddingBottom="6dp" android:background="@drawable/pw_card">
+    <ImageView android:id="@+id/s0_ic" android:layout_width="26dp" android:layout_height="26dp" android:padding="5dp" android:background="@drawable/pw_icbox" android:src="@drawable/pw_k_standard"/>
+    <TextView android:id="@+id/s0_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="9dp" android:maxLines="1" android:ellipsize="end"
+      android:fontFamily="monospace" android:textStyle="bold" android:textSize="13sp" android:textColor="#F2F7F6"/>
+    <TextView android:id="@+id/s0_streak" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="5dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="10.5sp" android:maxLines="1" android:visibility="gone"/>
+    <ImageView android:id="@+id/s0_gi" android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="7dp" android:src="@drawable/pw_gem"/>
+    <TextView android:id="@+id/s0_xp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="11sp" android:textColor="#8FD9CF"/>
+    <ImageView android:id="@+id/s0_ci" android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="6dp" android:src="@drawable/pw_coin"/>
+    <TextView android:id="@+id/s0_gold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:fontFamily="monospace" android:textStyle="bold" android:textSize="11sp" android:textColor="#FFC94A"/>
+    <TextView android:id="@+id/s0_b" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:paddingStart="4dp" android:paddingEnd="4dp" android:paddingTop="4dp" android:paddingBottom="4dp"
+      android:fontFamily="monospace" android:textStyle="bold" android:textSize="11sp" android:letterSpacing="0.08" android:maxLines="1" android:textColor="#FF8A45"/>
+  </LinearLayout>
+</LinearLayout>

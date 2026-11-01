@@ -1,13 +1,13 @@
 {
   "name": "psych",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Psych: a gamified self-tracking app",
   "scripts": {
-    "setup": "cap add android && node scripts/android-setup.js && node scripts/android-widget.js && node scripts/android-version.js && capacitor-assets generate --android && cap sync android",
+    "setup": "cap add android && node scripts/android-setup.js && node scripts/android-widget.js && node scripts/android-version.js && capacitor-assets generate --android && node scripts/android-icon.js && cap sync android",
     "sync": "node scripts/android-version.js && cap sync android",
     "open": "cap open android",
-    "icons": "capacitor-assets generate --android",
+    "icons": "capacitor-assets generate --android && node scripts/android-icon.js",
     "apk": "cap sync android && cd android && gradlew.bat assembleDebug",
     "widget": "node scripts/android-widget.js"
   },

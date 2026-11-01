@@ -1,5 +1,5 @@
 /* Psych styles. Sections run top to bottom; later sections refine earlier ones (same selector later = wins). */
-:root{--bg:#071012;--bronze:#ff6b1a;--bronze-hi:#ffb07a;--bronze-lo:rgba(210,240,236,.18);--bone:#eef4f3;--bone-dim:#9db2b0;--bone-faint:#5f7472;--blood:#d92d20;--blood-hi:#ff3b30;--steel:#8fd9cf;--f-title:'Montserrat',system-ui,sans-serif;--f-italic:'Inter',system-ui,sans-serif;--f-body:'Inter',system-ui,sans-serif;--f-num:'JetBrains Mono',ui-monospace,monospace;--band:none}
+:root{color-scheme:dark;--bg:#071012;--bronze:#ff6b1a;--bronze-hi:#ffb07a;--bronze-lo:rgba(210,240,236,.18);--bone:#eef4f3;--bone-dim:#9db2b0;--bone-faint:#5f7472;--blood:#d92d20;--blood-hi:#ff3b30;--steel:#8fd9cf;--f-title:'Montserrat',system-ui,sans-serif;--f-italic:'Inter',system-ui,sans-serif;--f-body:'Inter',system-ui,sans-serif;--f-num:'JetBrains Mono',ui-monospace,monospace;--band:none}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 /* themed scrollbars (thin bronze rail, no default grey bar) */
 html{scrollbar-width:thin}
@@ -18,12 +18,12 @@ button{cursor:pointer}
 .bg::after{content:'';position:absolute;inset:0}
 .app{max-width:560px;margin:0 auto}
 /* ---------- Header (full width; content centred) ---------- */
-.top{position:sticky;top:0;padding:calc(10px + env(safe-area-inset-top)) 16px 12px}
+.top{position:sticky;top:0;padding:calc(10px + var(--safe-area-inset-top,env(safe-area-inset-top,0px))) 16px 12px}
 .top::after{content:'';position:absolute;left:0;right:0;bottom:-9px;height:9px;background:var(--band);border-top:1px solid var(--bronze-lo);border-bottom:1px solid #000;box-shadow:0 6px 16px rgba(0,0,0,.85)}
 .top-in{position:relative;max-width:528px;margin:0 auto}
 .brand{line-height:1}
 .flourish{display:block;width:180px;height:18px;margin:2px auto 0}
-.gear{position:absolute;right:-4px;width:36px;height:36px;display:grid;place-items:center;background:none;border:0;z-index:2}
+.gear{right:-4px;width:36px;height:36px;display:grid;place-items:center;background:none;border:0;z-index:2}
 .gear svg{width:22px;height:22px}
 .stats{position:relative;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
 .lvl{width:50px;height:58px;margin:-6px -2px -4px -4px;cursor:pointer}
@@ -212,7 +212,7 @@ button{cursor:pointer}
 .info-foot{margin-top:7px;font-family:var(--f-italic);font-style:italic;font-size:12.5px;color:var(--bone-faint);line-height:1.3}
 
 /* ---------- Pack opening ---------- */
-.pack{position:fixed;inset:0;z-index:32;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px 14px calc(20px + env(safe-area-inset-bottom));overflow:hidden;overflow:clip}
+.pack{position:fixed;inset:0;z-index:32;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px 14px calc(20px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));overflow:hidden;overflow:clip}
 .pack.open{display:flex;animation:fadeIn .3s ease-out}
 @keyframes fadeIn{from{opacity:0}}
 .pk-sub{position:relative;font-family:var(--f-italic);font-style:italic;font-size:15px;color:var(--bone-dim);min-height:20px;text-align:center}
@@ -286,7 +286,7 @@ button{cursor:pointer}
 /* UR and SSR only: art-coloured gradient frame (the card's own edge colours, with a soft glow in its middle colour) */
 .ct.edge{padding:2px;background:linear-gradient(135deg,var(--e1),var(--e2) 50%,var(--e3));box-shadow:0 0 7px -1px var(--e2),0 3px 8px rgba(0,0,0,.7)}
 .ct.edge img{border-radius:3px}
-.pz-strip{cursor:grab;user-select:none;-webkit-user-select:none;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.pz-strip{user-select:none;-webkit-user-select:none;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
 .pz-strip::-webkit-scrollbar{display:none}
 .pz-track{display:flex;width:max-content}
 .pz{width:150px;aspect-ratio:480/672;flex:none}
@@ -317,7 +317,7 @@ button{cursor:pointer}
 .sheet{border-left:0;border-right:0;border-radius:0}
 }
 .modal.open{display:flex}
-.sheet{position:relative;width:100%;max-width:560px;max-height:92vh;overflow:auto;color:var(--bone);padding:22px 18px calc(20px + env(safe-area-inset-bottom));animation:up .25s ease-out;scrollbar-width:thin}
+.sheet{position:relative;width:100%;max-width:560px;max-height:92vh;overflow:auto;color:var(--bone);padding:22px 18px calc(20px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));animation:up .25s ease-out;scrollbar-width:thin}
 @keyframes up{from{transform:translateY(40px);opacity:0}}
 .sheet h2{margin:0}
 .sheet .meta-line{font-family:var(--f-italic);font-style:italic;color:var(--bone-dim);margin:2px 0 0}
@@ -701,7 +701,7 @@ body{font-family:var(--f-body);background:#071012}
 .placeholder h3{color:#f2f7f6}
 .placeholder p{font-family:var(--f-body)}
 /* ---------- Floating glass tab bar, active tab = orange ---------- */
-.tabs{left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto;padding:5px;box-shadow:0 12px 30px rgba(0,0,0,.5)}
+.tabs{left:10px;right:10px;bottom:calc(10px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));max-width:560px;margin:0 auto;padding:5px;box-shadow:0 12px 30px rgba(0,0,0,.5)}
 .tabs::before{display:none}
 .tabs-inner{gap:4px}
 .tab{font-weight:600;color:#8aa09e;transition:color .2s,background .2s}
@@ -709,7 +709,7 @@ body{font-family:var(--f-body);background:#071012}
 .tab.on{color:#ff8a45;box-shadow:inset 0 0 0 1px rgba(var(--acc-rgb),.55),0 0 14px rgba(var(--acc-rgb),.12)}
 .tab.on svg{filter:drop-shadow(0 0 5px rgba(var(--acc-rgb),.5))}
 .badge{background:var(--red);border:0;color:#fff;font-family:var(--f-num);font-weight:700;box-shadow:0 0 10px rgba(var(--red-rgb),.7)}
-.app{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
+.app{padding-bottom:calc(110px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))}
 /* ---------- Sheets, dialogs, toast ---------- */
 .modal{background:rgba(2,6,7,.6)}
 .sheet{background:rgba(14,26,28,.94);border:1px solid var(--line-hi);border-bottom:0;border-radius:10px 10px 0 0;box-shadow:0 -14px 40px rgba(0,0,0,.6);scrollbar-color:rgba(200,230,225,.25) transparent}
@@ -723,7 +723,6 @@ body{font-family:var(--f-body);background:#071012}
 .toggle span{font-size:14px}
 .toggle i{border-radius:999px;background:rgba(255,255,255,.1);border:1px solid var(--line);box-shadow:none}
 .toggle i::after{background:#7f9593}
-.toggle input:checked + i{box-shadow:0 0 12px rgba(var(--acc-rgb),.5)}
 
 .group{border:1px solid var(--line)}
 .group-title{font-weight:600}
@@ -743,7 +742,7 @@ body{font-family:var(--f-body);background:#071012}
 .dialog{border:1px solid var(--line-hi);box-shadow:0 20px 50px rgba(0,0,0,.6)}
 .dialog h3{font-weight:600;color:#f2f7f6}
 .dialog p{font-family:var(--f-body);font-size:14px}
-.toast{border:1px solid var(--line-hi);box-shadow:0 12px 30px rgba(0,0,0,.5);bottom:calc(98px + env(safe-area-inset-bottom))}
+.toast{border:1px solid var(--line-hi);box-shadow:0 12px 30px rgba(0,0,0,.5);bottom:calc(98px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))}
 .toast button{border:1px solid rgba(var(--acc-rgb),.6);color:var(--acc-hi);font-weight:600;font-size:12px}
 /* ---------- Level up: warm bloom ---------- */
 .levelup{background:radial-gradient(circle,rgba(30,58,58,.94),rgba(12,22,24,.96) 42%,rgba(4,9,10,.97) 70%)}
@@ -811,17 +810,17 @@ body{font-family:var(--f-body);background:#071012}
 /* ---------- Deck tab: single deck stack ---------- */
 .inv{display:flex;flex-direction:column;align-items:center;margin:8px 14px 0;padding-bottom:10px;min-height:calc(100dvh - 300px);touch-action:none}
 /* fills the screen down to the tab bar: swipe anywhere */
-.inv-name.in{animation:invName .3s ease-out}
+.inv-name.in{animation:invName .42s ease-out}
 @keyframes invName{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 /* swipes here belong to the deck, not the page */
 .inv-dots{display:flex;gap:6px;justify-content:center;margin:14px 0 0}
 .inv-dots button{width:7px;height:7px;padding:0;border:0;border-radius:4px;background:rgba(210,240,236,.22);transition:width .2s,background .2s}
 .inv-dots button.on{width:18px;background:var(--dot,#ff6b1a);box-shadow:0 0 8px var(--dot,#ff6b1a)}
 .inv.th-mlbb .inv-dots button.on{--dot:#7c5cff}
-.inv-stack.in-r{animation:invInR .32s cubic-bezier(.2,.9,.3,1.1),deckFloat 4.5s ease-in-out .32s infinite}
-.inv-stack.in-l{animation:invInL .32s cubic-bezier(.2,.9,.3,1.1),deckFloat 4.5s ease-in-out .32s infinite}
-@keyframes invInR{from{transform:translateX(120px) rotate(8deg);opacity:0}to{transform:none;opacity:1}}
-@keyframes invInL{from{transform:translateX(-120px) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
+.inv-stack.in-r{animation:invInR .46s cubic-bezier(.22,.8,.3,1),deckFloat 4.5s ease-in-out .46s infinite}
+.inv-stack.in-l{animation:invInL .46s cubic-bezier(.22,.8,.3,1),deckFloat 4.5s ease-in-out .46s infinite}
+@keyframes invInR{from{transform:translateX(90px) rotate(6deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes invInL{from{transform:translateX(-90px) rotate(-6deg);opacity:0}to{transform:none;opacity:1}}
 /* deck arrows: tall thin teal chevrons, the whole side strip is the tap area */
 .inv-stack{cursor:pointer}
 .inv-stack .inv-layer:not(.top){pointer-events:none}
@@ -875,7 +874,7 @@ body{font-family:var(--f-body);background:#071012}
 .card.qb-t:active{transform:scale(.98)}
 .card.qb-t h4{margin:0;padding-right:44px;font:700 14.5px var(--f-title);color:#f2f7f6;line-height:1.25;overflow-wrap:anywhere}
 .card.qb-t.done{filter:none}
-.card.qb-t.done > *:not(.qb-badge):not(.qb-foot):not(.qb-top):not(.qb-tr):not(.qb-strk){opacity:.5}
+.card.qb-t.done > *:not(.qb-badge):not(.qb-foot):not(.qb-top):not(.qb-tr):not(.qb-strk):not(.qb-hf){opacity:.5}
 /* a finished quest's streak stays bright: keeping it going is the point */
 .card.qb-t.done .qb-top .qb-ic{opacity:.5}
 .card.qb-t.done .cy-streak,.card.qb-t.done .cy-streak *{opacity:1 !important;filter:none !important}
@@ -885,38 +884,27 @@ body{font-family:var(--f-body);background:#071012}
 .qb-ic.k-steps{background:rgba(46,230,214,.12);color:#2ee6d6}
 .qb-ic.k-scaling{background:rgba(255,90,90,.12);color:#ff7a7a}
 .qb-ic.k-tally{background:rgba(255,201,74,.12);color:#ffc94a}
-.qb-ic.k-record{background:rgba(255,100,150,.12);color:#ff8fb1}
+.qb-ic.k-record{background:rgba(169,139,255,.14);color:#a98bff}
 .qb-ic.k-pair{background:rgba(77,163,255,.14);color:#5cabff}
 .qb-badge{position:absolute;right:10px;top:10px;padding:3px 7px;border:1px solid rgba(var(--acc-rgb),.5);font:700 10px var(--f-title);letter-spacing:.8px;color:#ff8a45}
-.qb-badge.ok{color:#3fd47a;border-color:rgba(63,212,122,.5)}
-.qb-badge.cy{color:#2ee6d6;border-color:rgba(46,230,214,.5);box-shadow:0 0 8px rgba(46,230,214,.25)}
+.qb-badge.ok{border-color:rgba(63,212,122,.5)}
+.qb-badge.cy{border-color:rgba(46,230,214,.5);box-shadow:0 0 8px rgba(46,230,214,.25)}
 .qb-note{margin:0;font:12px/1.35 var(--f-body);color:#8fa5a3}
 .qb-sub{font:500 11px var(--f-num);color:#7f9593}
 .qb-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;flex-wrap:wrap}
 .qb-foot:empty{display:none}
-.qb-rew{display:flex;gap:9px;font:700 12.5px var(--f-num)}
+.qb-rew{display:flex;flex-wrap:wrap;gap:2px 9px;font:700 12.5px var(--f-num)}
 .qb-rew span{display:inline-flex;align-items:center;gap:3px}
 .qb-rew svg{width:14px;height:14px}
 .qb-rew.dim{opacity:.5}
 .qb-foot .cy-count{position:static;transform:none}
-.qb-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.qb-half{position:relative;display:flex;flex-direction:column;gap:6px;padding:9px;border-radius:9px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
-.qb-half .t{padding-right:20px;font:600 12.5px var(--f-title);color:#e9f2f0}
-.qb-half .hk{position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(var(--acc-rgb),.7)}
 
-.qb-half.done .t{text-decoration:line-through}
-.qb-bonus{grid-column:1/3;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;border:1px dashed rgba(46,230,214,.45);background:rgba(46,230,214,.06)}
-.qb-bonus .lk{display:flex;gap:4px}
-.qb-bonus .lk i{width:14px;height:14px;border-radius:50%;border:1.5px solid #2ee6d6}
-.qb-bonus .lk i.on{background:#2ee6d6}
-.qb-bonus b{font:700 12px var(--f-title);color:#7fe3d8}
-.qb-bonus.ready{border-style:solid;border-color:#2ee6d6;cursor:pointer}
-.qb-bonus.got{opacity:.55}
-.qb-pips{display:flex;gap:4px}
-.qb-pips i{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.08)}
-.qb-pips i.on{background:#ff5a5a;box-shadow:0 0 6px rgba(255,90,90,.5)}
+.qb-pips{display:flex}
+.qb-pips i{flex:1;height:4px;background:rgba(255,255,255,.08)}
+.qb-pips i.on{background:#ff5a5a}
 .qb-pips em{font:700 10px var(--f-num);color:#ff8f8f;font-style:normal}
-.qb-next{font:600 11px var(--f-num);color:#ff8f8f}
+.qb-next{font:600 11px var(--f-num);color:#8fa6a3}   /* quiet; the +x% inside keeps Recurring's own colour */
+.qb-next b{font-weight:700;color:#ff7a7a}
 .qb-tot{display:flex;justify-content:space-between;gap:8px;font:600 11px var(--f-num);color:#7f9593}
 .qb-tot b{color:#f2f7f6}
 .qb-in{display:flex;align-items:center;gap:6px;margin:0 !important}
@@ -956,7 +944,7 @@ body{font-family:var(--f-body);background:#071012}
 .top .hd-row{display:flex;align-items:center;justify-content:space-between}
 .top .hd-right{display:flex;align-items:center;gap:8px}
 .top .gear{position:static !important;top:auto}
-.top .purse{padding:0 !important;background:none !important;border:0 !important;font-size:16px}
+.top .purse{padding:0 !important;background:none !important;border:0 !important;font-size:16px;min-width:0;justify-content:flex-end}
 .top .purse svg{width:20px;height:20px}
 .top .stats{grid-template-columns:auto 1fr !important;gap:12px;margin-top:8px}
 .top .xplabel span{font:700 10.5px var(--f-title) !important;letter-spacing:1.4px !important;color:#2ee6d6 !important;text-transform:uppercase}
@@ -1099,7 +1087,6 @@ body{font-family:var(--f-body);background:#071012}
 .sh-segs i{flex:1;min-height:2px;background:rgba(255,255,255,.06);clip-path:polygon(2px 0,100% 0,calc(100% - 2px) 100%,0 100%)}
 .sh-segs i.on{background:#2ee6d6}
 .sh-segs i.gold{background:#ffc94a;box-shadow:0 0 6px #ffc94a}
-.sh-segs i.green{background:#3fd47a}
 .sh-segs i.fut{background:rgba(255,255,255,.12)}
 .sh-segs i.goal{background:#ff3b30 !important;box-shadow:0 0 6px rgba(255,59,48,.6) !important}
 .sh-d{text-align:center;font-size:10px;color:#5f7472}
@@ -1147,7 +1134,7 @@ body{font-family:var(--f-body);background:#071012}
 .open-all.th-tarot{--acr:255,107,26}
 .open-all.th-mlbb{--acr:124,92,255}
 /* ---- Open all ---- */
-.oa{position:absolute;inset:0;overflow-y:auto;padding:calc(18px + env(safe-area-inset-top)) 14px calc(20px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+.oa{position:absolute;inset:0;overflow-y:auto;padding:calc(18px + var(--safe-area-inset-top,env(safe-area-inset-top,0px))) 14px calc(20px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));-webkit-overflow-scrolling:touch}
 .oa-h{display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:14px}
 .oa-h b{font:700 18px var(--f-title);color:#fff}
 .oa-h span{font:600 12px var(--f-num);color:#7f9593}
@@ -1164,7 +1151,7 @@ body{font-family:var(--f-body);background:#071012}
 .oa-c.flipped .oa-f{box-shadow:0 0 14px 3px rgba(var(--rc),.6)}
 .oa-c.flipped.r-common .oa-f{box-shadow:0 6px 14px rgba(0,0,0,.7)}
 .oa-tag{position:absolute;left:0;right:0;top:-8px;z-index:3;text-align:center;font:800 11px var(--f-title);letter-spacing:1px;color:#ffe08a;text-shadow:0 0 6px #000}
-.oa2{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;padding:calc(18px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom))}
+.oa2{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;padding:calc(18px + var(--safe-area-inset-top,env(safe-area-inset-top,0px))) 14px calc(16px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))}
 .oa-stage{touch-action:none;position:relative;width:min(56vw,230px);aspect-ratio:480/672;margin:auto auto 0;flex:none}
 .oa-stage .oa-c{position:absolute;inset:0;transition:transform .35s cubic-bezier(.2,.9,.3,1),opacity .35s,filter .35s;transform-origin:left center;animation:none}
 .oa-stage .oa-c:not(.front) .oa-b{box-shadow:0 8px 18px rgba(0,0,0,.7) !important;animation:none}
@@ -1266,10 +1253,9 @@ body{font-family:var(--f-body);background:#071012}
 .qb-gh b::before{content:'// ';color:#5f7472}
 .card.qb-t{border-radius:4px;clip-path:var(--cut10)}
 .card.qb-t h4{font-family:var(--f-num);font-weight:700;font-size:13.5px;letter-spacing:-.1px}
-.qb-sub,.qb-note,.qb-half .t,.qb-bonus b{font-family:var(--f-num)}
+.qb-sub,.qb-note{font-family:var(--f-num)}
 .qb-badge{border-radius:2px;font-family:var(--f-num)}
 .qb-ic{border-radius:4px}
-.qb-half,.qb-bonus{border-radius:3px}
 .board-actions .post{border-radius:3px;font-family:var(--f-num);letter-spacing:.5px;clip-path:var(--cut7)}
 /* Shop */
 .sh-h{font-family:var(--f-num);font-weight:600}
@@ -1334,12 +1320,10 @@ body{font-family:var(--f-body);background:#071012}
 .btn-buy{background:rgba(var(--acr),.1) !important;border:1.5px solid rgba(var(--acr),.8) !important;color:#fff !important;box-shadow:inset 0 0 12px rgba(var(--acr),.2) !important;border-radius:3px !important;clip-path:var(--cut7)}
 /* every small button/tag: outlined with cut corners, same as the buy buttons */
 :root{--cut5:polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))}
-.qb-badge,.cy-streak em,.qb-sclaim,button.claim,.set-claim,.qb-half,.qb-bonus{clip-path:var(--cut5);border-radius:2px !important}
+.qb-badge,.cy-streak em,.qb-sclaim,button.claim,.set-claim{clip-path:var(--cut5);border-radius:2px !important}
 .qb-badge,.cy-streak em{border-width:1.5px !important}
 .qb-sclaim,button.claim,.set-claim{border-width:1.5px !important;box-shadow:inset 0 0 8px rgba(255,255,255,.04)}
 .qb-sclaim{background:rgba(46,230,214,.07) !important}
-.qb-bonus.ready{background:rgba(46,230,214,.08);border-width:1.5px;box-shadow:inset 0 0 12px rgba(46,230,214,.18);animation:none}
-.qb-half{border-width:1.5px !important}
 /* pack opening: set name as a small HUD tag in the rarity colour, hint in the mono font */
 .pk-hint,.oa-hint{font-family:var(--f-num) !important;font-size:12px !important;letter-spacing:1px !important;text-transform:uppercase}
 #form .row2 > div > label:not(.cy-ico),#form .row3f > div > label:not(.cy-ico){font-family:var(--f-num) !important;font-size:11.5px !important;letter-spacing:.8px !important;text-transform:uppercase;color:#9db2b0 !important}
@@ -1358,7 +1342,7 @@ body{font-family:var(--f-body);background:#071012}
 /* card set name when opening a pack: Lora italic in the rarity colour */
 .pk-set{font:italic 700 14.5px 'Lora',Georgia,serif !important;letter-spacing:.3px !important;color:rgb(var(--rc)) !important;text-shadow:0 0 8px rgba(var(--rc),.55),0 1px 2px #000 !important}
 /* ===== Performance: only transform / opacity animate on repeat (they run on the GPU, no repaint) ===== */
-.top{background:rgba(8,16,18,.96)}
+.top{background:#08100f}   /* solid: tiles scrolling under it used to show through */
 .tabs{background:rgba(6,14,16,.97) !important}
 .toast{background:rgba(6,14,16,.97)}
 /* pulsing glow behind unrevealed rare backs: a glow layer fades in and out instead of animating the shadow */
@@ -1486,30 +1470,14 @@ body{font-family:var(--f-body);background:#071012}
 .inv-layer.top img{display:block;width:100%;height:100%;object-fit:cover;border-radius:7px}
 .inv-layer.top.dim{padding:0;background:none;box-shadow:0 12px 28px rgba(0,0,0,.55) !important}
 .inv-layer.top.dim img{border-radius:10px}
-/* streak badge */
-.cy-streak{display:inline-flex;align-items:center;gap:0}
-.cy-streak em{margin-right:6px}
-.cy-streak b{margin-right:1px}
-.cy-streak em{font-style:normal;font-family:var(--f-num);font-weight:700;font-size:10px;color:#ffc94a;padding:1px 5px;border-radius:3px;border:1px solid rgba(255,201,74,.35);background:rgba(255,201,74,.07)}
-
-/* streak colour by length: 3 days yellow-orange, 10 orange, 30 red-pink, 100 magenta, 200 purple (number and × together) */
-.cy-streak{color:#7f9593}
-.cy-streak b{color:inherit !important}
-.cy-streak.t0{color:#f2f7f6}
-.cy-streak em{text-shadow:none}
-/* streak colours follow the rarity colours: 3+ C green, 10+ R blue, 30+ SR purple, 100+ SSR orange, 200+ UR red */
-.cy-streak.t1{color:#3fd47a;text-shadow:0 0 8px rgba(63,212,122,.45)}
-.cy-streak.t2{color:#1ea4e6;text-shadow:0 0 8px rgba(30,164,230,.5)}
-.cy-streak.t3{color:#b46ae0;text-shadow:0 0 9px rgba(180,106,224,.5)}
-.cy-streak.t4{color:#f08a24;text-shadow:0 0 9px rgba(240,138,36,.5)}
-.cy-streak.t5{color:#ff3b3b;text-shadow:0 0 10px rgba(255,59,59,.55)}
-/* the +% bonus in its streak's colour */
-.cy-streak.t0 em{color:#f2f7f6;border-color:rgba(242,247,246,.55);background:rgba(242,247,246,.12)}
-.cy-streak.t1 em{color:#3fd47a;border-color:rgba(63,212,122,.55);background:rgba(63,212,122,.12)}
-.cy-streak.t2 em{color:#1ea4e6;border-color:rgba(30,164,230,.55);background:rgba(30,164,230,.12)}
-.cy-streak.t3 em{color:#b46ae0;border-color:rgba(180,106,224,.55);background:rgba(180,106,224,.12)}
-.cy-streak.t4 em{color:#f08a24;border-color:rgba(240,138,36,.55);background:rgba(240,138,36,.12)}
-.cy-streak.t5 em{color:#ff3b3b;border-color:rgba(255,59,59,.55);background:rgba(255,59,59,.12)}
+/* streak (top right of a tile): the number in near-white, the reward bonus (+%) under it in the streak's colour.
+   No box, no glow. Colours follow the rarity tiers: 3+ green, 10+ blue, 30+ purple, 100+ orange, 200+ red. */
+.cy-streak{display:inline-flex;flex-direction:column;align-items:flex-end;gap:1px;line-height:1.15;color:#b9cac8;text-shadow:none}
+.cy-streak .nn{display:inline-flex;align-items:baseline;font-size:11px}
+.cy-streak .nn b{font-size:14px;font-weight:600;color:#e6efed !important;margin-right:1px}
+.cy-streak u{text-decoration:none;font:600 10.5px var(--f-num);color:rgba(var(--tc),.85)}
+.cy-streak.t0{--tc:111,133,129;color:#6f8583}.cy-streak.t0 .nn b{color:#8aa09e !important}
+.cy-streak.t1{--tc:63,212,122}.cy-streak.t2{--tc:30,164,230}.cy-streak.t3{--tc:180,106,224}.cy-streak.t4{--tc:240,138,36}.cy-streak.t5{--tc:255,59,59}
 /* ================= Quest form, less like a list ================= */
 .sheet .field{margin-top:16px}
 /* kind: icon tiles */
@@ -1544,16 +1512,14 @@ body{font-family:var(--f-body);background:#071012}
 #form .toggle{padding:12px 14px;border-radius:8px}
 /* custom dropdown */
 .cy-select{position:relative}
-.cy-sel-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border-radius:6px;border:1px solid var(--line-hi);background:rgba(4,10,12,.5);color:#f2f7f6;font-family:var(--f-body);font-size:15px;text-align:left}
+.cy-sel-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border:1px solid var(--line-hi);background:rgba(4,10,12,.5);color:#f2f7f6;font-family:var(--f-body);font-size:15px;text-align:left}
 .cy-sel-btn svg{width:18px;height:18px;color:#9db2b0;transition:transform .2s}
 .cy-select.open .cy-sel-btn{border-color:var(--acc)}
 .cy-select.open .cy-sel-btn svg{transform:rotate(180deg);color:#ff8a45}
-.cy-sel-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:5;display:none;max-height:240px;overflow:auto;padding:5px;border-radius:8px;background:rgba(14,26,28,.98);border:1px solid var(--line-hi);box-shadow:0 16px 36px rgba(0,0,0,.6)}
+.cy-sel-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:5;display:none;max-height:240px;overflow:auto;padding:5px}
 .cy-select.open .cy-sel-list{display:block}
-.cy-sel-list button{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;border:0;border-radius:5px;background:none;color:#cfdedc;font-family:var(--f-body);font-size:14.5px;text-align:left}
+.cy-sel-list button{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;color:#cfdedc;font-family:var(--f-body);text-align:left}
 .cy-sel-list button i{font-style:normal;color:#6f8583}
-.cy-sel-list button:hover{background:rgba(255,255,255,.05)}
-.cy-sel-list button.on{color:#ff8a45;background:rgba(var(--acc-rgb),.1)}
 /* icon + stepper on one line */
 #form .row2 > div:has(.stp),#form .row3f > div:has(.stp){display:flex;align-items:center;gap:8px}
 #form label.cy-ico{flex:none;margin:0 !important;display:grid;place-items:center;width:26px}
@@ -1576,7 +1542,6 @@ body{font-family:var(--f-body);background:#071012}
 /* quest sheet floats in the middle; a new quest keeps one fixed height so switching kinds doesn't jump */
 #modal{align-items:center !important;padding:16px 10px !important}
 #modal .sheet{border-radius:14px !important;border-bottom:1px solid var(--line-hi) !important;max-height:88vh;padding-bottom:20px;animation:pop .22s ease-out}
-#modal #form:not(.editing){height:min(88vh,820px)}
 #form .field:has(> .seg.s5) > .lbl{display:none}
 /* unit shown inside the Every box */
 .unit-in span{font-family:var(--f-title);font-weight:600;font-size:13px;color:#9db2b0}
@@ -1590,7 +1555,6 @@ body{font-family:var(--f-body);background:#071012}
 
 /* finished cards grey out, but the streak and its +% stay lit as a trophy */
 .card.done{filter:none !important}
-.card.done > *:not(.cy-head):not(.pair-head){filter:grayscale(.8) brightness(.55)}
 
 /* icons inside tips */
 .cy-tip .xp-r,.cy-tip .gold-r{display:inline-flex;align-items:center;gap:3px;font-family:var(--f-num);font-weight:700}
@@ -1634,7 +1598,7 @@ body{font-family:var(--f-body);background:#071012}
 .toggle{border-radius:3px !important;background:rgba(6,14,16,.85) !important;border:1px solid rgba(46,230,214,.25) !important;clip-path:var(--cut7)}
 .field > label.toggle,.toggle span{text-transform:none !important;letter-spacing:.2px !important}
 .toggle span{font:600 13.5px var(--f-num) !important;color:#e9f2f0 !important}
-.toggle input:checked + i{background:rgba(46,230,214,.25);border-color:rgba(46,230,214,.7)}
+.toggle input:checked + i{background:rgba(46,230,214,.25);border-color:rgba(46,230,214,.7);box-shadow:0 0 12px rgba(46,230,214,.45)}   /* glow matches the cyan switch, not orange */
 .toggle input:checked + i::after{background:#2ee6d6}
 #resetProgress{text-transform:uppercase;letter-spacing:1.2px}
 /* steps sync note on the Quests summary */
@@ -1645,23 +1609,15 @@ body{font-family:var(--f-body);background:#071012}
 
 /* ===== Target / Bounty / Avoid ===== */
 .qb-ic.k-target,.kh-ic.k-target{background:rgba(46,230,214,.12);color:#2ee6d6}
-.qb-ic.k-bounty,.kh-ic.k-bounty{background:rgba(255,180,74,.12);color:#ffb44a}
+.qb-ic.k-bounty,.kh-ic.k-bounty{background:rgba(182,232,90,.12);color:#b6e85a}
 .qb-ic.k-avoid,.kh-ic.k-avoid{background:rgba(255,143,177,.12);color:#ff8fb1}
-.qb-badge.dim{color:#7f9593;border-color:rgba(210,240,236,.2)}
-.qb-badge.red{color:#ff6b5e;border-color:rgba(255,59,48,.7)}
+.qb-badge.dim{border-color:rgba(210,240,236,.2)}
+.qb-badge.red{border-color:rgba(255,59,48,.7)}
 .tg-orbs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 2px}
 .tg-orbs i{width:15px;height:15px;border-radius:50%;border:1.5px solid #2ee6d6}
 .tg-orbs i.on{background:#2ee6d6;box-shadow:0 0 7px rgba(46,230,214,.55)}
 .tg-orbs.full i{background:#ffd27a;border-color:#ffd27a;box-shadow:0 0 7px rgba(255,210,122,.6)}
-.tg-line{display:flex;gap:6px;justify-content:space-between;font:600 11px var(--f-num);color:#9db2b0}
-.qb-t:not(.wide) .tg-line{justify-content:flex-start}
 
-.tg-big{display:grid;grid-template-columns:62px 1fr;gap:12px;align-items:center}
-.tg-ring{position:relative;width:62px;height:62px}.tg-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.tg-ring circle{fill:none;stroke:rgba(255,255,255,.08);stroke-width:6}.tg-ring circle.v{stroke:#2ee6d6}.tg-ring circle.v.full{stroke:#ffd27a}
-.tg-ring b{position:absolute;inset:0;display:grid;place-items:center;font:700 13px var(--f-num);color:#f2f7f6}
-.tg-main{min-width:0;display:flex;flex-direction:column;gap:6px}
-.tg-main .qb-hd{padding-right:60px}
 .tg-seg{display:flex;gap:3px}.tg-seg i{flex:1;height:9px;background:rgba(255,255,255,.08);clip-path:polygon(3px 0,100% 0,calc(100% - 3px) 100%,0 100%)}.tg-seg i.on{background:#2ee6d6}
 .tg-add{display:flex;gap:6px;flex-wrap:wrap}
 .tg-add button,.av-slip{padding:4px 9px;border:1.5px solid rgba(46,230,214,.6);background:rgba(46,230,214,.06);color:#2ee6d6;font:700 11px var(--f-num);clip-path:var(--cut5)}
@@ -1738,6 +1694,7 @@ body{font-family:var(--f-body);background:#071012}
 .sk-row b{padding:3px 0;text-align:center;border:1.5px solid var(--c);color:var(--c);font:700 12px var(--f-num);clip-path:var(--cut5)}
 .sk-row span{font:500 12.5px var(--f-body);color:#cfdedc;text-transform:none}
 .sk-row svg{width:26px;height:26px}
+.sk-fl{display:grid;place-items:center;width:26px;height:26px}
 .sk-pop{position:absolute;background:#0c1719 !important;opacity:1;visibility:visible;transform:none;width:208px}
 
 /* Card view: UR glare, and hold = art only */
@@ -1770,15 +1727,12 @@ body{font-family:var(--f-body);background:#071012}
 .tg-strk .tg-orbs i{width:auto;height:auto;aspect-ratio:1}
 .tg-add .tg-minus{border-color:rgba(255,143,177,.6);color:#ff8fb1;background:rgba(255,143,177,.06)}
 /* Pair halves: the check orb is cyan like the Target orbs (ring when open, filled + glow when done) */
-.qb-half .hk{border-color:#2ee6d6}
-.qb-half.done .hk{background:#2ee6d6;border-color:#2ee6d6;box-shadow:0 0 7px rgba(46,230,214,.55);opacity:1 !important}
-.qb-half.done{opacity:1}.qb-half.done > :not(.hk){opacity:.6}
 
 /* slipped days: red ring in the Progress calendar; Recent row text; tappable SLIPPED badge */
 .hx-c.slip{box-shadow:inset 0 0 0 1.5px #ff3b30;background:rgba(255,59,48,.14);color:#ff8a7f}
 .hx-log .hx-slipt{font:600 11.5px var(--f-num);color:#ff8a7f}
 .qb-badge[data-act="unslip"]{cursor:pointer}
-.card.qb-t.slipped{opacity:1}.card.qb-t.slipped > *:not(.qb-strk):not(.qb-tr):not(.qb-foot){opacity:.7}
+.card.qb-t.slipped{opacity:1}.card.qb-t.slipped > *:not(.qb-strk):not(.qb-tr):not(.qb-foot):not(.qb-hf){opacity:.7}
 .tg-add .tg-minus:disabled{opacity:.3}
 
 /* ===== Arrange: the board in outline ===== */
@@ -1812,7 +1766,6 @@ body{font-family:var(--f-body);background:#071012}
    rewards and both tiles' rewards are at the same height. A tile on its own has no extra space, so nothing moves. */
 .qb-item:not(.wide) .card.qb-t > .qb-rew{margin-top:auto}
 .qb-item:not(.wide) .card.qb-t > .qb-rew + .qb-strk{margin-top:0}
-.qb-half .qb-rew{margin-top:auto}
 
 /* free placement: empty spots */
 .qb-gap{min-height:1px}
@@ -1888,8 +1841,8 @@ body{font-family:var(--f-body);background:#071012}
 .wv .wv-spot + .wv-spot{margin-top:0}
 .w-wall .wv{background:none;border:0;padding:0;border-radius:0}
 /* wide tiles: the name never runs under the streak / +% / CLAIM corner */
-.card.qb-t .qb-hd{padding-right:120px}
-.card.qb-t:has(.qb-tr .cy-streak em) .qb-hd{padding-right:170px}
+.card.qb-t .qb-hd{padding-right:64px}
+.card.qb-t:has(.tl-rate) .qb-hd{padding-right:120px}
 
 /* size cards: the shape drawn with full (f) and half (h) blocks */
 .w-sizes{grid-template-columns:1fr 1fr}
@@ -1924,13 +1877,14 @@ body{font-family:var(--f-body);background:#071012}
 .wt-sub{font:500 10.5px var(--f-num);color:#8fa6a3;margin-top:4px}
 .wt-bar{display:block;height:5px;margin-top:6px;border-radius:2px;background:rgba(255,255,255,.08)}.wt-bar i{display:block;height:100%;border-radius:2px;background:#2ee6d6}
 .wt-b{flex:none;font:700 10px var(--f-num);padding:3px 8px;border:1.5px solid #ff6b1a;color:#ff8a45;clip-path:var(--cut5)}
-.wt-b.ok{border-color:#3fd47a;color:#3fd47a}.wt-b.red{border-color:#ff6b5e;color:#ff8a7f}.wt-b.cy{border-color:#2ee6d6;color:#2ee6d6}
+.wt-b.gold{border-color:#ffc94a;color:#ffc94a}.wt-b.ok{border-color:#3fd47a;color:#3fd47a}.wt-b.red{border-color:#ff6b5e;color:#ff8a7f}.wt-b.cy{border-color:#2ee6d6;color:#2ee6d6}
 .wt-b.dim{border-color:rgba(210,240,236,.22);color:#6f8482}
+.wt-b.rec{border-color:#a98bff;color:#a98bff}
+.wt-b.k{border-color:var(--bc,#ff6b1a);color:var(--bc,#ff8a45)}
+.wt-b.done,.wt.h .wt-b.done{display:inline-flex;align-items:center;gap:5px;padding:3px 0;border:0;clip-path:none;background:none;color:#6f8583}
+.wt-b.done::before{content:'';width:5px;height:5px;border-radius:50%;background:#3fd47a}
 .wt-orbs{flex:1;display:flex;gap:4px;min-width:0}.wt-r2 .wt-orbs{flex:none}
 .wt-orbs i{flex:0 1 13px;aspect-ratio:1;min-width:4px;border-radius:50%;border:1.5px solid #2ee6d6}.wt-orbs i.on{background:#2ee6d6}.wt-orbs i.gold{border-color:#ffd27a}.wt-orbs i.on.gold{background:#ffd27a}
-.wt-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
-.wt-pair span{padding:6px 8px;border:1px solid rgba(210,240,236,.16);font:700 11px var(--f-num);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.wt-pair span.d{color:#7f9593}.wt-pair em{font-style:normal;margin-left:6px;color:#8fa6a3;font-weight:500}
 .wt.done .wt-t,.wt.done .wt-rew{opacity:.5}
 
 .wt-r3{justify-content:flex-start}.wt-r3.orb{margin-top:0;margin-bottom:5px}.wt-r3.orb .wt-orbs{flex:1}
@@ -1942,9 +1896,6 @@ body{font-family:var(--f-body);background:#071012}
 .wt.h .wt-b{font-size:9px;padding:2px 6px}
 .wt.h .wt-r3{gap:4px;overflow:hidden}
 .wt.h .wt-st{font-size:12.5px}.wt.h .wt-t{font-size:12px}
-.wt-pair span{display:flex;align-items:center;gap:5px}
-.wt-pair span b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:700}
-.wt-pair em{display:inline-flex;align-items:center;gap:2px;margin:0;font:700 10px var(--f-num)}.wt-pair em svg{width:10px;height:10px}
 
 /* arrange: icon next to the Quests title; hold anywhere on a tile to move it */
 .ar-btn{align-self:center;display:grid;place-items:center;width:30px;height:30px;margin-left:-2px;padding:0;border:1.5px solid rgba(46,230,214,.4);background:rgba(46,230,214,.06);color:#2ee6d6;clip-path:var(--cut5)}
@@ -1977,7 +1928,7 @@ body{font-family:var(--f-body);background:#071012}
 .ar-btn.on{background:rgba(46,230,214,.06);border-color:rgba(46,230,214,.4);box-shadow:none}
 .w-sc{text-align:center}
 /* bounty half: time left as a chip where other tiles show their streak */
-.bt-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border:1.5px solid rgba(255,138,69,.5);background:rgba(255,138,69,.08);color:#ff8a45;font:700 10.5px var(--f-num);white-space:nowrap;clip-path:var(--cut5)}
+.bt-chip{display:inline-flex;align-items:center;gap:4px;color:#ff8a45;font:700 10.5px var(--f-num);white-space:nowrap}
 .bt-chip .bt-clk{width:12px;height:12px}
 .card.qb-t.urgent .bt-chip{color:#ff6b5e;border-color:rgba(255,59,48,.65);background:rgba(255,59,48,.1)}
 .bt-date{display:block;margin:2px 0 8px;font:600 11px var(--f-num);color:#7f9593;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -2072,12 +2023,12 @@ body{font-family:var(--f-body);background:#071012}
 .wb-gh{display:flex;justify-content:space-between;align-items:center;padding:8px 12px 2px;font:700 10px var(--f-num);letter-spacing:1.5px;color:#8fa6a3}
 .wb-gh > span:last-child{letter-spacing:0}
 .wb-list{flex:1;min-height:0;overflow-y:auto;padding:6px 10px 10px;gap:6px !important;scrollbar-width:thin}
-.wb-list .wv-row{height:96px;gap:6px;flex:none}
+.wb-list .wv-row{gap:6px;flex:none}
 .wb-none{margin:24px 0;text-align:center;font:600 11px var(--f-num);color:#8fa6a3}
 .w-card .wb-tabs,.w-card .wb-list{pointer-events:auto}
 .w-shape.board{height:60px}.w-shape.board .w-srow i.t{height:7px}
 /* Daily login reward: the gift / flame next to the widgets button, and its pop-up (inside #pack, under the reveal effects) */
-.dl-btn{position:relative;align-self:center;width:40px;height:40px;margin:-5px 6px -5px auto;padding:0;display:grid;place-items:center;border:0;background:none;color:#cfdedc;cursor:pointer}
+.dl-btn{position:relative;align-self:center;width:32px;height:40px;margin:-5px 2px -5px auto;padding:0;display:grid;place-items:center;border:0;background:none;color:#cfdedc;cursor:pointer}
 .dl-btn[hidden]{display:none}
 .dl-btn:not([hidden]) + .w-btn{margin-left:0}
 .dl-btn svg.gift{width:26px;height:26px}
@@ -2086,9 +2037,9 @@ body{font-family:var(--f-body);background:#071012}
 .dl-btn.burst svg.gift{animation:dlBurst .45s cubic-bezier(.2,1.6,.4,1)}
 @keyframes dlBob{50%{transform:translateY(-2px) rotate(-4deg)}}
 @keyframes dlBurst{40%{transform:scale(1.45) rotate(-8deg);filter:drop-shadow(0 0 10px #2ee6d6)}}
-.dl-fl{position:relative;display:block;width:40px;height:40px}
-.dl-fw{position:absolute;left:50%;top:-6px;line-height:0}
-.dl-num{position:absolute;left:50%;bottom:-3px;transform:translateX(-50%);filter:drop-shadow(0 1px 1px #000)}
+.dl-fl{position:relative;display:block;width:32px;height:40px}
+.dl-fw{position:absolute;left:50%;top:1px;line-height:0}
+.dl-num{position:absolute;left:50%;bottom:2px;transform:translateX(-50%);filter:drop-shadow(0 1px 1px #000)}
 .dl-fl.pop{animation:dlIn .6s cubic-bezier(.2,1.6,.4,1)}
 @keyframes dlIn{from{transform:scale(.2);opacity:0}}
 .pack.dl{background:rgba(5,11,12,.82)}
@@ -2163,3 +2114,354 @@ body{font-family:var(--f-body);background:#071012}
 .av-ms span.next{color:#f2f7f6;border:1px dashed rgba(255,143,177,.7)}.av-ms span.next i{background:none;box-shadow:inset 0 0 0 1.5px #ff8fb1}
 .av-ms.x span{opacity:.55}
 .av-next{margin-bottom:4px;font:600 11px var(--f-num);color:#9db2b0}.av-next b{color:#ff8fb1}
+/* ---- Quest notes: every kind shows its note under the name; long notes stop at 3 lines (2 on a half tile) ---- */
+.card.qb-t .qb-note{margin:3px 0 2px;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.card.qb-t:not(.wide) .qb-note{-webkit-line-clamp:2;font-size:11px}
+/* ---- Quest-type colour: a soft wash at the top of every tile ---- */
+.card.qb-t{isolation:isolate}
+.card.qb-t > .kt{position:absolute;inset:0;pointer-events:none;z-index:-1;
+  background:linear-gradient(180deg,rgba(var(--kc),.09) 0,rgba(var(--kc),.04) 28px,rgba(var(--kc),0) 62px)}
+/* (the coloured top border was taken out: the wash alone is calmer) */
+/* ---- Floating "Post a quest": cut-corner square above the tab bar (bottom right, or bottom left when left handed) ---- */
+.fab-add{position:fixed;z-index:6;right:max(16px,calc(50% - 264px));bottom:calc(76px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));width:38px;height:38px;display:grid;place-items:center;padding:0;
+  color:#2ee6d6;border:1.5px solid rgba(46,230,214,.8);background:rgba(8,20,22,.92);clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);
+  box-shadow:inset 0 0 14px rgba(46,230,214,.18);cursor:pointer;transition:opacity .25s}
+.fab-add svg{width:17px;height:17px}
+.fab-add.left{right:auto;left:max(16px,calc(50% - 264px))}
+.fab-add.away{opacity:0;pointer-events:none}   /* only fades: the zoom was distracting */
+.fab-add[hidden]{display:none}
+/* ---- Puzzle: tap the picture to see its pieces with their counts (4 per row), "Show the picture" goes back ---- */
+.pz-grid{grid-template-columns:repeat(4,1fr) !important;gap:7px !important}
+.pz-pic{display:block;width:100%;margin-top:9px;padding:7px 0;font:700 11px var(--f-num);letter-spacing:1px;color:#9db2b0;border:1px solid var(--line);background:rgba(255,255,255,.03);clip-path:var(--cut5);cursor:pointer}
+.pz-strip{cursor:pointer}
+/* ---- Tally fill-up: the ×N pop at the end of the bar, its flash, ring and sparks (only transform / opacity animate) ---- */
+.tally-card .tl-meter{position:relative}
+.tl-pop{position:absolute;top:50%;z-index:3;pointer-events:none;transform-origin:100% 50%;transform:translate(0,-50%) scale(0);opacity:0;font:900 24px/1 var(--f-title);letter-spacing:-.5px;color:#ffc94a}
+.tl-pop.go{animation:tlPop .62s cubic-bezier(.2,1.6,.4,1) both}
+.tl-pop.big{color:#fff3c4}
+.tl-pop.go.big{animation:tlPopBig .9s cubic-bezier(.2,1.8,.35,1) both}
+.tl-pop.out{transition:opacity .35s;opacity:0 !important}
+@keyframes tlPop{0%{transform:translate(0,-50%) scale(.3) rotate(-12deg);opacity:0}35%{transform:translate(0,-95%) scale(1.35) rotate(4deg);opacity:1}70%,100%{transform:translate(0,-80%) scale(1);opacity:1}}
+@keyframes tlPopBig{0%{transform:translate(0,-50%) scale(.2) rotate(-18deg);opacity:0}30%{transform:translate(0,-110%) scale(1.75) rotate(6deg);opacity:1}
+  55%{transform:translate(0,-85%) scale(.95) rotate(-2deg);opacity:1}75%{transform:translate(0,-92%) scale(1.12)}100%{transform:translate(0,-88%) scale(1.05);opacity:1}}
+.tl-flash{position:absolute;pointer-events:none;opacity:0;background:radial-gradient(60% 140% at 100% 50%,rgba(255,201,74,.55),transparent 70%)}
+.tl-flash.big{background:radial-gradient(70% 220% at 100% 50%,rgba(255,225,140,.85),rgba(255,140,40,.25) 55%,transparent 75%)}
+.tl-flash.go{animation:tlFlash .45s ease-out}
+@keyframes tlFlash{25%{opacity:1}100%{opacity:0}}
+.tl-ring{position:absolute;top:50%;border:2px solid #ffc94a;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%) scale(.2);animation:tlRing .55s ease-out forwards}
+.tl-ring.big{border-color:#ffe08a;animation-duration:.75s}
+@keyframes tlRing{to{transform:translate(-50%,-50%) scale(1.8);opacity:0}}
+.tl-sp{position:absolute;top:2px;background:#ffe08a;pointer-events:none;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);animation:tlSp .6s ease-out forwards}
+.tl-sp.big{background:#fff3c4;animation-duration:.8s}
+@keyframes tlSp{to{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0}}
+
+
+/* ---- Behind the phone's navigation bar: plain black, so the page doesn't show through ---- */
+body::after{content:'';position:fixed;left:0;right:0;bottom:0;height:var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px));background:#000;z-index:99;pointer-events:none}
+.tab.ping::after{content:'';position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:#ff8a45;box-shadow:0 0 7px #ff6b1a;pointer-events:none}
+/* ---- Steps week: claimed (green) columns shine: one soft band of light rises up every green column at the same moment
+   (a short column is done sooner), 1.8 s up, then 5 s still. --shy is where the band is (px from the column top);
+   each segment shows its own slice of the same band (column 150px, 14 segments, 2px gaps = a segment every 152/14 px).
+   Not --y: that name is the pack cards' row position. ---- */
+@property --shy{syntax:'<length>';inherits:true;initial-value:200px}
+.sh-col.met .sh-segs{animation:shRise 7s linear infinite}
+.sh-segs i.green{background:linear-gradient(180deg,#3fd47a 0 140px,#6fe39b 155px,#a9f2c6 170px,#6fe39b 185px,#3fd47a 200px 100%) 0 0/100% 340px no-repeat,#3fd47a;
+  background-position:0 calc(var(--shy) - 170px - 150px + (var(--s,0) + 1) * 10.857px - 2px)}
+@keyframes shRise{0%{--shy:200px}26%,100%{--shy:-50px}}
+.reduce-fx .sh-col.met .sh-segs{animation:none}
+/* ---- Open all: new scenes in a stack (the next ones peek out on the left); the front one flies off to the right ---- */
+.sc-count{min-height:16px;font:700 13px var(--f-num);letter-spacing:1px;color:#9db2b0}
+.sc-stack{position:relative;width:100%;aspect-ratio:672/440}
+.sc-multi .sc-card{position:absolute;top:0;bottom:0;left:15%;right:0;width:auto;height:auto;aspect-ratio:auto;animation:none;transform-origin:0 50%;
+  transition:transform .45s cubic-bezier(.25,.8,.3,1),opacity .4s,filter .4s;
+  transform:translateX(calc(var(--k,0) * -7.5%)) scale(calc(1 - var(--k,0) * .08));filter:brightness(calc(1 - var(--k,0) * .22))}
+.sc-multi .sc-stack{animation:scIn .8s cubic-bezier(.2,1.3,.4,1) .2s both}
+.sc-multi .sc-card.gone{transform:translateX(120%) rotate(14deg);opacity:0 !important;pointer-events:none;transition:transform .5s cubic-bezier(.5,0,.75,.4),opacity .5s}
+.sc-multi .sc-card:not(.front){box-shadow:0 0 0 1px rgba(255,170,120,.35)}
+.sc-multi.one .sc-card{left:0}
+.sc-multi.one .sc-stack{aspect-ratio:672/480}
+/* ---- Earned today (i) and its panel (where today's XP and gold came from) ---- */
+.qb-sumw{position:relative;z-index:3}
+.ep-lab{display:inline-flex;align-items:center;gap:6px}
+.info.earn-i{position:relative;top:auto;left:auto;z-index:auto;display:inline-block}
+.earn-i .info-btn{width:15px !important;height:15px !important;font-size:9px !important;border:1px solid rgba(157,178,176,.3) !important;background:none !important;color:rgba(157,178,176,.55) !important;box-shadow:none !important;transition:color .15s,border-color .15s}
+.earn-i.on .info-btn{border-color:#2ee6d6 !important;color:#2ee6d6 !important}
+.ep-pop{position:absolute;left:0;right:0;top:calc(100% + 9px);z-index:8;padding:11px 12px 10px;background:linear-gradient(#112022,#0a1517);border:1px solid rgba(46,230,214,.35);border-radius:4px;
+  box-shadow:0 14px 30px rgba(0,0,0,.85),inset 0 0 0 1px #000;animation:epIn .16s ease-out;cursor:default}
+.ep-pop::before{content:'';position:absolute;top:-6px;left:calc(var(--ax,120px) - 5px);width:10px;height:10px;transform:rotate(45deg);background:#112022;border-left:1px solid rgba(46,230,214,.35);border-top:1px solid rgba(46,230,214,.35)}
+@keyframes epIn{from{opacity:0;transform:translateY(-4px)}}
+.ep-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;font:700 10.5px var(--f-num);letter-spacing:1.3px;color:#2ee6d6}
+.ep-h span{font-weight:500;letter-spacing:.3px;color:#7f9593}
+.ep-grp{margin:9px 0 3px;font:700 9.5px var(--f-num);letter-spacing:1.4px;color:#7f9593}
+.ep-row{display:grid;grid-template-columns:10px minmax(0,1fr) 46px 46px;gap:7px;align-items:center;padding:3px 0;font:500 12px var(--f-num);color:#e9f2f0}
+.ep-row > i{width:7px;height:9px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--c)}
+.ep-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ep-nm small{margin-left:5px;font-size:11px;color:#7f9593}
+.ep-x{text-align:right;font-weight:700;color:#2ee6d6}.ep-g{text-align:right;font-weight:700;color:#ffc94a}
+.ep-row .z{color:#4e6260}
+.ep-hd{margin-bottom:2px}.ep-hd .ep-ttl{font:700 10.5px var(--f-num);letter-spacing:1.3px;color:#2ee6d6}
+.ep-hd svg{width:13px;height:13px;justify-self:end}
+.ep-tot{margin-top:6px;padding-top:7px;border-top:1px solid rgba(210,240,236,.12);font-weight:700}
+.ep-empty{padding:5px 0 2px;font:500 12px var(--f-num);color:#7f9593}
+/* Steps week: ×N in place of the day name while a 2×+ goal bonus waits (Tally's ×N look, no pop) */
+.sh-d.sh-xn{font:900 italic 15px/1 var(--f-title);letter-spacing:-.5px;color:#fff3c4;text-shadow:0 0 6px rgba(255,220,120,1),0 0 14px rgba(255,150,40,.8),0 2px 0 #7a4a00}
+.sh-col.td .sh-d.sh-xn{color:#fff3c4}
+.sh-d.sh-xn small{font-size:.72em;margin-right:1px}
+/* ---- Quest badges, "quiet": no box. A glowing dot + the word: CLAIM orange, DONE a green dot with a grey word,
+   counters (Pair 1/2, Target 2/5) in the quest's own colour, SLIPPED / urgent red, LOCKED grey.
+   Tally's "+10 / $100" rate (.tl-rate; not .rate, that's the Shop's drop-rate rows) keeps its box. ---- */
+.qb-badge:not(.tl-rate){display:inline-flex;align-items:center;gap:5px;padding:3px 0 !important;border:0 !important;clip-path:none !important;
+  background:none !important;box-shadow:none !important;color:rgb(var(--kc,255,138,69));white-space:nowrap}   /* CLAIM in the quest's own colour */
+.qb-badge:not(.tl-rate)::before{content:'';flex:none;width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 5px currentColor}
+.qb-badge.ok{color:#6f8583}.qb-badge.ok::before{background:#3fd47a;box-shadow:none}
+.qb-badge.cy{color:#2ee6d6}.qb-badge.cy::before{background:#2ee6d6;box-shadow:0 0 5px #2ee6d6}
+.qb-badge.dim{color:#5f7472}.qb-badge.dim::before{background:#4e6260;box-shadow:none}
+.qb-badge.red{color:#ff6b5e}.qb-badge.red::before{background:#ff3b30;box-shadow:0 0 5px #ff3b30}
+.qb-badge.cnt{color:rgb(var(--kc,46,230,214))}.qb-badge.cnt::before{background:rgb(var(--kc,46,230,214));box-shadow:0 0 5px rgba(var(--kc,46,230,214),.8)}
+/* Below the tab bar: the page fades out under it, so tiles don't show in the gap between the tab bar and the bottom */
+body::before{content:'';position:fixed;left:0;right:0;bottom:0;z-index:5;pointer-events:none;
+  height:calc(var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)) + 46px);
+  background:linear-gradient(to top,#060d0e calc(var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)) + 24px),rgba(6,13,14,0))}
+/* ---- Kind picker: the picked kind shows in its own quest colour (border, icon, name) and so does the hint's line;
+   the Next button stays orange. Keep in step with KIND_COL in app.js. ---- */
+#form .seg.s5 input[value="standard"] + span{--kc:255,138,69}
+#form .seg.s5 input[value="pair"] + span{--kc:92,171,255}
+#form .seg.s5 input[value="scaling"] + span{--kc:255,122,122}
+#form .seg.s5 input[value="record"] + span{--kc:169,139,255}
+#form .seg.s5 input[value="tally"] + span{--kc:255,201,74}
+#form .seg.s5 input[value="steps"] + span{--kc:46,230,214}
+#form .seg.s5 input[value="target"] + span{--kc:46,230,214}
+#form .seg.s5 input[value="bounty"] + span{--kc:182,232,90}
+#form .seg.s5 input[value="avoid"] + span{--kc:255,143,177}
+#form .seg.s5 input:checked + span{color:rgb(var(--kc,255,138,69)) !important;border-color:rgba(var(--kc,255,138,69),.65) !important;background:rgba(var(--kc,255,138,69),.07) !important}
+#form .field:has(input[name="kind"][value="standard"]:checked) #kindHelp{border-left-color:rgba(255,138,69,.7)}
+#form .field:has(input[name="kind"][value="pair"]:checked) #kindHelp{border-left-color:rgba(92,171,255,.7)}
+#form .field:has(input[name="kind"][value="scaling"]:checked) #kindHelp{border-left-color:rgba(255,122,122,.7)}
+#form .field:has(input[name="kind"][value="record"]:checked) #kindHelp{border-left-color:rgba(169,139,255,.7)}
+#form .field:has(input[name="kind"][value="tally"]:checked) #kindHelp{border-left-color:rgba(255,201,74,.7)}
+#form .field:has(input[name="kind"][value="steps"]:checked) #kindHelp{border-left-color:rgba(46,230,214,.7)}
+#form .field:has(input[name="kind"][value="target"]:checked) #kindHelp{border-left-color:rgba(46,230,214,.7)}
+#form .field:has(input[name="kind"][value="bounty"]:checked) #kindHelp{border-left-color:rgba(182,232,90,.7)}
+#form .field:has(input[name="kind"][value="avoid"]:checked) #kindHelp{border-left-color:rgba(255,143,177,.7)}
+/* ---- List quest tile: one line per quest (square box that fills when done), then the Bonus line ---- */
+.ql{display:flex;flex-direction:column;margin-top:6px}
+.ql-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid rgba(210,240,236,.08);cursor:pointer}
+.ql-ck{flex:none;width:15px;height:15px;border:1.5px solid rgba(var(--kc),.8);border-radius:3px}
+.ql-row.done .ql-ck{background:rgba(var(--kc),.42);border-color:rgba(var(--kc),.55)}   /* filled, soft (no tick, no glow) */
+.ql-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 12.5px var(--f-num);color:#f2f7f6}
+.ql-row.done .ql-n{color:#6f8583;text-decoration:line-through;text-decoration-color:rgba(111,133,131,.6)}
+.ql-row .rewards{flex:none}
+.ql-bonus{display:flex;align-items:center;gap:9px;padding-top:9px;border-top:1px solid rgba(210,240,236,.08);font:700 11.5px var(--f-num);color:#7f9593}
+.ql-bn{flex:1;display:inline-flex;align-items:center;gap:8px}
+.ql-bn::before{content:'';width:6px;height:6px;border-radius:50%;background:#3b4b4d}
+.ql-bonus.ready{color:rgb(var(--kc));cursor:pointer}.ql-bonus.ready .ql-bn::before{background:rgb(var(--kc));box-shadow:0 0 7px rgb(var(--kc))}
+.ql-bonus.got{color:#6f8583}.ql-bonus.got .ql-bn::before{background:#3fd47a}
+/* List editor: quests 3+ have a ×; "+ Add a quest" is a dashed box like Arrange's */
+.fx-item .group-title{display:flex;align-items:center}
+.fx-item .group-title::before{white-space:pre}
+.fx-rm{margin-left:auto !important}
+.fx-rm{background:none;border:0;padding:0 2px;color:#7f9593;font:700 17px/1 var(--f-body);cursor:pointer}
+.list-add{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:44px;margin:0 0 14px;border:1.5px dashed rgba(210,240,236,.25);border-radius:3px;
+  background:none;color:#9db2b0;font:700 12px var(--f-num);letter-spacing:.5px;text-transform:uppercase;cursor:pointer}
+.list-add b{font:700 18px/1 var(--f-body);color:#2ee6d6}
+.list-add[hidden]{display:none !important}
+/* Tally's "+5 / $10" rate stays on one line (a long note squeezed it into three) */
+.qb-tr{white-space:nowrap}
+.qb-badge.tl-rate{white-space:nowrap;flex:none}
+/* Record's button in Record purple (like Tally's ADD in Tally yellow) */
+.rec-input .rec-btn{flex:none;padding:8px 12px !important;font:700 12.5px var(--f-title) !important;letter-spacing:.8px;color:#a98bff !important;border:1px solid rgba(169,139,255,.75) !important;border-radius:4px;background:rgba(169,139,255,.09) !important;box-shadow:none !important;text-shadow:none !important}
+.rec-input .rec-btn:active{background:rgba(169,139,255,.22) !important}
+/* Typing in a tile's box (Tally's amount, Record's value): the focus outline is the quest's own colour
+   (was white on Tally, the app's orange on Record) */
+.card.qb-t .qb-in input:focus{outline:none !important;border-color:rgba(var(--kc,255,138,69),.85) !important;box-shadow:0 0 0 3px rgba(var(--kc,255,138,69),.15) !important}
+
+/* ===== Wide tiles (the ones with a .qb-tr corner): the CLAIM / DONE dot sits bottom right, like on half tiles (the streak stays top right) ===== */
+.card.qb-t > .qb-tr:not(:has(.tl-rate)){position:static}
+.card.qb-t > .qb-tr > .cy-streak{position:absolute;right:12px}
+.card.qb-t > .qb-tr > .qb-badge:not(.tl-rate){position:absolute;right:12px;bottom:12px;top:auto}
+.card.qb-t:has(> .qb-tr > .qb-badge:not(.tl-rate)) > .qb-foot{padding-right:78px;min-height:20px}
+/* List: the count (n/total) is the bottom line, its rewards on the right */
+.ql-bn{color:rgb(var(--kc));font-weight:700;letter-spacing:.8px}
+.ql-bonus.got .ql-bn{color:#6f8583}
+.ql-bonus .qb-rew{margin-left:auto}
+
+/* ===== Widgets preview ===== */
+/* streak: the number near-white, the +% in the streak's colour */
+.wt-st{color:#e6efed}.wt-st.z{color:#8aa09e}
+.wt-r3 .wt-rew{min-width:0;overflow:hidden}.wt-b{white-space:nowrap}
+.av-r{display:flex;align-items:center;gap:12px;margin-left:auto}.av-r .qb-badge{position:static}
+
+/* steps tab: a claim is waiting (calm gold, the glow breathes; inside the cut corners so nothing is clipped) */
+@keyframes sgPulse{0%,100%{box-shadow:inset 0 0 6px rgba(232,185,74,.25),inset 0 0 0 1px rgba(232,185,74,.55)}50%{box-shadow:inset 0 0 16px rgba(232,185,74,.5),inset 0 0 0 1.5px rgba(247,224,138,.95)}}
+.hud-chips .chip.s{color:#ffd877;border-color:rgba(232,185,74,.7);background:rgba(232,185,74,.08);text-shadow:0 0 8px rgba(232,185,74,.5);animation:sgPulse 2.4s ease-in-out infinite}
+.hud-chips .chip.s.on{background:rgba(232,185,74,.16)}
+.reduce-fx .hud-chips .chip.s{animation:none}
+/* birthday pop-up: the decks slide round (cover flow) */
+.bd-pop{min-height:0}
+.bd-pop .dl-head b{font-size:24px}
+.bd-fl{position:relative;width:100%;height:236px;margin:2px 0 0}
+.bd-it{position:absolute;left:50%;top:28px;width:84px;margin-left:-42px;aspect-ratio:480/672;transition:transform .9s cubic-bezier(.45,0,.25,1),filter .9s,opacity .9s}
+.bd-it.c{transform:scale(1.4);z-index:3}
+.bd-it.r{transform:translateX(98px) scale(.78);filter:brightness(.55);z-index:1}
+.bd-it.l{transform:translateX(-98px) scale(.78);filter:brightness(.55);z-index:1}
+.bd-it.h{transform:scale(.6);opacity:0;z-index:0}
+.bd-stk{position:absolute;inset:0}
+.bd-stk .c{position:absolute;inset:0;border-radius:6px;background:#000 center/cover;box-shadow:0 4px 12px rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.18)}
+.bd-stk .c1{transform:translate(-26%,5%) rotate(-10deg) scale(.96)}.bd-stk .c2{transform:translate(26%,5%) rotate(10deg) scale(.96)}.bd-stk .c3{z-index:2;box-shadow:0 0 16px 2px color-mix(in srgb,var(--gc) 55%,transparent),0 4px 14px rgba(0,0,0,.65)}
+.bd-stk .q{display:grid;place-items:center;background:linear-gradient(150deg,rgba(255,255,255,.16),rgba(255,255,255,.04) 45%,rgba(255,255,255,.1)),#0e1a1c}
+.bd-stk .q i{font:800 30px var(--f-title);font-style:normal;color:rgba(255,255,255,.85);text-shadow:0 0 14px rgba(240,138,36,.9)}
+.bd-nm{position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:12px;white-space:nowrap;font:700 9px var(--f-num);letter-spacing:.8px;color:#b9cac8;opacity:0;transition:opacity .5s}
+.bd-it.c .bd-nm{opacity:1}
+.bd-pop .dl-amt{margin:4px 0 8px;animation:none}
+.bd-pop .dl-amt svg{width:44px;height:44px}.bd-pop .dl-amt b{font-size:38px}
+.hx-log .hx-undo.w{min-width:64px;text-align:center}
+
+/* list tile on a widget: every item on its own line, same height for each; a done one is dimmed with a very light line through it (like the app) */
+.wt-list{display:flex;flex-direction:column;margin-top:4px}
+.wt-li{display:flex;align-items:center;gap:8px;min-height:28px;box-sizing:border-box;padding:4px 0;border-top:1px solid rgba(210,240,236,.09);font:700 12px var(--f-num)}
+.wt-li:first-child{border-top:0}
+.wt-li i{flex:none;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--kc,#5cabff)}
+.wt-li.dn i{background:var(--kc,#5cabff)}
+.wt-li b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+.wt-li .wt-rew{font-size:10.5px;gap:6px}
+.wt-li.dn b{color:#6f8583;text-decoration:line-through;text-decoration-color:rgba(111,133,131,.6)}
+.wt-li.dn .wt-rew{opacity:.5}
+.wv-row.tall{height:360px}.wv-row.tall .wt{height:100%}
+.wb-list .wv-row.lst{height:auto}.wb-list .wv-row.lst .wt{height:auto}
+.wt.tall:has(.wt-list) .wt-fill{flex:0 0 4px}
+
+/* ===== Half tiles: rewards left, CLAIM / DONE dot right, one line ===== */
+.qb-hf{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:auto;flex-wrap:wrap}
+.qb-hf .qb-strk{margin:0;flex:none;gap:6px}
+.qb-hf.av-hf .qb-strk{margin-left:auto}
+.qb-item:not(.wide) .card.qb-t > .qb-hf{margin-top:auto}
+.qb-item:not(.wide) .card.qb-t > .qb-next{margin-top:auto;margin-bottom:6px}
+.qb-item:not(.wide) .card.qb-t > .qb-next + .qb-hf{margin-top:0}
+/* Recurring (red) and Counter (mint) corners */
+.cy-streak.rc{--tc:255,122,122}
+.cy-streak.rc .nn b{color:#e6efed}
+.cy-streak.cn u{font-weight:600}
+.cy-streak.cn .nn b{font-size:15px}
+.qb-next.cn-today{color:#8fa6a3}
+#form .seg.s5 input[value="counter"] + span{--kc:77,208,160}
+/* the kind picker: the hint text keeps one height so the sheet stops jumping between kinds */
+#form .field:has(input[name="kind"][value="counter"]:checked) #kindHelp{border-left-color:rgba(77,208,160,.7)}
+.qb-ic.k-counter,.kh-ic.k-counter{background:rgba(77,208,160,.13);color:#4dd0a0}
+
+.qb-item:not(.wide) .card.qb-t > .qb-hf + .tg-row{margin-top:8px;justify-content:flex-start}
+
+.cn-ms{display:flex;align-items:center;gap:8px;margin-top:2px}
+.cn-ms .tg-seg{flex:1}.cn-ms .tg-seg i{height:5px;background:rgba(255,255,255,.08)}.cn-ms .tg-seg i.on{background:#4dd0a0}
+.cn-ms span{font:600 10.5px var(--f-num);color:#8fa6a3;white-space:nowrap}
+.qb-foot .qb-next.cn-today{margin-left:auto}
+
+.cy-streak.cn u{font-size:11px;color:#8fa6a3}
+.cy-streak.cn u b{font:700 13.5px/1.25 var(--f-num);color:#f2f7f6;margin-right:2px}
+
+/* "Available after" list in the sheet's theme: teal edge, cut corners on the rows, a dot in each quest's type colour */
+.cy-sel-list{background:rgba(6,14,16,.98);border:1px solid rgba(46,230,214,.3);border-radius:3px;box-shadow:0 16px 36px rgba(0,0,0,.7);scrollbar-width:thin;scrollbar-color:rgba(46,230,214,.35) transparent}
+.cy-sel-list button{border-radius:2px;clip-path:var(--cut7);font-size:14px;padding:9px 10px;border-left:2px solid transparent}
+.cy-sel-list button:hover{background:rgba(46,230,214,.07)}
+.cy-sel-list button.on{color:#f2f7f6;background:rgba(var(--acc-rgb),.12);border-left-color:var(--acc)}
+.cy-sel-list .cy-dot{width:8px;height:8px;border-radius:50%;flex:none}
+.cy-sel-list button i{width:8px;text-align:center;font-size:10px}
+.cy-sel-btn{border-radius:3px}
+
+/* no boxes: Tally's rate, a Bounty's timer */
+.qb-badge.tl-rate{border:0 !important;background:none !important;clip-path:none !important}
+.bt-chip{border:0 !important;background:none !important;clip-path:none;padding:3px 0}
+/* a bounty that is due soon: a red warning sign in the corner */
+.card.qb-t > .qb-tr > .bt-warn{position:absolute;right:12px;display:grid;place-items:center;color:#ff6b5e}
+/* pin button at the end of the title line */
+#form .field:has(> #pinBtn){position:relative}
+#form .field:has(> #pinBtn) #fName{padding-right:46px}
+.pin-btn{position:absolute;right:0;bottom:7px;width:34px;height:30px;display:grid;place-items:center;padding:0;border:1px solid rgba(255,255,255,.16);background:none;color:rgba(255,255,255,.28);clip-path:var(--cut5);border-radius:2px}
+.pin-btn[hidden]{display:none}
+.pin-btn svg{width:17px;height:17px}
+/* widget preview: rows grow with their tile instead of overlapping the next one */
+.wb-list .wv-row{height:auto;min-height:0}
+.wb-list .wv-row .wt{height:auto;min-height:0}
+.wb-list .wv-row.two .wt{height:100%}
+
+/* Full tiles: the corner count sits on the name's line, and the empty top-right box adds no gap above the icon (same 13px as Tally) */
+.card.qb-t > .qb-tr:not(:has(.tl-rate)){margin-bottom:-7px}
+.card.qb-t > .qb-tr > .cy-streak{top:13px;height:40px;justify-content:center}
+.pin-btn svg{transform:rotate(45deg)}
+.pin-btn.on{border-color:#2ee6d6;color:#2ee6d6}
+/* the corner count lines up with the name / icon centre */
+.card.qb-t > .qb-tr > .cy-streak,.card.qb-t > .qb-tr > .bt-warn{top:12px;height:32px}
+.cy-streak.cn{justify-content:center;line-height:1}
+.cy-streak.cn u{display:block;line-height:1}
+.cy-streak.cn u b{line-height:1;vertical-align:baseline}
+
+/* Target, full size: slim bar, hits/need at its end; gold glow when it is full */
+.tg-ms .tg-seg i{height:6px}.tg-ms .tg-seg i.on{background:#2ee6d6}
+.tg-seg.full i.on{background:#ffd27a;box-shadow:0 0 7px rgba(255,210,122,.6)}
+.tg-ms[data-act]{cursor:pointer}
+
+/* Tally: the same slim bar as Target, and its fill-up show scaled down to match */
+.tl-pop{right:4px}
+.tl-flash{inset:-2px -1px}.tl-flash.big{inset:-6px -4px}
+.tl-ring{border-width:1.5px}.tl-ring.big{border-width:2px}
+.tl-sp{width:4px;height:4px}.tl-sp.big{width:5px;height:5px}
+
+/* due-soon sign: smaller, on the name's line (gone once the bounty is overdue) */
+.card.qb-t > .qb-tr > .bt-warn{top:13px;height:20px}
+.bt-warn svg{width:16px;height:16px}
+/* bar thickness: Recurring, Counter and Target share the thin one (4px); Tally keeps the thicker 6px */
+.cn-ms .tg-seg i,.tg-ms .tg-seg i{height:4px}
+
+/* Tally: bar thickness T2 (5px), its fill-up show scaled to it */
+.tally-card .tl-meter i{height:5px}
+.tl-pop{font-size:15px;text-shadow:0 0 6px rgba(255,201,74,.9),0 0 12px rgba(255,140,40,.6),0 1px 0 #7a4a00}
+.tl-pop.big{font-size:18px}
+.tl-ring{width:24px;height:24px}.tl-ring.big{width:34px;height:34px}
+/* Tally's rate: on the name's line, in Tally's colour */
+.card.qb-t > .qb-tr:has(.tl-rate){right:12px}
+.qb-badge.tl-rate{padding:0 !important}
+/* Tally's rate: on the name's line, in Tally's colour */
+.card.qb-t > .qb-tr:has(.tl-rate){top:12px;height:32px;align-items:center}
+.qb-badge.tl-rate{color:#ffc94a !important}
+
+/* ---- Battery: looping animations pause after 30 s without a touch (html.idle, set in app.js "One clock"); any touch resumes them ---- */
+html.idle *,html.idle *::before,html.idle *::after{animation-play-state:paused !important}
+
+/* 4x4 widget: buttons are plain coloured words (no border); DONE is a faded green word */
+.wb .wt-b,.wv .wt-b{border:0 !important;clip-path:none !important;background:none !important;box-shadow:none !important;padding:3px 3px !important;letter-spacing:.8px}
+.wb .wt-b.k,.wv .wt-b.k{color:var(--bc,#ff8a45) !important}
+.wt-b.done,.wt.h .wt-b.done{color:#3fd47a !important;opacity:.55}.wt-b.done::before{display:none !important}
+.wb-gh.red{color:#ff6b5e}
+
+/* 4x4 preview: pages, slim rows, compact half tiles (mirrors the phone widget) */
+.wb{height:540px}.wb-list{display:flex;flex-direction:column;gap:5px;overflow:hidden !important}
+.wb-gh.sub{padding:6px 4px 2px}
+.ns{display:flex;align-items:center;gap:7px;padding:7px 9px;background:rgba(20,38,41,.95);border:1px solid rgba(210,240,236,.2);flex:none;min-height:42px;box-sizing:border-box}
+.ns.urgent{border-color:rgba(255,107,94,.55)}.ns .wt-t{flex:1;min-width:0}.ns .wt-rew{flex:none}.ns .wt-st{font:700 10px var(--f-num)}
+.ns.done .wt-t,.ns.done .wt-ic{opacity:.5}.ns.done .wt-t,.wt.done .wt-t{text-decoration:line-through;text-decoration-color:rgba(230,240,238,.35)}
+.ns-due{display:flex;align-items:center;gap:5px;font:600 10.5px var(--f-num);color:#ff8a45;margin:2px 3px -2px;flex:none}.ns-due.red{color:#ff6b5e}.ns-due svg{width:11px;height:11px}
+.wt.h.bd .wt-r1{gap:8px}.wt.h.bd .wt-t{margin-top:0;font-size:12.5px}
+.wb-pgr{display:flex;align-items:center;justify-content:center;gap:16px;padding:8px;border-top:1px solid rgba(210,240,236,.1)}
+.wb-pgr button{font:700 18px var(--f-num);color:#2ee6d6;border:1px solid rgba(46,230,214,.6);background:none;width:46px;line-height:22px;padding:0}
+.wb-pgr .dots{display:flex;gap:6px}.wb-pgr .dots i{width:7px;height:7px;border-radius:50%;background:#2a4546}.wb-pgr .dots i.on{background:#2ee6d6}
+.wb .wb-list{padding:6px 10px 8px !important}
+
+.wb-list .wv-row{height:auto}.wb-list .wv-cell{height:auto}.wb-list .wv-row.two .wt{height:100%}
+
+/* 4x4: Tally's rewards sit at the right of the total line */
+.wt-subrow{display:flex;align-items:center;gap:8px}.wt-subrow .wt-sub{flex:1;min-width:0}.wt-subrow .wt-rew{flex:none}.wt-subrow .wt-note{flex:none;font:600 10.5px var(--f-num);color:#8fa6a3}
+/* 4x4 DUE SOON: the Quests page's red bounty card */
+.bc{flex:none;padding:10px 12px;border:1px solid rgba(255,59,48,.75);background:linear-gradient(160deg,rgba(80,14,14,.92),rgba(26,8,8,.95));box-shadow:inset 0 0 18px rgba(255,59,48,.25);display:flex;flex-direction:column;gap:8px}
+.bc-hd{display:flex;align-items:center;gap:10px}.bc-nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.bc-nm .wt-t{font:700 14px var(--f-title);color:#f2f7f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bc-due{font:600 11px var(--f-num);color:#ff8a7f;white-space:nowrap}.bc-left{display:inline-flex;align-items:center;gap:4px;color:#ff6b5e;font-weight:700}.bc-left svg{width:12px;height:12px}
+.bc-warn svg{width:18px;height:18px;display:block}
+.bc-ft{display:flex;align-items:center}.bc-ft .wt-gap{flex:1}
+.bc.done{opacity:.6}
+
+.wb .wt.f .wt-bar{margin-bottom:6px}
+
+/* 4x4: a full Target's "50 / 50" at the right end of its bar; finished tiles fade more; dots a little lower */
+.wt-barrow{display:flex;align-items:center;gap:8px;margin-top:6px}.wt-barrow .wt-bar{flex:1;margin-top:0;margin-bottom:0 !important}.wt-barrow b{font:700 12px var(--f-num);color:#cfdedc}
+.wb .wt.done .wt-bar,.wb .wt.done .wt-barrow,.wb .wt.done .wt-sub,.wb .wt.done .wt-orbs,.wb .wt.done .wt-note{opacity:.4}
+.wb .wt-r3.orb{margin-top:5px}
+.wt-barrow{margin-bottom:6px}

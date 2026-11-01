@@ -11,6 +11,10 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StrikethroughSpan;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Typeface;
@@ -18,7 +22,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
-import android.view.Gravity;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -27,8 +30,10 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Draws Psych home-screen widgets from the snapshot the app sends (PsychWidgetPlugin.update).
@@ -42,6 +47,7 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
     public static final String ACTION_TAP = "com.cat.psych.widget.TAP";
     public static final String ACTION_PINNED = "com.cat.psych.widget.PINNED";
     public static final String ACTION_TAB = "com.cat.psych.widget.TAB";
+    public static final String ACTION_PAGE = "com.cat.psych.widget.PAGE";
 
     protected abstract String size();
 
@@ -49,6 +55,10 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
     public static final String[] SIZES = { "2x1", "4x1", "2x2", "4x2", "4x4" };
 
     boolean isBoard() { return "4x4".equals(size()); }
+    /** A List shows as many lines as fit: the whole list on the 4x4, otherwise what the widget's current height allows (drag it taller for more). */
+    int lineCap = 8;
+    /** drawing a 4x4 row (no streaks there) */
+    boolean boardMode = false;
 
     public static Class<?> providerFor(String size) {
         for (int i = 0; i < SIZES.length; i++) if (SIZES[i].equals(size)) return PROVIDERS[i];
@@ -57,20 +67,26 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
 
     static SharedPreferences prefs(Context c) { return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
 
-    /** Redraw every Psych widget on the home screen. */
-    public static void refreshAll(Context c) {
+    /** Redraw every Psych widget on the home screen (the app sent new data: lists are rebuilt). */
+    public static void refreshAll(Context c) { refreshAll(c, false); }
+
+    /** soft = after a tap on a widget or a background step sync: the 4x4's list is refreshed in place,
+     *  so it keeps its scroll position (a full redraw rebuilt the list and jumped back to the top of the tab). */
+    public static void refreshAll(Context c, boolean soft) {
         AppWidgetManager m = AppWidgetManager.getInstance(c);
         for (Class<?> cls : PROVIDERS) {
             int[] ids = m.getAppWidgetIds(new ComponentName(c, cls));
             if (ids == null || ids.length == 0) continue;
-            Intent i = new Intent(c, cls).setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
+            Intent i = new Intent(c, cls).setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids).putExtra("soft", soft);
             c.sendBroadcast(i);
         }
     }
 
-    void redraw(Context c, AppWidgetManager m, int id) {
+    void redraw(Context c, AppWidgetManager m, int id) { redraw(c, m, id, false); }
+
+    void redraw(Context c, AppWidgetManager m, int id, boolean soft) {
         try {
-            if (isBoard()) { m.updateAppWidget(id, buildBoard(c, m, id)); m.notifyAppWidgetViewDataChanged(id, id(c, "b_list")); }
+            if (isBoard()) m.updateAppWidget(id, buildBoard(c, m, id));
             else m.updateAppWidget(id, build(c, m, id));
         } catch (Exception ignored) {}
     }
@@ -88,13 +104,19 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
     @Override
     public void onDeleted(Context c, int[] ids) {
         SharedPreferences.Editor e = prefs(c).edit();
-        for (int id : ids) { e.remove("map_" + id); e.remove("tab_" + id); }
+        for (int id : ids) { e.remove("map_" + id); e.remove("tab_" + id); e.remove("page_" + id); }
         e.apply();
     }
 
     @Override
     public void onReceive(Context c, Intent in) {
         String a = in.getAction();
+        if (AppWidgetManager.ACTION_APPWIDGET_UPDATE.equals(a) && in.getBooleanExtra("soft", false)) {
+            int[] ids = in.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS);
+            AppWidgetManager m = AppWidgetManager.getInstance(c);
+            if (ids != null) for (int id : ids) redraw(c, m, id, true);
+            return;
+        }
         if (ACTION_PINNED.equals(a)) {
             int id = in.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
             String cfg = in.getStringExtra("configId");
@@ -102,15 +124,20 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
             refreshAll(c);
             return;
         }
+        if (ACTION_PAGE.equals(a)) {   // 4x4: turn the page (the page count is worked out when it is drawn, so a stale tap stays in range)
+            int id = in.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1), d = in.getIntExtra("d", 0);
+            if (id != -1) { prefs(c).edit().putInt("page_" + id, Math.max(0, prefs(c).getInt("page_" + id, 0) + d)).apply(); redraw(c, AppWidgetManager.getInstance(c), id); }
+            return;
+        }
         if (ACTION_TAB.equals(a)) {   // 4x4: show another group
             int id = in.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
             String key = in.getStringExtra("tab");
-            if (id != -1 && key != null) { prefs(c).edit().putString("tab_" + id, key).apply(); redraw(c, AppWidgetManager.getInstance(c), id); }
+            if (id != -1 && key != null) { prefs(c).edit().putString("tab_" + id, key).putInt("page_" + id, 0).apply(); redraw(c, AppWidgetManager.getInstance(c), id); }
             return;
         }
         if (ACTION_TAP.equals(a)) {
             handleTap(c, in.getStringExtra("qid"), in.getStringExtra("act"), null);
-            refreshAll(c);
+            refreshAll(c, true);
             return;
         }
         super.onReceive(c, in);
@@ -132,7 +159,22 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
                 for (int i = 0; i < ws.length(); i++)
                     for (JSONObject s : slots(ws.getJSONObject(i))) {
                         if (!qid.equals(s.optString("qid"))) continue;
-                        if ("claim".equals(act) && !s.optBoolean("done") && addXp == 0 && addGold == 0) { addXp = s.optLong("rawXp"); addGold = s.optLong("rawGold"); }
+                        if (addXp == 0 && addGold == 0) {   // what this tap pays, once (the same quest can sit on several widgets)
+                            if (("claim".equals(act) || "steps".equals(act)) && !s.optBoolean("done")) { addXp = s.optLong("rawXp"); addGold = s.optLong("rawGold"); }
+                            else if ("pair:bonus".equals(act)) {   // the bonus: its rewards ride along in bonusItem
+                                JSONObject bi = s.optJSONObject("bonusItem");
+                                if (bi != null && !s.optBoolean("done") && s.optInt("cdone") >= s.optInt("ctot")) { addXp = bi.optLong("rawXp"); addGold = bi.optLong("rawGold"); }
+                            }
+                            else if (act.startsWith("pair")) {
+                                for (String k : new String[] { "items", "short" }) {
+                                    JSONArray ia = s.optJSONArray(k);
+                                    for (int x = 0; ia != null && x < ia.length(); x++) {
+                                        JSONObject h = ia.optJSONObject(x);
+                                        if (h != null && act.equals(h.optString("act")) && !h.optBoolean("done")) { addXp = h.optLong("rawXp"); addGold = h.optLong("rawGold"); }
+                                    }
+                                }
+                            }
+                        }
                         applyLocally(s, act, value);
                     }
                 if (addXp > 0 || addGold > 0) for (int i = 0; i < ws.length(); i++) {
@@ -164,6 +206,23 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
             JSONArray row = rows.optJSONArray(r);
             if (row == null) continue;
             for (int k = 0; k < row.length(); k++) { JSONObject s = row.optJSONObject(k); if (s != null) out.add(s); }
+        }
+    }
+
+    /** Bordered button styles: text colour (the border is drawable pw_btn_<style>). gold = Tally's ADD, rec = Record,
+     *  pair / scal / ctr / bty / avd = List, Recurring, Counter, Bounty, Avoid (keep in step with KIND_COL in app.js). */
+    static final Map<String, Integer> BTN_COL = new HashMap<>();
+    static {
+        BTN_COL.put("or", 0xFFFF8A45); BTN_COL.put("ok", 0xFF3FD47A); BTN_COL.put("red", 0xFFFF8A7F); BTN_COL.put("cy", 0xFF2EE6D6);
+        BTN_COL.put("dim", 0xFF6F8482); BTN_COL.put("gold", 0xFFFFC94A); BTN_COL.put("rec", 0xFFA98BFF); BTN_COL.put("pair", 0xFF5CABFF);
+        BTN_COL.put("scal", 0xFFFF7A7A); BTN_COL.put("ctr", 0xFF4DD0A0); BTN_COL.put("bty", 0xFFB6E85A); BTN_COL.put("avd", 0xFFFF8FB1);
+    }
+    /** The button style for a quest type's colour (the "k" buttons). */
+    static String kindStyle(String hex) {
+        switch (hex) {
+            case "#5cabff": return "pair";  case "#ff7a7a": return "scal"; case "#4dd0a0": return "ctr";
+            case "#a98bff": return "rec";   case "#ffc94a": return "gold"; case "#2ee6d6": return "cy";
+            case "#b6e85a": return "bty";   case "#ff8fb1": return "avd";  default: return "or";
         }
     }
 
@@ -212,13 +271,26 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
                  .put("note", "Claimed \u00D7" + n + (up > 0 ? " \u00B7 Next pays +" + up + "%" : ""));
                 return;
             }
+            if ("counter".equals(kind)) {   // no done state: the count goes up, the tile stays tappable
+                String st = s.optString("streak", "0"); int c = 0;
+                try { c = Integer.parseInt(st.replaceAll("[^0-9]", "")); } catch (Exception e) { }
+                s.put("streak", (c + 1) + "\u00D7");
+                return;
+            }
             if ("avoid".equals(kind)) b.put(btn("SLIP", "slip", "red"));
-            b.put(btn("DONE", "", "ok"));
+            b.put(btn("DONE", "", "done"));
             s.put("btn", b).put("done", true).put("tap", "open").put("doneUntil", nextMidnight());
         } else if ("hit".equals(act)) {
-            int n = s.optInt("need", 1), h = Math.min(n, s.optInt("hits") + 1);
+            int n = s.optInt("need", s.optInt("needN", 1)), h = Math.min(n, s.optInt("hits") + 1);
             s.put("hits", h).put("tap", h >= n ? "claim" : "hit");
-            b.put(h >= n ? btn("CLAIM", "claim", "or") : btn(h + "/" + n, "hit", "cy"));
+            if (s.has("needN")) s.put("pct", h * 100 / n).put("sub", h + " / " + n);
+            b.put(h >= n ? btn("CLAIM", "claim", "k").put("color", s.optString("color")) : btn(h + "/" + n, "hit", "k").put("color", s.optString("color")));
+            s.put("btn", b);
+        } else if ("hits".equals(act) && value != null) {   // a big target (more than 10): an amount of hits
+            int n = s.optInt("need", s.optInt("needN", 1)), h = Math.min(n, s.optInt("hits") + (int) Math.floor(value));
+            s.put("hits", h).put("tap", h >= n ? "claim" : "hits").put("sub", h + " / " + n);
+            if (s.has("needN")) s.put("pct", h * 100 / n);
+            b.put(h >= n ? btn("CLAIM", "claim", "k").put("color", s.optString("color")) : btn("+ ADD", "hits", "k").put("color", s.optString("color")));
             s.put("btn", b);
         } else if ("slip".equals(act)) {
             b.put(btn("SLIPPED", "", "red"));
@@ -232,19 +304,37 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
              .put("xp", "+" + (pend * s.optInt("xpPer"))).put("gold", "+" + (pend * s.optInt("goldPer")))
              .put("sub", amt.trim() + " added · reward waiting").put("note", "added when the app opens");
         } else if ("record".equals(act) && value != null) {
-            b.put(btn("DONE", "", "ok"));
+            b.put(btn("DONE", "", "done"));
             s.put("btn", b).put("done", true).put("tap", "open").put("sub", num(value) + " " + s.optString("unit") + " recorded");
         } else if ("steps".equals(act)) {
             s.put("btn", b).put("done", true).put("tap", "open").put("note", "claimed");
-        } else if ("pairA".equals(act) || "pairB".equals(act)) {
-            JSONObject h = s.optJSONObject("pairA".equals(act) ? "pa" : "pb");
-            if (h != null) h.put("done", true);
-            int d = 0;
-            JSONObject pa = s.optJSONObject("pa"), pb = s.optJSONObject("pb");
-            if (pa != null && pa.optBoolean("done")) d++;
-            if (pb != null && pb.optBoolean("done")) d++;
-            s.put("streak", d + "/2");
-            if (d == 2) s.put("done", true).put("note", "bonus earned");
+        } else if (act.startsWith("pair")) {
+            if ("pair:bonus".equals(act)) {   // the list's bonus was claimed: the whole tile fades
+                b.put(btn("DONE", "", "done"));
+                s.put("btn", b).put("done", true).put("tap", "open").put("note", "bonus earned").put("bonusItem", JSONObject.NULL);
+                return;
+            }
+            // a list line was tapped: it is done and the count goes up; with the last one ticked the Bonus appears right away (tap it, or the tile, to claim)
+            boolean hit = false;
+            for (String k : new String[] { "items", "short" }) {
+                JSONArray ia = s.optJSONArray(k);
+                for (int x = 0; ia != null && x < ia.length(); x++) {
+                    JSONObject h = ia.optJSONObject(x);
+                    if (h != null && act.equals(h.optString("act")) && !h.optBoolean("done")) { h.put("done", true); hit = true; }
+                }
+            }
+            if (hit) {
+                int d = s.optInt("cdone") + 1, tot = s.optInt("ctot");
+                s.put("cdone", d);
+                if (tot > 0 && d >= tot && s.optBoolean("nob")) { b.put(btn("DONE", "", "done")); s.put("done", true); }
+                else {
+                    JSONObject bi = s.optJSONObject("bonusItem");
+                    boolean ready = tot > 0 && d >= tot && bi != null;
+                    b.put(ready ? btn(d + "/" + tot, "pair:bonus", "k").put("color", s.optString("color")) : btn(d + "/" + tot, "", "dim"));   // ready: the count is the bonus button
+                    if (ready) s.put("note", "bonus ready").put("tap", "pair:bonus");   // no Bonus line: the count button and the tile claim it
+                }
+                s.put("btn", b);
+            }
         }
     }
 
@@ -277,7 +367,7 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
     /** What a tap does: open the app, ask for a number (tally / record), or queue the action. */
     PendingIntent action(Context c, JSONObject s, String act, int req) {
         if (act == null || act.isEmpty() || "open".equals(act)) return openApp(c);
-        if ("tally".equals(act) || "record".equals(act)) {
+        if ("tally".equals(act) || "record".equals(act) || "hits".equals(act)) {
             Intent i = new Intent(c, WidgetInputActivity.class)
                 .putExtra("qid", s.optString("qid")).putExtra("act", act).putExtra("name", s.optString("name")).putExtra("unit", s.optString("unit"))
                 .putExtra("pre", s.optBoolean("pre")).putExtra("chunk", s.optDouble("chunk", 0)).putExtra("carry", s.optDouble("carry", 0))
@@ -305,7 +395,10 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
         boolean two = w.optInt("width", 4) == 2;
         float dens = c.getResources().getDisplayMetrics().density;
         int widthDp = 250;
-        try { Bundle o = m.getAppWidgetOptions(appWidgetId); int mw = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0); if (mw > 0) widthDp = mw; } catch (Exception ignored) {}
+        int heightDp = 110 * rows.length();
+        try { Bundle o = m.getAppWidgetOptions(appWidgetId); int mw = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0); if (mw > 0) widthDp = mw;
+            int mh = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0); if (mh > 0) heightDp = mh; } catch (Exception ignored) {}
+        lineCap = Math.max(2, Math.min(8, (int) ((heightDp / (float) rows.length() - 46) / 20)));   // a line is about 20dp, the title row about 46
         try {
             for (int r = 0; r < 2; r++) {
                 String p = "r" + r;
@@ -394,11 +487,11 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
         rv.setImageViewResource(ic, icon);
         rv.setInt(ic, "setColorFilter", color);
         rv.setInt(ic, "setBackgroundColor", (color & 0x00FFFFFF) | 0x26000000);
-        text(rv, id(c, p + "_title"), s.optString("name"));
-        String strk = s.optString("streak"), mlt = s.optString("mult");
+        rv.setTextViewText(id(c, p + "_title"), titleText(s.optString("name"), done));
+        String strk = boardMode ? "" : s.optString("streak"), mlt = boardMode ? "" : s.optString("mult");   // the 4x4 doesn't show streaks
         text(rv, id(c, p + "_streak"), strk);
         vis(rv, id(c, p + "_streak"), !strk.isEmpty());
-        rv.setTextColor(id(c, p + "_streak"), parse(s.optString("streakColor"), Color.WHITE));
+        rv.setTextColor(id(c, p + "_streak"), strk.startsWith("0") ? 0xFF8AA09E : 0xFFE6EFED);   // the number stays quiet, only the +% carries the tier colour
         text(rv, id(c, p + "_mult"), mlt);
         vis(rv, id(c, p + "_mult"), !mlt.isEmpty());
         rv.setTextColor(id(c, p + "_mult"), parse(s.optString("streakColor"), Color.parseColor("#F5C542")));   // the +% in its streak's colour
@@ -408,10 +501,35 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
         String sub = s.optString("sub"), note = s.optString("note");
         text(rv, id(c, p + "_sub"), sub);
         vis(rv, id(c, p + "_sub"), !sub.isEmpty());
+        if (p.equals("r0f")) {
+            // Tally on the 4x4: the rewards and "per $100" sit at the right of the total line, so the footer line goes
+            boolean tl = boardMode && "tally".equals(s.optString("tap")) && !sub.isEmpty();
+            vis(rv, id(c, "r0f_subrow"), !sub.isEmpty());
+            vis(rv, id(c, "r0f_rew2"), tl);
+            vis(rv, id(c, "r0f_ft"), !tl);
+            if (tl) { text(rv, id(c, "r0f_xp2"), s.optString("xp")); text(rv, id(c, "r0f_gold2"), s.optString("gold")); text(rv, id(c, "r0f_note2"), note); }
+        }
+        // on the 4x4 a tile is only as tall as its lines: the stretchy gaps (made for the fixed-size widgets) would be blown up by the launcher
+        if (boardMode) { vis(rv, id(c, p + "_fa"), false); vis(rv, id(c, p + "_fb"), false); }
         int bar = id(c, p + "_bar");
         if (s.has("pct")) { rv.setProgressBar(bar, 100, Math.max(0, Math.min(100, s.optInt("pct"))), false); vis(rv, bar, true); } else vis(rv, bar, false);
+        if (p.endsWith("f")) {
+            // a full tile with a bar (Target, Steps): "50 / 120" sits at the right end of the bar, no line of its own; a finished one fades
+            boolean inBar = s.has("pct") && !sub.isEmpty();
+            vis(rv, id(c, p + "_barrow"), s.has("pct"));
+            vis(rv, id(c, p + "_bartxt"), inBar);
+            if (inBar) { text(rv, id(c, p + "_bartxt"), sub); vis(rv, id(c, p + "_sub"), false); vis(rv, id(c, p + "_subrow"), false); }
+            if (done && boardMode) { rv.setFloat(id(c, p + "_barrow"), "setAlpha", 0.4f); rv.setFloat(id(c, p + "_subrow"), "setAlpha", 0.4f); }
+        }
         int nt = id(c, p + "_note");
         text(rv, nt, note);
+        // "Next pays +160%": the % in the quest's own colour
+        java.util.regex.Matcher pm = java.util.regex.Pattern.compile("\\+\\d+%").matcher(note);
+        if (nt != 0 && pm.find()) {
+            SpannableStringBuilder nb = new SpannableStringBuilder(note);
+            nb.setSpan(new ForegroundColorSpan(color), pm.start(), pm.end(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            rv.setTextViewText(nt, nb);
+        }
         // recurring: claims this week as segments across the tile
         int segs = id(c, p + "_segs");
         if (segs != 0 && s.has("segs")) { rv.setImageViewBitmap(segs, segBitmap(s.optInt("segs"), s.optInt("segMax", 7), Math.max(80, tileDp - 26), dens)); vis(rv, segs, true); } else vis(rv, segs, false);
@@ -422,23 +540,29 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
             rv.setImageViewBitmap(orbs, orbBitmap(hits, s.optInt("need", 1), avail, dens));
             vis(rv, orbs, true);
         } else vis(rv, orbs, false);
-        // pair: its two halves as boxes, each tappable
+        // list: its items as lines, each tappable, as many as fit the tile's height (all of them on the 4x4)
         int pair = id(c, p + "_pair");
-        JSONObject pa = s.optJSONObject("pa"), pb = s.optJSONObject("pb");
-        if (pair != 0 && pa != null && pb != null) {
+        JSONArray its = s.optJSONArray(s.has("items") ? "items" : "short");
+        if (pair != 0 && its != null && its.length() > 0) {
             vis(rv, pair, true);
-            String[][] hs = { { "_pa", "pairA" }, { "_pb", "pairB" } };
-            JSONObject[] ho = { pa, pb };
-            for (int k = 0; k < 2; k++) {
-                String q = p + hs[k][0];
-                boolean hd = ho[k].optBoolean("done");
-                int t = id(c, q + "_t");
-                rv.setTextViewText(t, (hd ? "\u25CF  " : "\u25CB  ") + ho[k].optString("label"));
-                rv.setTextColor(t, hd ? 0xFF7F9593 : 0xFFF2F7F6);
-                rv.setTextViewText(id(c, q + "_x"), ho[k].optString("xp"));
-                rv.setTextViewText(id(c, q + "_g"), ho[k].optString("gold"));
-                for (String part : new String[] { "_gi", "_x", "_ci", "_g" }) vis(rv, id(c, q + part), !hd);   // a done half just shows its name
-                click(c, rv, id(c, q), s, hd ? "open" : hs[k][1], (wid * 100 + slot * 4 + 3 + k * 40) & 0x7fffffff);
+            int dotCol = parse(s.optString("color"), 0xFF5CABFF);
+            for (int k = 0; k < 8; k++) {
+                String q = p + "_pl" + k;
+                int row = id(c, q);
+                JSONObject h = k < its.length() && k < lineCap ? its.optJSONObject(k) : null;
+                if (h == null) { vis(rv, row, false); continue; }
+                vis(rv, row, true);
+                boolean hd = h.optBoolean("done");
+                SpannableStringBuilder sb = new SpannableStringBuilder((hd ? "\u25CF  " : "\u25CB  ") + h.optString("label"));
+                sb.setSpan(new ForegroundColorSpan(dotCol), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sb.setSpan(new ForegroundColorSpan(hd ? 0xFF6F8583 : 0xFFF2F7F6), 3, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                if (hd) sb.setSpan(new StrikethroughSpan(), 3, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);   // a very light line, the text is already dimmed
+                rv.setTextViewText(id(c, q + "_t"), sb);
+                rv.setTextViewText(id(c, q + "_x"), h.optString("xp"));
+                rv.setTextViewText(id(c, q + "_g"), h.optString("gold"));
+                rv.setTextColor(id(c, q + "_x"), hd ? 0x808FD9CF : 0xFF8FD9CF);
+                rv.setTextColor(id(c, q + "_g"), hd ? 0x80FFC94A : 0xFFFFC94A);
+                click(c, rv, row, s, hd ? "open" : h.optString("act", "open"), 500000 + (wid * 1000 + slot * 20 + k) % 400000);
             }
         } else vis(rv, pair, false);
         // bounty: the time left with a clock (at the right of the footer on a full tile, under the name on a half tile); due today / tomorrow = a red tile
@@ -457,7 +581,7 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
             vis(rv, dv, true);
         }
         int nb = buttons == null ? 0 : buttons.length();
-        vis(rv, id(c, p + "_rew"), !(half && nb >= 2));
+        vis(rv, id(c, p + "_rew"), !(half && nb >= 2) && !s.optBoolean("norew"));
         // a finished quest fades, like on the board
         rv.setTextColor(id(c, p + "_title"), done ? 0x80F2F7F6 : 0xFFF2F7F6);
         rv.setTextColor(id(c, p + "_xp"), done ? 0x808FD9CF : 0xFF8FD9CF);
@@ -472,12 +596,9 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
             int vid = id(c, ids[k]), bi = n - 1 - k;
             if (bi < 0) { rv.setViewVisibility(vid, View.GONE); continue; }
             JSONObject b = buttons.getJSONObject(bi);
-            String st = b.optString("style", "or"), act = b.optString("act");
-            if (!"ok".equals(st) && !"red".equals(st) && !"cy".equals(st) && !"dim".equals(st)) st = "or";
+            String act = b.optString("act");
             rv.setViewVisibility(vid, View.VISIBLE);
-            rv.setTextViewText(vid, b.optString("label"));
-            rv.setTextColor(vid, Color.parseColor("ok".equals(st) ? "#3FD47A" : "red".equals(st) ? "#FF8A7F" : "cy".equals(st) ? "#2EE6D6" : "dim".equals(st) ? "#6F8482" : "#FF8A45"));
-            rv.setInt(vid, "setBackgroundResource", c.getResources().getIdentifier("pw_btn_" + st, "drawable", c.getPackageName()));
+            buttonLook(rv, vid, b);
             click(c, rv, vid, s, act, (wid * 100 + slot * 4 + 1 + k) & 0x7fffffff);
         }
     }
@@ -541,18 +662,84 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
 
     static int flagMutable() { return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : 0; }
 
+    // ---------- the 4x4: pages, not a scrolling list (a list jumps back to the top on some launchers whenever its rows reload) ----------
+    /** A full-size quest with nothing extra to show is drawn as one slim line. */
+    static boolean slimOk(JSONObject s) {
+        if (s == null || s.optBoolean("half") || s.optBoolean("isHdr") || "scaling".equals(s.optString("kind"))) return false;
+        if (s.has("need") || s.has("needN") || s.has("segs") || s.has("pct") || s.has("items")) return false;
+        if (!s.optString("sub").isEmpty()) return false;
+        JSONArray b = s.optJSONArray("btn");
+        return b != null && b.length() == 1;
+    }
+
+    /** About how tall a row is (dp), to share the rows out over pages. A little generous: a cut-off row is worse than a bit of spare room. */
+    /** What a half tile has beyond the basics (dp), so a neighbour can match its footer: dots, a sub line / time left, a bar, a second title line. */
+    static int halfExtra(JSONObject s, int tileDp) {
+        if (s == null) return 0;
+        int e = 0;
+        if (s.has("need")) e += 25;
+        if (!s.optString("sub").isEmpty() || !s.optString("due").isEmpty()) e += 15;
+        if (s.has("pct")) e += 14;
+        int avail = Math.max(40, tileDp - 58);
+        if (s.optString("name").length() * 7.6f > avail) e += 16;
+        return e;
+    }
+
+    static int rowHeight(JSONArray row) {
+        JSONObject f = first(row);
+        if (f == null) return 0;
+        if (f.optBoolean("isHdr")) return 27;
+        if (row.length() == 2) {
+            int h = 0;
+            for (int i = 0; i < 2; i++) { JSONObject s = row.optJSONObject(i); if (s == null) continue;
+                int e = 68; if (s.has("need")) e += 18; if (!s.optString("sub").isEmpty() || !s.optString("due").isEmpty()) e += 18; if (s.has("pct")) e += 11; h = Math.max(h, e); }
+            return h + 5;
+        }
+        if (f.optBoolean("bcard")) return 90;
+        if (slimOk(f)) return 48 + (!f.optString("due").isEmpty() && !f.optBoolean("done") ? 19 : 0);
+        JSONArray its = f.optJSONArray("items");
+        if (its != null) return 77 + 28 * its.length() + 5;
+        if ("tally".equals(f.optString("tap")) && !f.optString("sub").isEmpty()) return 75;
+        int h = 65;
+        if (!f.optString("sub").isEmpty()) h += 18;
+        if (f.has("pct")) h += f.has("needN") ? 20 : 38;
+        if (f.has("segs")) h += 14;
+        return h + 5;
+    }
+
+    /** Split a tab's rows into pages that fit availDp. A subheader never ends a page (it moves on with its first row). */
+    static List<List<JSONArray>> paginate(JSONArray rows, int availDp) {
+        List<List<JSONArray>> pages = new ArrayList<>();
+        List<JSONArray> cur = new ArrayList<>();
+        int used = 0, real = 0;
+        JSONArray hdrRow = null;
+        for (int i = 0; rows != null && i < rows.length(); i++) {
+            JSONArray r = rows.optJSONArray(i);
+            if (r == null || first(r) == null) continue;
+            int h = rowHeight(r);
+            boolean hdr = first(r).optBoolean("isHdr");
+            if (hdr && i + 1 < rows.length() && rows.optJSONArray(i + 1) != null) h += rowHeight(rows.optJSONArray(i + 1));   // keep it with the row under it
+            if (real > 0 && used + h > availDp) {
+                pages.add(cur); cur = new ArrayList<>(); used = 0; real = 0;
+                if (!hdr && hdrRow != null) { cur.add(hdrRow); used += rowHeight(hdrRow); }   // a new page says which cycle it's in
+            }
+            if (hdr) hdrRow = r; else real++;
+            cur.add(r); used += rowHeight(r);
+        }
+        if (!cur.isEmpty() || pages.isEmpty()) pages.add(cur);
+        return pages;
+    }
+
+    /** The label under the tabs: DUE SOON (red), RESETS IN + clock (Daily), OTHERS; Cycles has its own subheaders instead. */
+    static String groupLabel(String key) {
+        switch (key) { case "due": return "// DUE SOON"; case "daily": return "// RESETS IN"; case "others": return "// OTHERS"; default: return ""; }
+    }
+
     RemoteViews buildBoard(Context c, AppWidgetManager m, int wid) {
         RemoteViews rv = new RemoteViews(c.getPackageName(), c.getResources().getIdentifier("psych_widget_board", "layout", c.getPackageName()));
-        int list = id(c, "b_list");
+        int body = id(c, "b_body");
         rv.setOnClickPendingIntent(id(c, "b_top"), openApp(c));
         rv.setOnClickPendingIntent(id(c, "b_sum"), openApp(c));
-        // the scrolling list: rows come from PsychBoardService; a tap on a row goes through WidgetTapActivity
-        Intent svc = new Intent(c, PsychBoardService.class).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, wid);
-        svc.setData(Uri.parse(svc.toUri(Intent.URI_INTENT_SCHEME)));   // one list per widget
-        rv.setRemoteAdapter(list, svc);
-        rv.setEmptyView(list, id(c, "b_empty"));
-        Intent tpl = new Intent(c, WidgetTapActivity.class);
-        rv.setPendingIntentTemplate(list, PendingIntent.getActivity(c, wid & 0x7fffffff, tpl, PendingIntent.FLAG_UPDATE_CURRENT | flagMutable()));
         float dens = c.getResources().getDisplayMetrics().density;
         JSONObject w = configFor(c, wid), b = w == null ? null : w.optJSONObject("board");
         if (b == null) {
@@ -601,33 +788,161 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
             int tv = id(c, "b_t" + i);
             JSONObject g = i < ng ? groups.optJSONObject(i) : null;
             if (g == null) { vis(rv, tv, false); continue; }
-            int[] n = count(g);
             boolean on = cur != null && g.optString("key").equals(cur.optString("key"));
             rv.setViewVisibility(tv, View.VISIBLE);
-            rv.setTextViewText(tv, g.optString("tab") + (g.optBoolean("count", true) && n[1] > 0 ? "\n" + n[0] + "/" + n[1] : ""));
+            rv.setTextViewText(tv, g.optString("tab"));
             boolean red = g.optBoolean("red");   // DUE: something is due soon
             rv.setTextColor(tv, Color.parseColor(red ? (on ? "#FF8A7F" : "#FF6B5E") : on ? "#2EE6D6" : "#8FA6A3"));
             rv.setInt(tv, "setBackgroundResource", c.getResources().getIdentifier((red ? "pw_tab_red" : "pw_tab") + (on ? "_on" : ""), "drawable", c.getPackageName()));
             Intent ti = new Intent(c, getClass()).setAction(ACTION_TAB).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, wid).putExtra("tab", g.optString("key"));
             rv.setOnClickPendingIntent(tv, PendingIntent.getBroadcast(c, (wid * 100 + 80 + i) & 0x7fffffff, ti, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
         }
-        // the group's reset: a ticking clock within a day, "4d 8h" further out, or the cycle's name
+        // the label under the tabs: DUE SOON (red) / RESETS IN + the time left in whole minutes (Daily) / OTHERS; nothing for Cycles
+        String key = cur == null ? "" : cur.optString("key"), label = groupLabel(key);
         long ends = cur == null ? 0 : cur.optLong("ends", 0);
-        String time = cur == null ? "" : cur.optString("time");
-        boolean ticking = ends > now && ends - now < 864e5, far = ends - now >= 864e5;
-        vis(rv, id(c, "b_gh"), ticking || far || (ends == 0 && !time.isEmpty()));
-        vis(rv, id(c, "b_gchrono"), ticking); vis(rv, id(c, "b_gclock"), ticking || far); vis(rv, id(c, "b_gtime"), !ticking);
-        if (ticking) { rv.setChronometer(id(c, "b_gchrono"), SystemClock.elapsedRealtime() + (ends - now), null, true); rv.setChronometerCountDown(id(c, "b_gchrono"), true); }
-        else rv.setTextViewText(id(c, "b_gtime"), far ? left(ends - now) : time);
+        boolean showTime = "daily".equals(key) && ends > now;
+        vis(rv, id(c, "b_gh"), !label.isEmpty());
+        rv.setTextViewText(id(c, "b_gl"), label);
+        rv.setTextColor(id(c, "b_gl"), Color.parseColor("due".equals(key) ? "#FF6B5E" : "#8FA6A3"));
+        vis(rv, id(c, "b_gtime"), showTime);
+        if (showTime) rv.setTextViewText(id(c, "b_gtime"), left(ends - now));
+        // the rows of this tab, as many pages as it takes
+        int widthDp = widthDp(m, wid), heightDp = 460;
+        try { Bundle o = m.getAppWidgetOptions(wid); int mh = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0); if (mh > 0) heightDp = mh; } catch (Exception ignored) {}
+        int avail = heightDp - 232 + (label.isEmpty() ? 24 : 0);   // header, summary, tabs, label, pager and padding take the rest
+        List<List<JSONArray>> pages = paginate(cur == null ? null : cur.optJSONArray("rows"), Math.max(90, avail + 40));   // one page needs no pager, so it gets that room too
+        if (pages.size() > 1) pages = paginate(cur.optJSONArray("rows"), Math.max(90, avail));
+        SharedPreferences sp = prefs(c);
+        int pg = Math.max(0, Math.min(pages.size() - 1, sp.getInt("page_" + wid, 0)));
+        if (pg != sp.getInt("page_" + wid, 0)) sp.edit().putInt("page_" + wid, pg).apply();
+        rv.removeAllViews(body);
+        List<JSONArray> page = pages.get(pg);
+        vis(rv, id(c, "b_empty"), page.isEmpty());
         rv.setTextViewText(id(c, "b_empty"), "Nothing here");
-        // redraw when a clock runs out (midnight, or the tab's reset), so it never counts below zero
+        lineCap = 8;
+        for (int i = 0; i < page.size(); i++) {
+            try { rv.addView(body, boardRow(c, page.get(i), wid, i, widthDp)); } catch (Exception ignored) {}
+        }
+        // the page turner
+        boolean multi = pages.size() > 1;
+        vis(rv, id(c, "b_pager"), multi);
+        if (multi) {
+            android.text.SpannableStringBuilder dots = new android.text.SpannableStringBuilder();
+            for (int i = 0; i < pages.size() && i < 9; i++) {
+                int at = dots.length();
+                dots.append(i == 0 ? "●" : " ●");
+                dots.setSpan(new ForegroundColorSpan(i == pg ? 0xFF2EE6D6 : 0xFF2A4546), at, dots.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            rv.setTextViewText(id(c, "b_dots"), dots);
+            rv.setOnClickPendingIntent(id(c, "b_prev"), pageIntent(c, wid, -1));
+            rv.setOnClickPendingIntent(id(c, "b_next"), pageIntent(c, wid, pg + 1 < pages.size() ? 1 : -pg));   // after the last page, back to the first
+        }
+        // redraw now and then so the clock stays right (every 10 min), and when a clock runs out (midnight, or the tab's reset)
         try {
-            long at = Math.min(nextMidnight(), ticking ? ends : Long.MAX_VALUE) + 2000;
+            long at = Math.min(Math.min(nextMidnight() + 2000, now + 600000), ends > now ? ends + 2000 : Long.MAX_VALUE);
             int[] ids = AppWidgetManager.getInstance(c).getAppWidgetIds(new ComponentName(c, getClass()));
             Intent up = new Intent(c, getClass()).setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
             AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
             if (am != null) am.set(AlarmManager.RTC, at, PendingIntent.getBroadcast(c, 4444, up, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
         } catch (Exception ignored) {}
+        return rv;
+    }
+
+    PendingIntent pageIntent(Context c, int wid, int d) {
+        Intent i = new Intent(c, getClass()).setAction(ACTION_PAGE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, wid).putExtra("d", d);
+        return PendingIntent.getBroadcast(c, (wid * 100 + 70 + (d < 0 ? 0 : 1)) & 0x7fffffff, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /** A button as a plain coloured word, no border: the quest type's colour for CLAIM and counts, a faded green DONE. */
+    static void buttonLook(RemoteViews rv, int vid, JSONObject b) {
+        String st = b.optString("style", "or"), act = b.optString("act");
+        int col;
+        if ("done".equals(st) || "dot_ok".equals(st)) col = 0x8C3FD47A;
+        else {
+            if ("k".equals(st) || st.startsWith("dot")) st = "dot_red".equals(st) ? "red" : "dot_dim".equals(st) || act.isEmpty() ? "dim" : kindStyle(b.optString("color", "").toLowerCase(Locale.US));
+            if (!BTN_COL.containsKey(st)) st = "or";
+            col = BTN_COL.get(st);
+        }
+        rv.setTextViewText(vid, b.optString("label"));
+        rv.setTextColor(vid, col);
+        rv.setInt(vid, "setBackgroundResource", 0);
+    }
+
+    /** A quest's name; a finished one gets a faint line through it, like on the Quests page. */
+    static CharSequence titleText(String name, boolean done) {
+        SpannableStringBuilder sb = new SpannableStringBuilder(name);
+        if (done && sb.length() > 0) sb.setSpan(new StrikethroughSpan(), 0, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return sb;
+    }
+
+    /** A full-size quest as one slim line (icon, name, streak, rewards, button); a bounty's time left is a line above it. */
+    /** DUE SOON: the Quests page's red bounty card (warning sign, clock + time left, rewards, CLAIM). */
+    RemoteViews dueRow(Context c, JSONObject s, int wid, int slot, float dens) throws Exception {
+        RemoteViews rv = new RemoteViews(c.getPackageName(), c.getResources().getIdentifier("psych_widget_due", "layout", c.getPackageName()));
+        JSONArray buttons = s.optJSONArray("btn");
+        boolean done = s.optBoolean("done");
+        int color = parse(s.optString("color"), Color.parseColor("#FF8A45"));
+        int icon = c.getResources().getIdentifier("pw_k_" + s.optString("kind", "standard"), "drawable", c.getPackageName());
+        if (icon == 0) icon = c.getResources().getIdentifier("pw_k_standard", "drawable", c.getPackageName());
+        int ic = id(c, "d0_ic");
+        rv.setImageViewResource(ic, icon);
+        rv.setInt(ic, "setColorFilter", color);
+        rv.setInt(ic, "setBackgroundColor", (color & 0x00FFFFFF) | 0x26000000);
+        rv.setTextViewText(id(c, "d0_title"), titleText(s.optString("name"), done));
+        rv.setTextViewText(id(c, "d0_date"), s.optString("dueOn") + " \u00B7");
+        rv.setTextViewText(id(c, "d0_left"), s.optString("due"));
+        vis(rv, id(c, "d0_left"), !done && !s.optString("due").isEmpty());
+        vis(rv, id(c, "d0_warn"), !done && s.optBoolean("warn"));
+        text(rv, id(c, "d0_xp"), s.optString("xp"));
+        text(rv, id(c, "d0_gold"), s.optString("gold"));
+        JSONObject b = buttons != null && buttons.length() > 0 ? buttons.optJSONObject(buttons.length() - 1) : null;
+        int bv = id(c, "d0_b");
+        if (b == null) vis(rv, bv, false);
+        else { vis(rv, bv, true); buttonLook(rv, bv, b); click(c, rv, bv, s, b.optString("act"), (wid * 100 + slot * 4 + 1) & 0x7fffffff); }
+        click(c, rv, id(c, "d0_card"), s, done ? "open" : s.optString("tap", "claim"), (wid * 100 + slot * 4) & 0x7fffffff);
+        click(c, rv, ic, s, "open", 0);
+        return rv;
+    }
+
+    RemoteViews slimRow(Context c, JSONObject s, int wid, int slot, float dens) throws Exception {
+        RemoteViews rv = new RemoteViews(c.getPackageName(), c.getResources().getIdentifier("psych_widget_slim", "layout", c.getPackageName()));
+        long until = s.optLong("doneUntil", 0);
+        JSONObject reset = s.optJSONObject("reset");
+        JSONArray buttons = s.optJSONArray("btn");
+        boolean done = s.optBoolean("done");
+        String tap = s.optString("tap", "claim");
+        if (until > 0 && System.currentTimeMillis() >= until && reset != null) { buttons = reset.optJSONArray("btn"); done = false; tap = reset.optString("tap", "claim"); }
+        int color = parse(s.optString("color"), Color.parseColor("#FF8A45"));
+        int icon = c.getResources().getIdentifier("pw_k_" + s.optString("kind", "standard"), "drawable", c.getPackageName());
+        if (icon == 0) icon = c.getResources().getIdentifier("pw_k_standard", "drawable", c.getPackageName());
+        int ic = id(c, "s0_ic");
+        rv.setImageViewResource(ic, icon);
+        rv.setInt(ic, "setColorFilter", color);
+        rv.setInt(ic, "setBackgroundColor", (color & 0x00FFFFFF) | 0x26000000);
+        rv.setInt(ic, "setImageAlpha", done ? 128 : 255);
+        rv.setTextViewText(id(c, "s0_title"), titleText(s.optString("name"), done));
+        rv.setTextColor(id(c, "s0_title"), done ? 0x80F2F7F6 : 0xFFF2F7F6);
+        vis(rv, id(c, "s0_streak"), false);   // the 4x4 doesn't show streaks
+        text(rv, id(c, "s0_xp"), s.optString("xp"));
+        text(rv, id(c, "s0_gold"), s.optString("gold"));
+        boolean norew = s.optBoolean("norew");
+        for (String v : new String[] { "s0_gi", "s0_xp", "s0_ci", "s0_gold" }) vis(rv, id(c, v), !norew);
+        String due = s.optString("due");
+        boolean urgent = s.optBoolean("urgent") && !done;
+        rv.setInt(id(c, "s0_card"), "setBackgroundResource", c.getResources().getIdentifier(urgent ? "pw_card_red" : "pw_card", "drawable", c.getPackageName()));
+        int dv = id(c, "s0_due");
+        if (!due.isEmpty() && !done) {
+            rv.setTextViewText(dv, due);
+            rv.setTextColor(dv, urgent ? 0xFFFF6B5E : 0xFFFF8A45);
+            rv.setTextViewCompoundDrawables(dv, c.getResources().getIdentifier(urgent ? "pw_clock_red" : "pw_clock", "drawable", c.getPackageName()), 0, 0, 0);
+            vis(rv, dv, true);
+        } else vis(rv, dv, false);
+        JSONObject b = buttons != null && buttons.length() > 0 ? buttons.optJSONObject(buttons.length() - 1) : null;
+        int bv = id(c, "s0_b");
+        if (b == null) vis(rv, bv, false);
+        else { vis(rv, bv, true); buttonLook(rv, bv, b); click(c, rv, bv, s, b.optString("act"), (wid * 100 + slot * 4 + 1) & 0x7fffffff); }
+        click(c, rv, id(c, "s0_card"), s, done ? "open" : tap, (wid * 100 + slot * 4) & 0x7fffffff);
+        click(c, rv, ic, s, "open", 0);
         return rv;
     }
 
@@ -645,13 +960,22 @@ public abstract class PsychWidgetProvider extends AppWidgetProvider {
             text(rv, id(c, "r0_hdr_time"), when); vis(rv, id(c, "r0_hdr_time"), !when.isEmpty());
             return rv;
         }
+        if (row.length() == 1 && first.optBoolean("bcard")) return dueRow(c, first, wid, pos * 3, dens);
+        if (row.length() == 1 && slimOk(first)) return slimRow(c, first, wid, pos * 3, dens);
+        boardMode = true;
+        lineCap = 8;   // the board shows every line
         vis(rv, id(c, "r0_hdr"), false);
         vis(rv, id(c, "r0_content"), true);
         vis(rv, id(c, "r0f"), false); vis(rv, id(c, "r0a"), false); vis(rv, id(c, "r0b"), false);
         if (row.length() == 2) {
             tile(c, rv, "r0a", row.optJSONObject(0), wid, pos * 3 + 1, true, (w - 8) / 2, dens);
             tile(c, rv, "r0b", row.optJSONObject(1), wid, pos * 3 + 2, true, (w - 8) / 2, dens);
+            // the footers (rewards, button) line up: the shorter tile's footer moves down by what the other one has extra
+            int ea = halfExtra(row.optJSONObject(0), (w - 8) / 2), eb = halfExtra(row.optJSONObject(1), (w - 8) / 2), em = Math.max(ea, eb);
+            rv.setViewPadding(id(c, "r0a_ft"), 0, Math.round((em - ea) * dens), 0, 0);
+            rv.setViewPadding(id(c, "r0b_ft"), 0, Math.round((em - eb) * dens), 0, 0);
         } else tile(c, rv, "r0f", row.optJSONObject(0), wid, pos * 3, false, w, dens);
+        boardMode = false;
         return rv;
     }
 

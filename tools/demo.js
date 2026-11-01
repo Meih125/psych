@@ -1,7 +1,8 @@
 /* Preview-only test data and test bar. tools/make-preview.js puts this into Psych-preview.html.
    NEVER copy this into www/ or the app: the real app must start clean.
    - First open (no save yet): fills the app with one quest of every kind, gold, XP, packs, cards and step history.
-   - The purple bar at the top: Reset (fresh test data), +1000G, +Packs (one of each), and a pretend clock (−1 day / +1 day / Today)
+   - The purple bar at the top: Reset (fresh test data), +1000G, +Packs (one of each), Scenes 100% (every Tarot deck gives a new
+     scene), Clear scenes, +5 Tarot, and a pretend clock (−1 day / +1 day / Today)
      so day resets, streaks and countdowns can be tried without waiting. */
 (function(){
   const OFF_KEY = 'psych.demo.dayOffset';
@@ -24,14 +25,36 @@
       base('target', 'Gym 5× this week',  { need:5, hits:2, days:7, xp:30, gold:15, cycleEnd:day(5) }),
       base('bounty', 'Submit care plan',  { due:day(1), xp:40, gold:20 }),
       base('bounty', 'Renew bus pass',    { due:day(9), xp:15, gold:10 }),
-      base('avoid',  'No energy drinks',  { since:day(-12), best:20, xp:10, gold:5 })
+      base('avoid',  'No energy drinks',  { since:day(-12), best:20, xp:10, gold:5 }),
+      base('counter', 'Good deeds',       { xp:5, gold:5, size:'full' }),
+      base('counter', 'Worked on assignment', { xp:5, gold:5, size:'half' }),
+      base('scaling', 'Submit assignment', { xp:10, gold:10, growth:50, week:0, weekClaims:0, size:'half' })
     );
+    // Counter history: 37 taps over the last 6 days, 2 today
+    [['Good deeds', [1,0,2,1,3,0,2], 37], ['Worked on assignment', [0,1,0,2,1,1,3], 8]].forEach(([nm, w, tot]) => {
+      const c = d.quests.find(q => q.name === nm); c.log = []; w.forEach((n, i) => { for (let k = 0; k < n; k++) c.log.push({ t:day(i - 6) + (9 + k) * 36e5, xp:5, gold:5 }); }); c.count = tot; });
+    // Avoid history to see "Auto-claimed" rows: a slip 13 days ago, then manual claims and auto-claimed days mixed (autoTo = today, so nothing more is back-filled)
+    const av = d.quests.find(q => q.kind === 'avoid');
+    if (av){
+      av.slips = [day(-13) + 21 * 36e5]; av.autoTo = day(0); av.count = 0; av.log = [];
+      [[-12,0],[-11,0],[-10,0],[-9,1],[-8,0],[-7,1],[-6,1],[-5,0],[-4,0],[-3,1],[-2,0],[-1,1]].forEach(([n, auto]) => {
+        av.log.push(auto ? { t:day(n + 1) - 1000, xp:10 + Math.floor((12 + n) / 5), gold:5, auto:true } : { t:day(n) + 10 * 36e5 + (n % 3) * 36e5, xp:10, gold:5 }); av.count++; });
+    }
+    // a long note on every quest, to see how each tile handles it
+    const NOTE = 'A long note to see how the tile handles it: two full sentences here. Keep it short in real life, but it should still look tidy.';
+    d.quests.forEach(q => { q.note = NOTE; });
     // step history for the last 14 days
     for (let i = 1; i <= 14; i++) d.steps[dayKey(day(-i))] = 3000 + Math.round(Math.random() * 9000);
+    // and some big days (goal is 10,000) to see the goal bonus: ×4, ×3, ×2 waiting; a ×2 day already claimed (shows its day name)
+    Object.assign(d.steps, { [dayKey(day(0))]:22500, [dayKey(day(-1))]:31000, [dayKey(day(-2))]:20400, [dayKey(day(-3))]:11200,
+      [dayKey(day(-4))]:45200, [dayKey(day(-5))]:8000, [dayKey(day(-6))]:15000, [dayKey(day(-8))]:26000, [dayKey(day(-10))]:33000 });
+    const stq = d.quests.find(q => q.kind === 'steps'); if (stq) stq.goalPaid = { [dayKey(day(-2))]:true, [dayKey(day(-6))]:true };
     // a few packs and a spread of cards
     d.inv = { tarot:3, mlbb:2 };
     d.cards = {}; d.cardsGot = {};
     CARDS.forEach((c, i) => { if (i % 3 === 0){ d.cards[c.id] = 1 + (i % 2); d.cardsGot[c.id] = d.cards[c.id]; } });
+    // every Puzzle piece owned, some ×2 and some ×4 (to see the piece grid's counts)
+    CARDS.filter(c => c.set === 'Puzzle').forEach((c, i) => { d.cards[c.id] = d.cardsGot[c.id] = i % 2 ? 4 : 2; });
     return d;
   };
 
@@ -47,6 +70,16 @@
     b('Reset', () => { write(STORE_KEY, null); write(OFF_KEY, null); location.reload(); });
     b('+1000G', () => { S.gold += 1000; save(); render(); });
     b('+Packs', () => { S.inv.tarot = (S.inv.tarot || 0) + 1; S.inv.mlbb = (S.inv.mlbb || 0) + 1; save(); render(); });
+    // scene test: every deck that has scenes gives a new one each time (wraps rollDeck from app.js), and a way to lose them again
+    const SC_KEY = 'psych.demo.scenes100', sc100 = read(SC_KEY) === '1';
+    if (sc100 && typeof rollDeck === 'function'){
+      const orig = rollDeck;
+      window.rollDeck = function(item){ const r = orig(item); if (!r.scene && deckOf(item).scenes){ const m = SCENES.filter(x => !S.scenes[x.id]); if (m.length) r.scene = m[Math.floor(Math.random() * m.length)]; } return r; };
+    }
+    b(sc100 ? 'Scenes 100% ✓' : 'Scenes 100%', () => { write(SC_KEY, sc100 ? null : '1'); location.reload(); });
+    b('Clear scenes', () => { S.scenes = {}; delete S.setClaims.__scenes; save(); render(); });
+    b('Birthday', () => { if (typeof bdOpen === 'function') bdOpen(); });
+    b('+5 Tarot', () => { S.inv.tarot = (S.inv.tarot || 0) + 5; save(); render(); });
     b('−1 day', () => { write(OFF_KEY, String(off - 1)); location.reload(); });
     b('+1 day', () => { write(OFF_KEY, String(off + 1)); location.reload(); });
     if (off) b('Today', () => { write(OFF_KEY, null); location.reload(); });

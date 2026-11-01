@@ -29,7 +29,8 @@
 
 | Update | Released | What changed |
 |:---:|:---:|:---:|
-| **[v1.2.0](https://github.com/Meih125/psych/releases/tag/v1.2.0)** (latest) | Oct 29, 2026 | **[Patch notes](docs/patch-notes/v1.2.0.md)** |
+| **[v1.2.1](https://github.com/Meih125/psych/releases/tag/v1.2.1)** (latest) | Nov 1, 2026 | **[Patch notes](docs/patch-notes/v1.2.1.md)** |
+| [v1.2.0](https://github.com/Meih125/psych/releases/tag/v1.2.0) | Oct 29, 2026 | [Patch notes](docs/patch-notes/v1.2.0.md) |
 | [v1.1.2](https://github.com/Meih125/psych/releases/tag/v1.1.2) | Oct 28, 2026 | [Patch notes](docs/patch-notes/v1.1.2.md) |
 | [v1.1.1](https://github.com/Meih125/psych/releases/tag/v1.1.1) | Oct 28, 2026 | [Patch notes](docs/patch-notes/v1.1.1.md) |
 | [v1.1.0](https://github.com/Meih125/psych/releases/tag/v1.1.0) | Oct 27, 2026 | [Patch notes](docs/patch-notes/v1.1.0.md) |
@@ -45,15 +46,15 @@
 
 ## What it does
 
-- **Quests** for anything you want to keep doing: daily or every few days, pairs, repeatable ones, targets, deadlines, "days clean" counters, personal records, running totals, and steps.
-- **Streaks** add a bonus to a quest's rewards the longer you keep them going.
-- **XP and gold.** Level up, and spend gold on card packs.
-- **Cards.** Two packs to collect, with rarities from C to UR. Finished sets pay a reward.
-- **Home-screen widgets** in five sizes, up to a 4×4 that shows every quest. Claim quests without opening the app.
-- **Daily login reward** with its own streak: gold, XP, or a card if you're lucky.
-- **Arrange** your board: move quests around and make them half or full width.
+- **Quests** of many types: daily, lists, counters, targets, deadlines, "days clean", records and steps.
+- **Streaks** boost a quest's rewards the longer you keep them going.
+- **XP and gold.** Level up and spend gold on card packs.
+- **Cards.** Two packs to collect, rarities C to UR, finished sets pay a reward.
+- **Widgets** in five sizes. Claim quests without opening the app.
+- **Daily login reward** with its own streak.
+- **Arrange** your board with half and full tiles.
 - **Steps** sync from Health Connect (Samsung Health works through it).
-- **Backups** are plain JSON files on your phone: manual ones whenever you like, plus an automatic one every night.
+- **Backups** are plain JSON files on your phone, automatic every night.
 
 No account, no server, no ads. Everything stays on your phone.
 
@@ -80,10 +81,10 @@ npm run open
 ```
 www/            the app itself (index.html, app.css, app.js, fonts, images)
 assets/         app icon sources
-scripts/        build helpers (minimum Android version, widgets, version number)
-docs/           images for this page
+scripts/        build helpers (minimum Android version, widgets, app icon, version number)
+tools/          preview builder and test data (not part of the app)
+docs/           screenshots and patch notes
 BUILD.md        how to build the APK
-HANDOFF.md      notes on how the code is organised
 ```
 
 ## Credits

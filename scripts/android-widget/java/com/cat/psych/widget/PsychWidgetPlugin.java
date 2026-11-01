@@ -8,13 +8,19 @@ import android.content.Intent;
 import android.os.Build;
 
 import com.getcapacitor.JSObject;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
-/** The app's side of the widgets: send the snapshot, collect taps, ask the launcher to place a widget. */
-@CapacitorPlugin(name = "PsychWidget")
+/** The app's side of the widgets: send the snapshot, collect taps, ask the launcher to place a widget,
+ *  and switch the background step sync on or off (PsychStepsJob). */
+@CapacitorPlugin(name = "PsychWidget", permissions = {
+    @Permission(alias = "healthBg", strings = { PsychStepsJob.READ_BG })   // Health Connect: read in the background
+})
 public class PsychWidgetPlugin extends Plugin {
 
     @PluginMethod
@@ -23,6 +29,48 @@ public class PsychWidgetPlugin extends Plugin {
         Context c = getContext();
         PsychWidgetProvider.prefs(c).edit().putString("snapshot", data).apply();
         PsychWidgetProvider.refreshAll(c);
+        PsychStepsJob.schedule(c);   // keeps the background step sync running if it's on
+        call.resolve();
+    }
+
+    // ---------- background step sync (Settings > Step sync) ----------
+    /** { supported: Android 14+, allowed: permission given, on: switched on } */
+    @PluginMethod
+    public void bgStatus(PluginCall call) {
+        Context c = getContext();
+        JSObject r = new JSObject();
+        r.put("supported", PsychStepsJob.supported());
+        r.put("allowed", PsychStepsJob.allowed(c));
+        r.put("on", PsychStepsJob.on(c));
+        call.resolve(r);
+    }
+
+    /** Switch it on: asks for the "read in the background" permission first if needed. Resolves { on }. */
+    @PluginMethod
+    public void bgOn(PluginCall call) {
+        if (!PsychStepsJob.supported()) { JSObject r = new JSObject(); r.put("on", false); r.put("reason", "android"); call.resolve(r); return; }
+        if (getPermissionState("healthBg") == PermissionState.GRANTED) { finishOn(call); return; }
+        requestPermissionForAlias("healthBg", call, "bgPermResult");
+    }
+
+    @PermissionCallback
+    private void bgPermResult(PluginCall call) {
+        if (getPermissionState("healthBg") == PermissionState.GRANTED) { finishOn(call); return; }
+        JSObject r = new JSObject(); r.put("on", false); r.put("reason", "denied"); call.resolve(r);
+    }
+
+    private void finishOn(PluginCall call) {
+        Context c = getContext();
+        PsychWidgetProvider.prefs(c).edit().putBoolean("bg_steps", true).apply();
+        PsychStepsJob.schedule(c);
+        JSObject r = new JSObject(); r.put("on", PsychStepsJob.allowed(c)); call.resolve(r);
+    }
+
+    @PluginMethod
+    public void bgOff(PluginCall call) {
+        Context c = getContext();
+        PsychWidgetProvider.prefs(c).edit().putBoolean("bg_steps", false).apply();
+        PsychStepsJob.schedule(c);   // cancels it
         call.resolve();
     }
 

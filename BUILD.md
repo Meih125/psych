@@ -62,19 +62,21 @@ A fresh `npx cap add android` already sets these; only the minimum SDK needs cha
 
 ## Health Connect
 Open Psych > Settings > Connect, and allow Steps and Distance.
+For widgets that keep updating with Psych closed (Android 14+): Settings > Step sync > Sync in the background, and allow
+"Access data in the background" when Health Connect asks.
 The privacy page Health Connect shows is `www\privacypolicy.html`.
 
 Backups are saved to Documents/Psych on the phone.
 
 ## Git
-Commit everything in this folder except what `.gitignore` lists: `node_modules\` (rebuilt by `npm install`)
-and `android\` (rebuilt by `npm run setup`). After cloning, run the "First build" steps above.
-See HANDOFF.md for the full project notes.
+Commit everything in this folder except what `.gitignore` lists: `node_modules\` (rebuilt by `npm install`),
+`android\` (rebuilt by `npm run setup`) and the private notes (`HANDOFF.md`, `AGENTS.md`).
+After cloning, run the "First build" steps above.
 
 
 ## Releasing an update
 
-1. Raise `"version"` in `package.json` (for example `1.1.0` to `1.2.0`).
+1. Raise `"version"` in `package.json` (for example `1.2.0` to `1.2.1`).
 2. `npm run sync`. This also copies the version into `android/app/build.gradle`, so phones accept the new APK as an update.
 3. Build the signed APK with the **same key** as before (Build › Generate Signed App Bundle or APK).
-4. On GitHub, create a new release with tag `v1.2.0` and attach the APK, named `Psych.apk`.
+4. On GitHub, create a new release with tag `v1.2.1` and attach the APK, named `Psych.apk`.
