@@ -29,7 +29,8 @@
 
 | Update | Released | What changed |
 |:---:|:---:|:---:|
-| **[v1.2.1](https://github.com/Meih125/psych/releases/tag/v1.2.1)** (latest) | Nov 1, 2026 | **[Patch notes](docs/patch-notes/v1.2.1.md)** |
+| **[v1.3.0](https://github.com/Meih125/psych/releases/tag/v1.3.0)** (latest) | Nov 2, 2026 | **[Patch notes](docs/patch-notes/v1.3.0.md)** |
+| [v1.2.1](https://github.com/Meih125/psych/releases/tag/v1.2.1) | Nov 1, 2026 | [Patch notes](docs/patch-notes/v1.2.1.md) |
 | [v1.2.0](https://github.com/Meih125/psych/releases/tag/v1.2.0) | Oct 29, 2026 | [Patch notes](docs/patch-notes/v1.2.0.md) |
 | [v1.1.2](https://github.com/Meih125/psych/releases/tag/v1.1.2) | Oct 28, 2026 | [Patch notes](docs/patch-notes/v1.1.2.md) |
 | [v1.1.1](https://github.com/Meih125/psych/releases/tag/v1.1.1) | Oct 28, 2026 | [Patch notes](docs/patch-notes/v1.1.1.md) |
@@ -46,25 +47,20 @@
 
 ## What it does
 
-- **Quests** of many types: daily, lists, counters, targets, deadlines, "days clean", records and steps.
-- **Streaks** boost a quest's rewards the longer you keep them going.
+- **Quests** of many types.
+- **Streaks.**
 - **XP and gold.** Level up and spend gold on card packs.
-- **Cards.** Two packs to collect, rarities C to UR, finished sets pay a reward.
-- **Widgets** in five sizes. Claim quests without opening the app.
-- **Daily login reward** with its own streak.
-- **Arrange** your board with half and full tiles.
-- **Steps** sync from Health Connect (Samsung Health works through it).
-- **Backups** are plain JSON files on your phone, automatic every night.
+- **Widgets** in different sizes. Claim quests without opening the app.
+- **Daily login reward.**
+- **Steps** sync from Health Connect.
 
 No account, no server, no ads. Everything stays on your phone.
 
 ## Install
 
-1. Download **[Psych.apk](https://github.com/Meih125/psych/releases/latest/download/Psych.apk)** on your Android phone.
-2. Open it and allow **Install unknown apps** when asked.
+1. Download **[Psych.apk](https://github.com/Meih125/psych/releases/latest/download/Psych.apk)**.
+2. Open it and allow **Install unknown apps**.
 3. If Play Protect warns, choose **Install anyway**. The app isn't on the Play Store, so Android doesn't know it.
-
-Updating: install the new APK over the old one. Your data is kept. Psych tells you when a new version is out.
 
 ## Build from source
 
@@ -89,6 +85,6 @@ BUILD.md        how to build the APK
 
 ## Credits
 
-Fan-made, personal project. Card art belongs to its original creators: *Lord of the Mysteries* (Tarot pack) and *Mobile Legends: Bang Bang* (Land of Dawn pack). Psych isn't affiliated with or endorsed by either.
+Fan-made, personal project. Card art belongs to its original creators: *Lord of the Mysteries* (Tarot pack) and *Mobile Legends: Bang Bang* (Land of Dawn and Hand of Destiny packs, including the hero voice lines used as card text). Psych isn't affiliated with or endorsed by either.
 
 Fonts: Montserrat, Inter, JetBrains Mono and Lora, all under the SIL Open Font License.

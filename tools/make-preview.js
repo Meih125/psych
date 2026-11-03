@@ -8,8 +8,8 @@
 // Nothing in www/ is changed. The output is in .gitignore and never goes into the app or the zip.
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..'), www = path.join(root, 'www');
-const args = process.argv.slice(2), LITE = args.includes('--lite'), CLEAN = args.includes('--clean');
-const out = path.join(root, 'Psych-preview.html');
+const args = process.argv.slice(2), LITE = args.includes('--lite'), CLEAN = args.includes('--clean'), LAB = args.includes('--lab');   // --lab: Psych-lab.html, the preview plus tools/lab.js experiments
+const out = path.join(root, LAB ? 'Psych-lab.html' : 'Psych-preview.html');
 const MIME = { '.webp':'image/webp', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.svg':'image/svg+xml',
                '.woff2':'font/woff2', '.woff':'font/woff', '.ttf':'font/ttf' };
 const dataUri = f => `data:${MIME[path.extname(f).toLowerCase()] || 'application/octet-stream'};base64,${fs.readFileSync(f).toString('base64')}`;
@@ -56,10 +56,11 @@ html = html
     `<script>${safeScript(imgMap)}</script>\n` +
     (demo ? `<script>${safeScript(demo)}</script>\n` : '') +
     `<script>${safeScript(js)}</script>\n` +
-    (seed ? `<script>${seed}</script>` : ''));
+    (seed ? `<script>${seed}</script>` : '') +
+    (LAB ? `<style>${fs.readFileSync(path.join(__dirname, 'lab.css'), 'utf8')}</style><script>${safeScript(fs.readFileSync(path.join(__dirname, 'lab.js'), 'utf8'))}</script>` : ''));
 
 for (const must of ['fonts.css', 'app.css', 'app.js']){
   if (new RegExp(`(href|src)="${must.replace('.', '\\.')}"`).test(html)) { console.error(`make-preview: could not inline ${must} (index.html changed?)`); process.exit(1); }
 }
 fs.writeFileSync(out, html);
-console.log(`Psych-preview.html written (${(fs.statSync(out).size / 1048576).toFixed(1)} MB${LITE ? ', lite' : ''}${CLEAN ? ', clean' : ', with test data'})`);
+console.log(`${path.basename(out)} written (${(fs.statSync(out).size / 1048576).toFixed(1)} MB${LITE ? ', lite' : ''}${CLEAN ? ', clean' : ', with test data'})`);

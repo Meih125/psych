@@ -69,15 +69,37 @@
     const tag = document.createElement('span'); tag.textContent = 'TEST' + (off ? ` ${off > 0 ? '+' : ''}${off}d` : ''); bar.appendChild(tag);
     b('Reset', () => { write(STORE_KEY, null); write(OFF_KEY, null); location.reload(); });
     b('+1000G', () => { S.gold += 1000; save(); render(); });
-    b('+Packs', () => { S.inv.tarot = (S.inv.tarot || 0) + 1; S.inv.mlbb = (S.inv.mlbb || 0) + 1; save(); render(); });
+    b('+Packs', () => { S.inv.tarot = (S.inv.tarot || 0) + 1; S.inv.mlbb = (S.inv.mlbb || 0) + 1; S.inv.hod = (S.inv.hod || 0) + 1; save(); render(); });
     // scene test: every deck that has scenes gives a new one each time (wraps rollDeck from app.js), and a way to lose them again
     const SC_KEY = 'psych.demo.scenes100', sc100 = read(SC_KEY) === '1';
     if (sc100 && typeof rollDeck === 'function'){
       const orig = rollDeck;
-      window.rollDeck = function(item){ const r = orig(item); if (!r.scene && deckOf(item).scenes){ const m = SCENES.filter(x => !S.scenes[x.id]); if (m.length) r.scene = m[Math.floor(Math.random() * m.length)]; } return r; };
+      window.rollDeck = function(item){ const r = orig(item); if (!r.scene && SCENE_DEF[item.deck || 'tarot']){ const m = SCENE_DEF[item.deck || 'tarot'].list.filter(x => !S.scenes[x.id]); if (m.length) r.scene = m[Math.floor(Math.random() * m.length)]; } return r; };
     }
-    b(sc100 ? 'Scenes 100% ✓' : 'Scenes 100%', () => { write(SC_KEY, sc100 ? null : '1'); location.reload(); });
-    b('Clear scenes', () => { S.scenes = {}; delete S.setClaims.__scenes; save(); render(); });
+    b(sc100 ? 'Bonus 100% ✓' : 'Bonus 100%', () => { write(SC_KEY, sc100 ? null : '1'); location.reload(); });
+    b('Clear bonus', () => { S.scenes = {}; delete S.setClaims.__scenes; delete S.setClaims.__realms; save(); render(); });
+    // Joker tests (Hand of Destiny): a Joker in every pack whatever the rules say, and a way to get one Poker card short of unlocking them
+    const JK_KEY = 'psych.demo.joker100', jk100 = read(JK_KEY) === '1';
+    window.__jokerAlways = jk100;
+    b(jk100 ? '100% Joker ✓' : '100% Joker (ignore condition)', () => { write(JK_KEY, jk100 ? null : '1'); location.reload(); });
+    if (typeof rollDeck === 'function'){
+      const orig2 = rollDeck;
+      window.rollDeck = function(item){ const r = orig2(item); if (window.__forceId && item.deck === 'hod'){ const c = CARDS.find(x => x.id === window.__forceId); if (c){ r.cards[0] = c; } window.__forceId = null; } return r; };
+    }
+    b('Poker 51/52', () => {
+      const L = CARDS.filter(c => c.set === 'Poker' && !c.joker); const miss = L[Math.floor(Math.random() * L.length)];
+      L.forEach(c => { if (c !== miss){ if (!ownedCard(c.id)) gainCard(c.id); } else { S.cards[c.id] = 0; if (S.cardsGot) S.cardsGot[c.id] = 0; } });
+      S.jokerOpen = false; S.inv.hod = (S.inv.hod || 0) + 1; window.__forceId = miss.id; save(); render();
+    });
+    b('Lock Jokers', () => { S.jokerOpen = false; ['HD_R53', 'HD_R54'].forEach(i => { S.cards[i] = 0; if (S.cardsGot) S.cardsGot[i] = 0; }); save(); render(); });
+    // Step goal bonus tests: gold columns waiting this week, or only in last week (the ‹ arrow glows gold), or none
+    const stepQ = () => S.quests.find(q => q.kind === 'steps');
+    const weekStart = () => { const t = startOfDay(), d = new Date(t).getDay(); return addDays(t, -((d + 6) % 7)); };
+    const setSteps = (from, to, fn) => { const q = stepQ(); if (!q) return; const g = q.goal || 10000;
+      for (let t = from; t <= to; t = addDays(t, 1)){ const k = dayKey(t), n = fn(g, t); if (n == null) continue; S.steps[k] = n; if (q.goalPaid) delete q.goalPaid[k]; } save(); render(); };
+    b('Gold steps: this wk', () => { const w = weekStart(); setSteps(w, startOfDay(), (g, t) => g * (1 + ((t / 864e5) | 0) % 3) + 800); });
+    b('Gold steps: last wk only', () => { const w = weekStart(); setSteps(addDays(w, -7), addDays(w, -1), (g, t) => g * (1 + ((t / 864e5) | 0) % 3) + 800); setSteps(w, startOfDay(), g => Math.round(g * .6)); });
+    b('No gold steps', () => { const q = stepQ(); if (!q) return; const g = q.goal || 10000; Object.keys(S.steps).forEach(k => { if (S.steps[k] >= g) S.steps[k] = Math.round(g * .7); }); save(); render(); });
     b('Birthday', () => { if (typeof bdOpen === 'function') bdOpen(); });
     b('+5 Tarot', () => { S.inv.tarot = (S.inv.tarot || 0) + 5; save(); render(); });
     b('−1 day', () => { write(OFF_KEY, String(off - 1)); location.reload(); });

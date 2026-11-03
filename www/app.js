@@ -59,7 +59,7 @@ const nextMonday = () => addDays(weekStart(), 7);
 const MONTHLY = 99;
 const monthStart = (t = now()) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); };
 const addMonths = (t, n) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth() + n, 1).getTime(); };   // the 1st, n months on
-const cycleAfter = (from, days) => days === MONTHLY ? addMonths(from, 1) : addDays(from, days);
+const cycleAfter = (from, days) => days === MONTHLY ? addMonths(from, 1) : days === 7 ? addDays(weekStart(from), 7) : addDays(from, days);   // Weekly = calendar week, resets Monday 00:00
 const cycleName = d => d === 1 ? 'Daily' : d === 7 ? 'Weekly' : d === 14 ? 'Biweekly' : d === MONTHLY ? 'Monthly' : `Every ${d} days`;
 const pad2 = n => String(n).padStart(2, '0');
 const dayKey = (t = now()) => { const d = new Date(t); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
@@ -113,7 +113,9 @@ function normalize(){
   if (!S.cards) S.cards = {};      // card id -> how many owned
   if (!S.cardsGot) S.cardsGot = {};   // card id -> how many ever collected (set claims take copies away, this never goes down)
   if (!S.scenes) S.scenes = {};
+  if (S.setClaims && S.setClaims.Promo && !S.setClaims.Deity){ S.setClaims.Deity = S.setClaims.Promo; delete S.setClaims.Promo; }   // Tarot's Promo set was renamed Deity (Hand of Destiny has its own Promo)
   if (!S.setClaims) S.setClaims = {};
+  if (S.setClaims.Poker && !S.setClaims['Poker:H']){ ['H','D','S','C'].forEach(x => S.setClaims['Poker:' + x] = +S.setClaims.Poker || 1); delete S.setClaims.Poker; }   // Poker used to be one claim; now one per suit
   if (!S.opened) S.opened = {};      // pack id -> how many opened, ever
   if (!S.rewardedLevel) S.rewardedLevel = levelInfo(S.xp).L;   // levels already reached before level rewards existed
   if (!TABS.includes(S.tab)) S.tab = 'quests';
@@ -127,7 +129,12 @@ function sanitizeState(){
   const fin = (v, d = 0, lo = -Infinity, hi = Infinity) => { v = +v; return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
   const obj = v => v && typeof v === 'object' && !Array.isArray(v);
   S.xp = fin(S.xp, 0, 0, XP_CAP); S.gold = fin(S.gold, 0, -GOLD_CAP, GOLD_CAP);
-  ['steps','dist','sync','inv','pity','cards','cardsGot','scenes','setClaims','opened','progHide','today','layout','folded'].forEach(k => { if (k in S && !obj(S[k])) delete S[k]; });
+  ['steps','dist','sync','inv','pity','cards','cardsGot','scenes','setClaims','cover','newest','big','order','opened','progHide','today','layout','folded','colOpen'].forEach(k => { if (k in S && !obj(S[k])) delete S[k]; });
+  if ('pzOrder' in S) S.pzOrder = Array.isArray(S.pzOrder) ? S.pzOrder.filter(x => typeof x === 'string').slice(0, 64) : [];   // puzzle piece order (a list, not an object)
+  if (obj(S.cover)) for (const k in S.cover){ if (!Array.isArray(S.cover[k])) delete S.cover[k]; else S.cover[k] = S.cover[k].filter(x => typeof x === 'string').slice(0, 3); }
+  if (obj(S.newest)) for (const k in S.newest){ if (!Array.isArray(S.newest[k])) delete S.newest[k]; else S.newest[k] = S.newest[k].filter(x => typeof x === 'string').slice(0, 3); }
+  if (obj(S.order)) for (const k in S.order){ if (!Array.isArray(S.order[k])) delete S.order[k]; else S.order[k] = S.order[k].filter(x => typeof x === 'string').slice(0, 400); }
+  if (obj(S.big)) for (const k in S.big){ if (S.big[k] !== 1 && S.big[k] !== 2) delete S.big[k]; }
   if (S.update != null){ const u = S.update; if (!obj(u)) delete S.update; else { if (typeof u.latest !== 'string' || !/^v?\d+(\.\d+){0,2}$/.test(u.latest)) delete u.latest; if (typeof u.url !== 'string' || !/^https:\/\/(github\.com|objects\.githubusercontent\.com)\//.test(u.url)) delete u.url; u.notes = Array.isArray(u.notes) ? u.notes.filter(n => typeof n === 'string').slice(0, 8).map(n => n.slice(0, 200)) : []; if (!isFinite(+u.checked)) u.checked = 0; } }
   if (obj(S.folded)) for (const k in S.folded){ const v = S.folded[k]; if (!obj(v) || v.day !== dayKey()) delete S.folded[k]; }   // hand-set folds last one day
   if (obj(S.dist)) for (const k in S.dist){ const v = +S.dist[k]; if (!/^\d{4}-\d\d-\d\d$/.test(k) || !isFinite(v) || v < 0) delete S.dist[k]; else S.dist[k] = Math.min(1e6, v); }
@@ -673,9 +680,15 @@ function questHistory(q){
     </div>
     <div class="since">History is recorded from version 0.7 onward.</div></div>`;
 }
+// days whose goal was hit but whose goal bonus is still unclaimed (past days of any week, and today)
+function goalDays(q){
+  if (!q || !q.goal || !(q.goalXp || q.goalGold)) return [];
+  const V = valsOf(q), today = dayKey();
+  return Object.keys(V).filter(k => k <= today && V[k] >= q.goal && !(q.goalPaid && q.goalPaid[k]));
+}
 function progressChips(){
   const qs = S.quests.filter(q => q.kind !== 'steps' && q.kind !== 'bounty' && isTracked(q));
-  const sq = firstSteps(), ready = !!sq && dueTotals(sq).keys.length > 0;   // a steps claim is waiting: the Steps tab glows gold
+  const sq = firstSteps(), ready = !!sq && goalDays(sq).length > 0;   // a step goal bonus is waiting: the Steps tab glows gold (plain daily step claims don't)
   const chip = (id, name) => `<button class="chip${(S.pview || 'steps') === id ? ' on' : ''}${id === 'steps' && ready ? ' s' : ''}" data-act="pv" data-pv="${id}">${esc(name)}</button>`;
   return `<div class="chips hud-chips">${chip('steps', 'Steps')}${qs.map(q => chip(q.id, q.name)).join('')}</div>`;
 }
@@ -753,25 +766,35 @@ const RARITY = {
   common:   { name:'C',   color:'#3fd47a', glow:'63,212,122' }
 };
 const SHOP = [
-  { id:'tarot', deck:'tarot', fan:['SSR03', 'SSR05', 'SSR07', 'SSR01', 'SSR12', 'SSR15'], name:'Tarot Pack', desc:'A price is always exacted for what fate bestows.', price:100, cards:5,
+  { id:'tarot', deck:'tarot', fan:['SSR03', 'SSR05', 'SSR07', 'SSR02', 'SSR13', 'SSR15'], pop:['SSR04', 'SSR06', 'SSR01', 'SSR12', 'SSR08', 'SSR09'], pbg:['SSR10', 'SSR11'], name:'Tarot Pack', desc:'A price is always exacted for what fate bestows.', price:100, cards:5,
     pity:10,   // every 10th deck opened without an Ultimate guarantees one; getting any Ultimate resets the count
     // chance per card; whatever is left (59.9%) is C. A deck with no Rare or better gets one card upgraded to Rare.
     odds:{ ultimate:1.1, legendary:4, epic:10, rare:25 },
     rates:[ { r:'ultimate', pct:'1.1%' }, { r:'legendary', pct:'4%' }, { r:'epic', pct:'10%' }, { r:'rare', pct:'25%', note:'1+ guaranteed' } ] },
-  { id:'mlbb', deck:'mlbb', fan:['ML_AS01', 'ML_SP05', 'ML_AS04', 'ML_SP01', 'ML_SP02', 'ML_SP03'], name:'Land of Dawn Pack', desc:'Funny you should think people are more reliable than gold!', price:100, cards:5, pity:10,
+  { id:'mlbb', deck:'mlbb', fan:['ML_AS01', 'ML_SP05', 'ML_AS04', 'ML_SP01', 'ML_SP02', 'ML_SP03'], pop:['ML_SP04', 'ML_SP06', 'ML_AS02', 'ML_AS06', 'ML_SP07', 'ML_SP08'], pbg:['ML_SP09', 'ML_SP10'], name:'Land of Dawn Pack', desc:'Funny you should think people are more reliable than gold!', price:100, cards:5, pity:10,
     odds:{ ultimate:1.1, legendary:4, epic:10, rare:25 },
     rates:[ { r:'ultimate', pct:'1.1%' }, { r:'legendary', pct:'4%' }, { r:'epic', pct:'10%' }, { r:'rare', pct:'25%', note:'1+ guaranteed' } ] },
-  { id:'soon3', soon:true }, { id:'soon4', soon:true }
+  { id:'hod', deck:'hod', fan:['HD_UR05', 'HD_SP05', 'HD_UR12', 'HD_SP01', 'HD_UR02', 'HD_UR01'], pop:['HD_UR03', 'HD_SP02', 'HD_PR02', 'HD_PR03', 'HD_UR06', 'HD_SP03'], pbg:['HD_UR07', 'HD_SP04'], name:'Hand of Destiny Pack', desc:'Fate deals the cards. You only choose to play.', price:100, cards:5, pity:10,
+    odds:{ ultimate:1.1, legendary:4, epic:10, rare:25 },
+    rates:[ { r:'ultimate', pct:'1.1%' }, { r:'legendary', pct:'4%' }, { r:'epic', pct:'10%' }, { r:'rare', pct:'25%', note:'1+ guaranteed' } ] },
+  { id:'soon4', soon:true }
 ];
 // per deck: card backs (normal / UR), the picture on the deck box, and its glow colours
 var DECKS = {
   tarot:{ back:'backs/tarot', backUR:'backs/tarot-ur', cover:'img/packs/tarot.webp', scenes:true,
     glow:{ mid:'#ff6b1a', deep:'#c2410c', mote:'#ffc49a', ember:'#ffb07a', star:'#fff6ee', frame:'gBronze' } },
-  mlbb: { back:'backs/mlbb', backUR:'backs/mlbb-ur', cover:'img/backs/mlbb.webp', scenes:false,
-    glow:{ mid:'#7c5cff', deep:'#3b4bd8', mote:'#c4b5ff', ember:'#9fb8ff', star:'#eef0ff', frame:'gDawn' } }
+  mlbb: { back:'backs/mlbb', backUR:'backs/mlbb-ur', cover:'img/packs/mlbb.webp', scenes:false,
+    glow:{ mid:'#7c5cff', deep:'#3b4bd8', mote:'#c4b5ff', ember:'#9fb8ff', star:'#eef0ff', frame:'gDawn' } },
+  // Hand of Destiny (H.O.D.): the next extension. Its backs are in; the cards and the pack come later (it shows as a teaser in the Shop)
+  hod:  { back:'backs/hod', backUR:'backs/hod-ur', cover:'img/packs/hod.webp', scenes:false,
+    glow:{ mid:'#ffb83a', deep:'#b8741a', mote:'#ffe2a0', ember:'#ffcf6a', star:'#fff8e6', frame:'gBronze' } }
 };
 function deckOf(it){ return DECKS[(it && it.deck) || "tarot"]; }
+// a deck can be on sale before its cards exist (Hand of Destiny): it can't be bought or opened until it has some
+const deckReady = it => CARDS.some(c => c.deck === ((it && it.deck) || 'tarot'));
 // a rarity written inline: coloured diamond + name
+// the Jokers keep Common's drop rate but are their own rarity, J (purple to blood red)
+const rarBadge = c => c.joker ? '<b class="jr">J</b>' : `<b style="color:${RARITY[c.rarity].color}">${RARITY[c.rarity].name}</b>`;
 const rtag = r => `<span class="rtag" style="--c:${RARITY[r].color}"><i class="rdot"></i>${RARITY[r].name}</span>`;
 function infoHTML(it){
   return `<div class="info" data-act="info">
@@ -790,22 +813,47 @@ function shopBars(it){
   const all = CARDS.filter(c => c.deck === it.deck), got = all.filter(c => ownedCard(c.id)).length;
   // UR countdown: red = decks already opened toward it, striped red = unopened decks you own (they count once you open them)
   const n = Math.min(it.pity, (S.pity && S.pity[it.id]) || 0), left = it.pity - n, mine = Math.min(left, owned(it.id));
-  return `<div class="sh-bar"><span>Collected</span><div class="bar"><i style="width:${got / all.length * 100}%"></i></div><b>${got}/${all.length}</b></div>
+  return `<div class="sh-bar"><span>Collected</span><div class="bar"><i style="width:${all.length ? got / all.length * 100 : 0}%"></i></div><b>${got}/${all.length}</b></div>
     <div class="sh-bar ur"><span>${rtag('ultimate')} in</span><div class="bar"><i style="width:${n / it.pity * 100}%"></i><i class="own" style="width:${mine / it.pity * 100}%"></i></div><b>${left}${owned(it.id) ? `<em>(${left - mine})</em>` : ''}</b></div>`;
 }
 function shopBuy(it){
   const q = shopQty[it.id] || 1;
+  if (!deckReady(it)) return `<button class="sh-buy short soon" disabled>SOON</button>`;
   return `<button class="sh-buy${S.gold < it.price * q ? ' short' : ''}" data-act="buy" data-item="${it.id}">${ico('i-coin')}<span>${fmt(it.price * q)}</span></button>`;
 }
-// one banner per deck: the newest says NEW DECK, the others FEATURED DECK
+// one banner per pack: the newest says NEW PACK, the others FEATURED PACK; tapping it opens the pack details
 function shopBanner(f, isNew){
-  const q = shopQty[f.id] || 1;
   const fan = (f.fan || []).map((id, k) => `<img class="${k < 3 ? 'back' : 'front'}" src="${cardImg(id)}" alt="" style="--i:${k % 3 - 1}">`).join('');
-  return `<div class="sh-ban th-${f.deck}" data-buyhost data-item="${f.id}"><i class="sh-frame"></i>
+  return `<div class="sh-ban th-${f.deck}" data-act="packinfo" data-item="${f.id}"><i class="sh-frame"></i>
       <div class="sh-ban-txt"><span class="sh-new">${isNew ? 'NEW PACK' : 'FEATURED PACK'}</span><h3>${f.name.length > 12 ? esc(f.name).replace(/ Pack$/, '<br>Pack') : esc(f.name)}</h3><p>${esc(f.banner || f.desc)}</p>
-        <div class="sh-ban-buy">${shopBuy(f)}<div class="sh-qty"><button data-act="qty" data-d="-1" data-item="${f.id}" aria-label="Fewer"${q <= 1 ? ' disabled' : ''}>‹</button><b>×${q}</b><button data-act="qty" data-d="1" data-item="${f.id}" aria-label="More"${q >= 99 ? ' disabled' : ''}>›</button></div></div></div>
+        <div class="sh-ban-buy"><span class="sh-det">DETAILS ›</span></div></div>
       <div class="art sh-fan">${fan}</div>
     </div>`;
+}
+
+/* ---- Pack details pop-up: what the pack holds, the cards, and the buy controls ---- */
+function closePackInfo(){ const p = $('#pki'); if (p) p.remove(); }
+function openPackInfo(id){
+  const it = SHOP.find(x => x.id === id); if (!it) return; closePackInfo();
+  const order = ['ultimate', 'legendary', 'epic', 'rare', 'common'], by = {};
+  CARDS.filter(c => c.deck === it.deck).forEach(c => { (by[c.set] ||= { set:c.set, rar:c.rarity, n:0 }).n++; });
+  const rows = Object.values(by).sort((a, b) => order.indexOf(a.rar) - order.indexOf(b.rar) || a.n - b.n).slice(0, 5);
+  const q = shopQty[id] || 1, fan = it.pop.map((c, k) => `<img src="${cardImg(c)}" alt="" style="--i:${k - 2.5}">`).join('');
+  const mk = document.createElement('div'); mk.id = 'pki'; mk.className = 'pki th-' + it.deck;
+  mk.innerHTML = `<div class="pki-box" data-buyhost data-item="${id}">
+    <div class="pki-bg"><img src="${cardImg(it.pbg[0])}" alt=""><img src="${cardImg(it.pbg[1])}" alt=""></div>
+    <b class="pki-nm">${esc(it.name.replace(/ Pack$/, '')).toUpperCase()}</b>
+    <ul class="pki-li">${rows.map(r => `<li><i style="background:${RARITY[r.rar].color}"></i><b>${r.n}</b> ${esc(setLabel(r.set))}</li>`).join('')}<li class="more">…and more</li></ul>
+    <div class="pki-fan art">${fan}</div>
+    <div class="pki-buy">${shopBuy(it)}<div class="sh-qty"><button data-act="qty" data-d="-1" data-item="${id}" aria-label="Fewer"${q <= 1 ? ' disabled' : ''}>‹</button><b>×${q}</b><button data-act="qty" data-d="1" data-item="${id}" aria-label="More"${q >= 99 ? ' disabled' : ''}>›</button></div></div>
+  </div>`;
+  mk.addEventListener('click', async e => {
+    if (e.target === mk) return closePackInfo();
+    const qb = e.target.closest('[data-act="qty"]'); if (qb) return changeQty(id, +qb.dataset.d);
+    const b = e.target.closest('[data-act="buy"]');
+    if (b){ e.stopPropagation(); const had = owned(id); await tryBuy(id, b); if (owned(id) > had) closePackInfo(); }
+  });
+  document.body.appendChild(mk);
 }
 var shopBan = 0;   // which banner is showing (kept across redraws)
 function renderShop(){
@@ -824,7 +872,7 @@ function renderShop(){
       <div class="info-pop" role="tooltip">
         <div class="sh-tip"><i class="sw r"></i>Opened</div>
         <div class="sh-tip"><i class="sw g"></i>Owned, unopened</div></div></div></div>
-    ${decks.map(it => `<div class="sh-row th-${it.deck}" data-buyhost data-item="${it.id}">
+    ${bs.map(it => `<div class="sh-row th-${it.deck}" data-buyhost data-item="${it.id}">${it === bs[0] ? '<span class="sh-latest">LATEST</span>' : ''}
       ${shopStack(it)}
       <div class="sh-mid"><h3>${esc(it.name)}</h3>${shopBars(it)}</div>
       <div class="sh-right">${shopBuy(it)}
@@ -844,8 +892,8 @@ function changeQty(id, d){
 
 }
 async function tryBuy(id, el){
-  const it = SHOP.find(x => x.id === id); if (!it) return;
-  const q = shopQty[id] || 1, cost = it.price * q, name = q > 1 ? `${q} ${it.name}s` : `the ${it.name}`;
+  const it = SHOP.find(x => x.id === id); if (!it || !deckReady(it)) return;
+  const q = shopQty[id] || 1, cost = it.price * q;
   if (S.gold < cost){ el.classList.remove('deny'); void el.offsetWidth; el.classList.add('deny'); return; }
 
   if (!await askBuy(it, q, cost)) return;
@@ -881,13 +929,25 @@ function useItem(id){ openDeck(id); }
 
 /* ================= Cards ================= */
 // Every card in the Tarot Deck pool. Rarity decides how often it drops; set is how the Collection groups it.
-const CARD_DATA = {"cards": [{"id": "SSR01", "name": "Klein Moretti", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR02", "name": "Audrey Hall", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR03", "name": "Alger Wilson", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR04", "name": "Derrick Berg", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR05", "name": "Fors Wall", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR06", "name": "Emlyn White", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR07", "name": "Cattleya", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR08", "name": "Leonard Mitchell", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR09", "name": "Xio Derecha", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR10", "name": "Azik Eggers", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR11", "name": "Sherlock Moriarty", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR12", "name": "Gehrman Sparrow", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR13", "name": "Dwayne Dantès", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR14", "name": "Merlin Hermes", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR15", "name": "Amon", "rarity": "ultimate", "set": "SSR"}, {"id": "CB00", "name": "The Fool - Klein Moretti", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB01", "name": "The Magician - Fors Wall", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB02", "name": "The High Priestess - Bernadette Gustav", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB03", "name": "The Empress - Trissy", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB04", "name": "The Emperor - Roselle Gustav", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB05", "name": "The Hierophant - Alger Wilson", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB06", "name": "The Lovers - Amon", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB07", "name": "The Chariot - Medici", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB08", "name": "Strength - Colin Iliad", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB09", "name": "The Hermit - Cattleya", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB10", "name": "The Wheel of Fortune - Will Auceptin", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB11", "name": "Justice - Audrey Hall", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB12", "name": "The Hanged Man - True Creator", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB13", "name": "Death - Azik Eggers", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB14", "name": "Temperance - Sharron", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB15", "name": "The Devil - Mother Tree of Desire", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB16", "name": "The Tower - Edwina Edwards", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB17", "name": "The Star - Leonard Mitchell", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB18", "name": "The Moon - Emlyn White", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB19", "name": "The Sun - Derrick Berg", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB20", "name": "Judgement - Xio Derecha", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB21", "name": "The World - Frank Lee", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "AC_Adam", "name": "Adam", "rarity": "epic", "set": "Angels"}, {"id": "AC_Amon", "name": "Amon", "rarity": "epic", "set": "Angels"}, {"id": "AC_Aucuses", "name": "Aucuses", "rarity": "epic", "set": "Angels"}, {"id": "AC_Herabergen", "name": "Herabergen", "rarity": "epic", "set": "Angels"}, {"id": "AC_Leodero", "name": "Leodero", "rarity": "epic", "set": "Angels"}, {"id": "AC_Medici", "name": "Medici", "rarity": "epic", "set": "Angels"}, {"id": "AC_Ouroboros", "name": "Ouroboros", "rarity": "epic", "set": "Angels"}, {"id": "AC_Sasrir", "name": "Sasrir", "rarity": "epic", "set": "Angels"}, {"id": "PM_EarthMother", "name": "Earth Mother", "rarity": "epic", "set": "Promo"}, {"id": "PM_EternalBlazingSu", "name": "Eternal Blazing Sun", "rarity": "epic", "set": "Promo"}, {"id": "PM_EvernightGoddess", "name": "Evernight Goddess", "rarity": "epic", "set": "Promo"}, {"id": "PM_GodofCombat", "name": "God of Combat", "rarity": "epic", "set": "Promo"}, {"id": "PM_GodofKnowledgean", "name": "God of Knowledge and Wisdom", "rarity": "epic", "set": "Promo"}, {"id": "PM_GodofSteamandMac", "name": "God of Steam and Machinery", "rarity": "epic", "set": "Promo"}, {"id": "PM_LordofMysteries", "name": "Lord of Mysteries", "rarity": "epic", "set": "Promo"}, {"id": "PM_LordofStorms", "name": "Lord of Storms", "rarity": "epic", "set": "Promo"}, {"id": "SCR01", "name": "Puzzle Piece 1", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR02", "name": "Puzzle Piece 2", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR03", "name": "Puzzle Piece 3", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR04", "name": "Puzzle Piece 4", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR05", "name": "Puzzle Piece 5", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR06", "name": "Puzzle Piece 6", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR07", "name": "Puzzle Piece 7", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR08", "name": "Puzzle Piece 8", "rarity": "epic", "set": "Puzzle"}, {"id": "SR01", "name": "Azik Eggers", "rarity": "rare", "set": "SR"}, {"id": "SR02", "name": "Edwina Edwards", "rarity": "rare", "set": "SR"}, {"id": "SR03", "name": "Will Auceptin", "rarity": "rare", "set": "SR"}, {"id": "SR04", "name": "Bernadette Gustav", "rarity": "rare", "set": "SR"}, {"id": "SR05", "name": "Daly Simone", "rarity": "rare", "set": "SR"}, {"id": "SR06", "name": "Reinette Tinekerr", "rarity": "rare", "set": "SR"}, {"id": "SR07", "name": "Ince Zangwill", "rarity": "rare", "set": "SR"}, {"id": "SR08", "name": "Colin Iliad", "rarity": "rare", "set": "SR"}, {"id": "SR09", "name": "Dunn Smith", "rarity": "rare", "set": "SR"}, {"id": "SR10", "name": "Sharron", "rarity": "rare", "set": "SR"}, {"id": "SR11", "name": "Trissy", "rarity": "rare", "set": "SR"}, {"id": "SR12", "name": "Frank Lee", "rarity": "rare", "set": "SR"}, {"id": "SR13", "name": "Roselle Gustav", "rarity": "rare", "set": "SR"}, {"id": "SR14", "name": "Danitz Dubois", "rarity": "rare", "set": "SR"}, {"id": "TC_AlgerWilson", "name": "Alger Wilson", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_AudreyHall", "name": "Audrey Hall", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_Cattleya", "name": "Cattleya", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_DerrickBerg", "name": "Derrick Berg", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_EmlynWhite", "name": "Emlyn White", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_ForsWall", "name": "Fors Wall", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_GehrmanSparrow", "name": "Gehrman Sparrow", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_KleinMoretti", "name": "Klein Moretti", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_LeonardMitchell", "name": "Leonard Mitchell", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_XioDerecha", "name": "Xio Derecha", "rarity": "rare", "set": "Tarot Club"}, {"id": "OC01", "name": "Creeping Hunger", "rarity": "common", "set": "Objects"}, {"id": "OC02", "name": "Leymano's Travels", "rarity": "common", "set": "Objects"}, {"id": "OC03", "name": "Death Knell", "rarity": "common", "set": "Objects"}, {"id": "OC04", "name": "Slumber Charm", "rarity": "common", "set": "Objects"}, {"id": "OC05", "name": "Requiem Charm", "rarity": "common", "set": "Objects"}, {"id": "OC06", "name": "Dream Charm", "rarity": "common", "set": "Objects"}, {"id": "OC07", "name": "Flaring Sun Charm", "rarity": "common", "set": "Objects"}, {"id": "OC08", "name": "Quill of Alzuhod", "rarity": "common", "set": "Objects"}, {"id": "OC09", "name": "\"Magic Mirror\" Arrodes", "rarity": "common", "set": "Objects"}, {"id": "OC10", "name": "Sea God Scepter", "rarity": "common", "set": "Objects"}, {"id": "OC11", "name": "Mutated Sun Sacred Emblem", "rarity": "common", "set": "Objects"}, {"id": "OC12", "name": "Klein Moretti's Pendulum", "rarity": "common", "set": "Objects"}, {"id": "OC13", "name": "Gehrman Sparrow's Suitcase", "rarity": "common", "set": "Objects"}, {"id": "OC14", "name": "Audrey Hall's Umbrella", "rarity": "common", "set": "Objects"}, {"id": "OC15", "name": "Cattleya's Planetarium", "rarity": "common", "set": "Objects"}, {"id": "OC16", "name": "Cattleya's Staff", "rarity": "common", "set": "Objects"}, {"id": "OC17", "name": "Derrick's Axe of Hurricane", "rarity": "common", "set": "Objects"}, {"id": "OC18", "name": "Wintry Blade", "rarity": "common", "set": "Objects"}, {"id": "OC19", "name": "Emlyn White's Doll", "rarity": "common", "set": "Objects"}, {"id": "OC20", "name": "Paper Crane", "rarity": "common", "set": "Objects"}, {"id": "OC21", "name": "Sleep Bugle", "rarity": "common", "set": "Objects"}, {"id": "OC22", "name": "Staff of the Stars", "rarity": "common", "set": "Objects"}, {"id": "PWC01", "name": "Fool Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC02", "name": "Door Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC03", "name": "Paragon Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC04", "name": "Demoness Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC05", "name": "Black Emperor Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC06", "name": "Tyrant Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC07", "name": "Error Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC08", "name": "Red Priest Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC09", "name": "Visionary Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC10", "name": "Hermit Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC11", "name": "Wheel of Fortune Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC12", "name": "Twilight Giant Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC13", "name": "Hanged Man Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC14", "name": "Death Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC15", "name": "Chained Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC16", "name": "Abyss Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC17", "name": "White Tower Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC18", "name": "Darkness Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC19", "name": "Moon Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC20", "name": "Sun Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC21", "name": "Justiciar Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC22", "name": "Mother Pathway", "rarity": "common", "set": "Pathways"}], "scenes": [{"id": "SC01", "name": "Chapter 1: Crimson"}, {"id": "SC02", "name": "Chapter 165: Epitaph"}, {"id": "SC03", "name": "Chapter 209: Light"}, {"id": "SC04", "name": "Chapter 213: Another Look"}, {"id": "SC05", "name": "Chapter 364: Cathedral of Serenity"}, {"id": "SC06", "name": "Chapter 663: False Alarm"}, {"id": "SC07", "name": "Chapter 732: Destination"}, {"id": "SC08", "name": "Chapter 766: The Deities' Anchor"}, {"id": "SC09", "name": "Chapter 1148: Not Late"}, {"id": "SC10", "name": "Chapter 1165: The Grand Lineup"}, {"id": "SC11", "name": "Chapter 1263: The Final Watch"}, {"id": "SC12", "name": "Chapter 1266: Light (I)"}, {"id": "SC13", "name": "Chapter 1266: Light (II)"}, {"id": "SC14", "name": "Chapter 1314: Miracles Are Only For A Moment"}, {"id": "SC15", "name": "Chapter 1387: Method"}, {"id": "SC16", "name": "Chapter 1394: A New Journey"}]};
+const CARD_DATA = {"cards": [{"id": "SSR01", "name": "Klein Moretti", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR02", "name": "Audrey Hall", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR03", "name": "Alger Wilson", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR04", "name": "Derrick Berg", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR05", "name": "Fors Wall", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR06", "name": "Emlyn White", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR07", "name": "Cattleya", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR08", "name": "Leonard Mitchell", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR09", "name": "Xio Derecha", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR10", "name": "Azik Eggers", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR11", "name": "Sherlock Moriarty", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR12", "name": "Gehrman Sparrow", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR13", "name": "Dwayne Dantès", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR14", "name": "Merlin Hermes", "rarity": "ultimate", "set": "SSR"}, {"id": "SSR15", "name": "Amon", "rarity": "ultimate", "set": "SSR"}, {"id": "CB00", "name": "The Fool - Klein Moretti", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB01", "name": "The Magician - Fors Wall", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB02", "name": "The High Priestess - Bernadette Gustav", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB03", "name": "The Empress - Trissy", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB04", "name": "The Emperor - Roselle Gustav", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB05", "name": "The Hierophant - Alger Wilson", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB06", "name": "The Lovers - Amon", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB07", "name": "The Chariot - Medici", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB08", "name": "Strength - Colin Iliad", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB09", "name": "The Hermit - Cattleya", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB10", "name": "The Wheel of Fortune - Will Auceptin", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB11", "name": "Justice - Audrey Hall", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB12", "name": "The Hanged Man - True Creator", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB13", "name": "Death - Azik Eggers", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB14", "name": "Temperance - Sharron", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB15", "name": "The Devil - Mother Tree of Desire", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB16", "name": "The Tower - Edwina Edwards", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB17", "name": "The Star - Leonard Mitchell", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB18", "name": "The Moon - Emlyn White", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB19", "name": "The Sun - Derrick Berg", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB20", "name": "Judgement - Xio Derecha", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "CB21", "name": "The World - Frank Lee", "rarity": "legendary", "set": "Cards of Blasphemy"}, {"id": "AC_Adam", "name": "Adam", "rarity": "epic", "set": "Angels"}, {"id": "AC_Amon", "name": "Amon", "rarity": "epic", "set": "Angels"}, {"id": "AC_Aucuses", "name": "Aucuses", "rarity": "epic", "set": "Angels"}, {"id": "AC_Herabergen", "name": "Herabergen", "rarity": "epic", "set": "Angels"}, {"id": "AC_Leodero", "name": "Leodero", "rarity": "epic", "set": "Angels"}, {"id": "AC_Medici", "name": "Medici", "rarity": "epic", "set": "Angels"}, {"id": "AC_Ouroboros", "name": "Ouroboros", "rarity": "epic", "set": "Angels"}, {"id": "AC_Sasrir", "name": "Sasrir", "rarity": "epic", "set": "Angels"}, {"id": "PM_EarthMother", "name": "Earth Mother", "rarity": "epic", "set": "Deity"}, {"id": "PM_EternalBlazingSu", "name": "Eternal Blazing Sun", "rarity": "epic", "set": "Deity"}, {"id": "PM_EvernightGoddess", "name": "Evernight Goddess", "rarity": "epic", "set": "Deity"}, {"id": "PM_GodofCombat", "name": "God of Combat", "rarity": "epic", "set": "Deity"}, {"id": "PM_GodofKnowledgean", "name": "God of Knowledge and Wisdom", "rarity": "epic", "set": "Deity"}, {"id": "PM_GodofSteamandMac", "name": "God of Steam and Machinery", "rarity": "epic", "set": "Deity"}, {"id": "PM_LordofMysteries", "name": "Lord of Mysteries", "rarity": "epic", "set": "Deity"}, {"id": "PM_LordofStorms", "name": "Lord of Storms", "rarity": "epic", "set": "Deity"}, {"id": "SCR01", "name": "Puzzle Piece 1", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR02", "name": "Puzzle Piece 2", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR03", "name": "Puzzle Piece 3", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR04", "name": "Puzzle Piece 4", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR05", "name": "Puzzle Piece 5", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR06", "name": "Puzzle Piece 6", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR07", "name": "Puzzle Piece 7", "rarity": "epic", "set": "Puzzle"}, {"id": "SCR08", "name": "Puzzle Piece 8", "rarity": "epic", "set": "Puzzle"}, {"id": "SR01", "name": "Azik Eggers", "rarity": "rare", "set": "SR"}, {"id": "SR02", "name": "Edwina Edwards", "rarity": "rare", "set": "SR"}, {"id": "SR03", "name": "Will Auceptin", "rarity": "rare", "set": "SR"}, {"id": "SR04", "name": "Bernadette Gustav", "rarity": "rare", "set": "SR"}, {"id": "SR05", "name": "Daly Simone", "rarity": "rare", "set": "SR"}, {"id": "SR06", "name": "Reinette Tinekerr", "rarity": "rare", "set": "SR"}, {"id": "SR07", "name": "Ince Zangwill", "rarity": "rare", "set": "SR"}, {"id": "SR08", "name": "Colin Iliad", "rarity": "rare", "set": "SR"}, {"id": "SR09", "name": "Dunn Smith", "rarity": "rare", "set": "SR"}, {"id": "SR10", "name": "Sharron", "rarity": "rare", "set": "SR"}, {"id": "SR11", "name": "Trissy", "rarity": "rare", "set": "SR"}, {"id": "SR12", "name": "Frank Lee", "rarity": "rare", "set": "SR"}, {"id": "SR13", "name": "Roselle Gustav", "rarity": "rare", "set": "SR"}, {"id": "SR14", "name": "Danitz Dubois", "rarity": "rare", "set": "SR"}, {"id": "TC_AlgerWilson", "name": "Alger Wilson", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_AudreyHall", "name": "Audrey Hall", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_Cattleya", "name": "Cattleya", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_DerrickBerg", "name": "Derrick Berg", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_EmlynWhite", "name": "Emlyn White", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_ForsWall", "name": "Fors Wall", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_GehrmanSparrow", "name": "Gehrman Sparrow", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_KleinMoretti", "name": "Klein Moretti", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_LeonardMitchell", "name": "Leonard Mitchell", "rarity": "rare", "set": "Tarot Club"}, {"id": "TC_XioDerecha", "name": "Xio Derecha", "rarity": "rare", "set": "Tarot Club"}, {"id": "OC01", "name": "Creeping Hunger", "rarity": "common", "set": "Objects"}, {"id": "OC02", "name": "Leymano's Travels", "rarity": "common", "set": "Objects"}, {"id": "OC03", "name": "Death Knell", "rarity": "common", "set": "Objects"}, {"id": "OC04", "name": "Slumber Charm", "rarity": "common", "set": "Objects"}, {"id": "OC05", "name": "Requiem Charm", "rarity": "common", "set": "Objects"}, {"id": "OC06", "name": "Dream Charm", "rarity": "common", "set": "Objects"}, {"id": "OC07", "name": "Flaring Sun Charm", "rarity": "common", "set": "Objects"}, {"id": "OC08", "name": "Quill of Alzuhod", "rarity": "common", "set": "Objects"}, {"id": "OC09", "name": "\"Magic Mirror\" Arrodes", "rarity": "common", "set": "Objects"}, {"id": "OC10", "name": "Sea God Scepter", "rarity": "common", "set": "Objects"}, {"id": "OC11", "name": "Mutated Sun Sacred Emblem", "rarity": "common", "set": "Objects"}, {"id": "OC12", "name": "Klein Moretti's Pendulum", "rarity": "common", "set": "Objects"}, {"id": "OC13", "name": "Gehrman Sparrow's Suitcase", "rarity": "common", "set": "Objects"}, {"id": "OC14", "name": "Audrey Hall's Umbrella", "rarity": "common", "set": "Objects"}, {"id": "OC15", "name": "Cattleya's Planetarium", "rarity": "common", "set": "Objects"}, {"id": "OC16", "name": "Cattleya's Staff", "rarity": "common", "set": "Objects"}, {"id": "OC17", "name": "Derrick's Axe of Hurricane", "rarity": "common", "set": "Objects"}, {"id": "OC18", "name": "Wintry Blade", "rarity": "common", "set": "Objects"}, {"id": "OC19", "name": "Emlyn White's Doll", "rarity": "common", "set": "Objects"}, {"id": "OC20", "name": "Paper Crane", "rarity": "common", "set": "Objects"}, {"id": "OC21", "name": "Sleep Bugle", "rarity": "common", "set": "Objects"}, {"id": "OC22", "name": "Staff of the Stars", "rarity": "common", "set": "Objects"}, {"id": "PWC01", "name": "Fool Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC02", "name": "Door Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC03", "name": "Paragon Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC04", "name": "Demoness Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC05", "name": "Black Emperor Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC06", "name": "Tyrant Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC07", "name": "Error Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC08", "name": "Red Priest Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC09", "name": "Visionary Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC10", "name": "Hermit Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC11", "name": "Wheel of Fortune Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC12", "name": "Twilight Giant Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC13", "name": "Hanged Man Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC14", "name": "Death Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC15", "name": "Chained Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC16", "name": "Abyss Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC17", "name": "White Tower Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC18", "name": "Darkness Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC19", "name": "Moon Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC20", "name": "Sun Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC21", "name": "Justiciar Pathway", "rarity": "common", "set": "Pathways"}, {"id": "PWC22", "name": "Mother Pathway", "rarity": "common", "set": "Pathways"}], "scenes": [{"id": "SC01", "name": "Chapter 1: Crimson"}, {"id": "SC02", "name": "Chapter 165: Epitaph"}, {"id": "SC03", "name": "Chapter 209: Light"}, {"id": "SC04", "name": "Chapter 213: Another Look"}, {"id": "SC05", "name": "Chapter 364: Cathedral of Serenity"}, {"id": "SC06", "name": "Chapter 663: False Alarm"}, {"id": "SC07", "name": "Chapter 732: Destination"}, {"id": "SC08", "name": "Chapter 766: The Deities' Anchor"}, {"id": "SC09", "name": "Chapter 1148: Not Late"}, {"id": "SC10", "name": "Chapter 1165: The Grand Lineup"}, {"id": "SC11", "name": "Chapter 1263: The Final Watch"}, {"id": "SC12", "name": "Chapter 1266: Light (I)"}, {"id": "SC13", "name": "Chapter 1266: Light (II)"}, {"id": "SC14", "name": "Chapter 1314: Miracles Are Only For A Moment"}, {"id": "SC15", "name": "Chapter 1387: Method"}, {"id": "SC16", "name": "Chapter 1394: A New Journey"}]};
 CARD_DATA.cards.forEach(c => c.deck = 'tarot');
 // Land of Dawn Deck (Mobile Legends cards). hero = which champion is on the card.
 var MLBB_CARDS = [{"id": "ML_AS01", "name": "Miya", "hero": "Miya", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS02", "name": "Layla", "hero": "Layla", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS03", "name": "Energy Gunner", "hero": "Layla", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS04", "name": "Steel Elf", "hero": "Lolita", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS05", "name": "Arclight Outlaw", "hero": "Ixia", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS06", "name": "Claude", "hero": "Claude", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS07", "name": "Melissa", "hero": "Melissa", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS08", "name": "The Protector", "hero": "Bruno", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS09", "name": "Hoverjet Outrider", "hero": "Kimmy", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS10", "name": "Wild Engine", "hero": "Johnson", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_SP01", "name": "Atomic Pop", "hero": "Miya", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP02", "name": "Atomic Pop", "hero": "Eudora", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP03", "name": "Miss-Hikari", "hero": "Layla", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP04", "name": "Blazing Gun", "hero": "Layla", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP05", "name": "Green Flash", "hero": "Layla", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP06", "name": "Beyond The Clouds", "hero": "Kagura", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP07", "name": "Neobeast", "hero": "Lylia", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP08", "name": "S.A.B.E.R ManHunter", "hero": "Freya", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP09", "name": "Gemini Halo", "hero": "Karina", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP10", "name": "M-World", "hero": "Wanwan", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP11", "name": "Blizzard Storm", "hero": "Vale", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP12", "name": "Empyrean Paladin", "hero": "Zilong", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP13", "name": "Sparkle", "hero": "Estes", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP14", "name": "Rattan Dragon", "hero": "Estes", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP15", "name": "Blazing Trace", "hero": "Claude", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP16", "name": "Sparkle", "hero": "Melissa", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP17", "name": "Firebolt", "hero": "Bruno", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP18", "name": "Frost Wing", "hero": "Kimmy", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP19", "name": "S.A.B.E.R. Automata", "hero": "Johnson", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP20", "name": "Blazing Shadow", "hero": "Esmeralda", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP21", "name": "The Foreseer", "hero": "Esmeralda", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_PR01", "name": "Modena Butterfly", "hero": "Miya", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR02", "name": "Doom Catalyst", "hero": "Miya", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR03", "name": "Suzuhime", "hero": "Miya", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR04", "name": "Emerald Enchantress", "hero": "Eudora", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR05", "name": "Twilight Waltz", "hero": "Layla", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR06", "name": "Paranormal Operative", "hero": "Layla", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR07", "name": "Cannon And Roses", "hero": "Layla", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR08", "name": "Water Lily", "hero": "Kagura", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR09", "name": "Jade Blossom", "hero": "Kagura", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR10", "name": "Dragon Maiden", "hero": "Kagura", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR11", "name": "Magitech Arsenal", "hero": "Lylia", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR12", "name": "Haunted Doll", "hero": "Lylia", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR13", "name": "Galactic Vanquisher", "hero": "Freya", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR14", "name": "Raven Shogun", "hero": "Freya", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR15", "name": "War Angel", "hero": "Freya", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR16", "name": "Doom Duelist", "hero": "Karina", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR17", "name": "Black Pearl", "hero": "Karina", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR18", "name": "Pixel Blast", "hero": "Wanwan", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR19", "name": "E-Girl", "hero": "Wanwan", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR20", "name": "Flying Swallow", "hero": "Wanwan", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR21", "name": "Starwatcher", "hero": "Lolita", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR22", "name": "Impish Trickster", "hero": "Lolita", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR23", "name": "Lion Dance", "hero": "Lolita", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR24", "name": "Supernal Tempest", "hero": "Vale", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR25", "name": "Keeper Of The Winds", "hero": "Vale", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR26", "name": "Concerto Of Light", "hero": "Vale", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR27", "name": "Mecha-King Perseus", "hero": "Alpha", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR28", "name": "Revenant Of Roses", "hero": "Alpha", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR29", "name": "Onimusha Commander", "hero": "Alpha", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR30", "name": "Glorious General", "hero": "Zilong", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR31", "name": "Changbanpo Commander", "hero": "Zilong", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR32", "name": "Dragon Of Prosperity", "hero": "Zilong", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR33", "name": "Arcane Magistrate", "hero": "Estes", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR34", "name": "Galaxy Dominator", "hero": "Estes", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR35", "name": "Blacklist International", "hero": "Estes", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR36", "name": "Challenge's Spark", "hero": "Claude", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR37", "name": "Mecha Dragon", "hero": "Claude", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR38", "name": "Umbra Bloom", "hero": "Melissa", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR39", "name": "Street Hype", "hero": "Bruno", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR40", "name": "Astrocat", "hero": "Kimmy", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR41", "name": "Wreck King", "hero": "Johnson", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR42", "name": "Sovereign Of Realms", "hero": "Johnson", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR43", "name": "Light Envoy", "hero": "Esmeralda", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_ST01", "name": "Moon Priestess", "hero": "Miya", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST02", "name": "Cosmic Voyage", "hero": "Eudora", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST03", "name": "Bunny Babe", "hero": "Layla", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST04", "name": "Summer Festival", "hero": "Kagura", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST05", "name": "Future Star", "hero": "Lylia", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST06", "name": "Dragon Hunter", "hero": "Freya", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST07", "name": "Blood Moon", "hero": "Karina", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST08", "name": "Teen Pop", "hero": "Wanwan", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST09", "name": "Astro Mallet", "hero": "Lolita", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST10", "name": "Soaring Devata", "hero": "Vale", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST11", "name": "Star Enforcer", "hero": "Alpha", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST12", "name": "Dynamic Streak", "hero": "Ixia", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST13", "name": "Storm Rider", "hero": "Zilong", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST14", "name": "White Crane", "hero": "Estes", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST15", "name": "Earth's Mightiest", "hero": "Claude", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST16", "name": "Street Football", "hero": "Bruno", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST17", "name": "Charge Leader", "hero": "Kimmy", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST18", "name": "Starblazer", "hero": "Johnson", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST19", "name": "Lady Thief", "hero": "Esmeralda", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_SH01", "name": "Jungle Ranger", "hero": "Miya", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH02", "name": "Countess Scarlet", "hero": "Eudora", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH03", "name": "Classic Malefic Gunner", "hero": "Layla", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH04", "name": "Cherry Witch", "hero": "Kagura", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH05", "name": "Star Student", "hero": "Lylia", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH06", "name": "Gladiator", "hero": "Freya", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH07", "name": "Spider Lily", "hero": "Karina", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH08", "name": "Shoujo Commander", "hero": "Wanwan", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH09", "name": "Special Op", "hero": "Lolita", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH10", "name": "Kannagi", "hero": "Vale", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH11", "name": "Sea Gladiator", "hero": "Alpha", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH12", "name": "Eastern Warrior", "hero": "Zilong", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH13", "name": "Crow Bishop", "hero": "Estes", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH14", "name": "Plunderous Pirate", "hero": "Claude", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH15", "name": "Nightwalker", "hero": "Melissa", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH16", "name": "Best DJ", "hero": "Bruno", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH17", "name": "Bio Frontier", "hero": "Kimmy", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH18", "name": "Jeepney Racer", "hero": "Johnson", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH19", "name": "Poison Vine", "hero": "Esmeralda", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_CL01", "name": "Burning Bow", "hero": "Miya", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL02", "name": "Flame Red Lips", "hero": "Eudora", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL03", "name": "Green Flash", "hero": "Layla", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL04", "name": "Flower Season", "hero": "Kagura", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL05", "name": "School Idol", "hero": "Lylia", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL06", "name": "Dark Rose", "hero": "Freya", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL07", "name": "Phantom Blade", "hero": "Karina", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL08", "name": "Darting Star", "hero": "Wanwan", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL09", "name": "Soldier In Training", "hero": "Lolita", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL10", "name": "Cerulean Winds", "hero": "Vale", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL11", "name": "Fierce Dragon", "hero": "Alpha", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL12", "name": "Shifting Sand", "hero": "Ixia", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL13", "name": "Elite Warrior", "hero": "Zilong", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL14", "name": "Holy Priest", "hero": "Estes", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL15", "name": "Golden Bullet", "hero": "Claude", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL16", "name": "Twinge Weaver", "hero": "Melissa", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL17", "name": "Vanguard Elite", "hero": "Bruno", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL18", "name": "Steam Researcher", "hero": "Kimmy", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL19", "name": "Fire Chef", "hero": "Johnson", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL20", "name": "Ruddy Dusk", "hero": "Esmeralda", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_OR01", "name": "Moonlight Archer", "hero": "Miya", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR02", "name": "Lightning Weaver", "hero": "Eudora", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR03", "name": "Onmyouji Master", "hero": "Kagura", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR04", "name": "Little Witch", "hero": "Lylia", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR05", "name": "Valkyrie", "hero": "Freya", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR06", "name": "Shadow Blade", "hero": "Karina", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR07", "name": "Agile Tiger", "hero": "Wanwan", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR08", "name": "Steel Elf", "hero": "Lolita", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR09", "name": "Windtalker", "hero": "Vale", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR10", "name": "Blade Of Enmity", "hero": "Alpha", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR11", "name": "Arclight Outlaw", "hero": "Ixia", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR12", "name": "Spear Of The Dragon", "hero": "Zilong", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR13", "name": "Moon Elf King", "hero": "Estes", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR14", "name": "Master Thief", "hero": "Claude", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR15", "name": "Cursed Needle", "hero": "Melissa", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR16", "name": "The Protector", "hero": "Bruno", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR17", "name": "Hoverjet Outrider", "hero": "Kimmy", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR18", "name": "Wild Engine", "hero": "Johnson", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR19", "name": "Astrologer", "hero": "Esmeralda", "rarity": "common", "set": "Origin", "deck": "mlbb"}];
-const CARDS = CARD_DATA.cards.concat(MLBB_CARDS), SCENES = CARD_DATA.scenes;
+// Hand of Destiny cards (Mobile Legends). set = category; 'Duo' cards are sideways pairs (land:1 = a landscape picture HD_xxx_l exists)
+var HOD_CARDS = [{"id":"HD_PR02","name":"Kagura","hero":"Kagura","rarity":"ultimate","set":"Promo","deck":"hod"},{"id":"HD_PR03","name":"Granger","hero":"Granger","rarity":"ultimate","set":"Promo","deck":"hod"},{"id":"HD_SP01","name":"Alice","hero":"Alice","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP02","name":"Obsidia","hero":"Obsidia","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP03","name":"Selena","hero":"Selena","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP04","name":"Thamuz","hero":"Thamuz","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP05","name":"Dyrroth","hero":"Dyrroth","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP06","name":"Lancelot","hero":"Lancelot","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP07","name":"Rafaela","hero":"Rafaela","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP08","name":"Fanny","hero":"Fanny","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP09","name":"Odette","hero":"Odette","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP10","name":"Alucard","hero":"Alucard","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_UR01","name":"Saber","hero":"Saber","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR02","name":"Leomord","hero":"Leomord","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR03","name":"Hayabusa","hero":"Hayabusa","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR04","name":"Kagura","hero":"Kagura","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR05","name":"Alpha","hero":"Alpha","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR06","name":"Moskov","hero":"Moskov","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR07","name":"Karrie","hero":"Karrie","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR08","name":"Lesley","hero":"Lesley","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR09","name":"Hanabi","hero":"Hanabi","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR10","name":"Kaja","hero":"Kaja","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR11","name":"Vale","hero":"Vale","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR12","name":"Lunox","hero":"Lunox","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR13","name":"Terizla","hero":"Terizla","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR14","name":"Yin","hero":"Yin","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR15","name":"Arlott","hero":"Arlott","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_AAD1","name":"Layla","hero":"Layla","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAD2","name":"Esmeralda","hero":"Esmeralda","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAD3","name":"Khaleed","hero":"Khaleed","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAD4","name":"Nolan","hero":"Nolan","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAW1","name":"Miya","hero":"Miya","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAW2","name":"Estes","hero":"Estes","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAW3","name":"Harith","hero":"Harith","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAW4","name":"Irithel","hero":"Irithel","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ACR1","name":"Zilong","hero":"Zilong","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ACR2","name":"Wanwan","hero":"Wanwan","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ACR3","name":"Luo Yi","hero":"Luo Yi","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ACR4","name":"Zhuxin","hero":"Zhuxin","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AKS1","name":"Vexana","hero":"Vexana","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AKS2","name":"Faramis","hero":"Faramis","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AKS3","name":"Paquito","hero":"Paquito","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AKS4","name":"Benedetta","hero":"Benedetta","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ANV1","name":"Eudora","hero":"Eudora","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ANV2","name":"Freya","hero":"Freya","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ANV3","name":"Aurora","hero":"Aurora","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ANV4","name":"Popol and Kupa","hero":"Popol and Kupa","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AVS1","name":"Minsitthar","hero":"Minsitthar","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AVS2","name":"Kadita","hero":"Kadita","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AVS3","name":"Badang","hero":"Badang","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AVS4","name":"Martis","hero":"Martis","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_PTR01","name":"Miya","hero":"Miya","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR02","name":"Alucard","hero":"Alucard","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR03","name":"Fanny","hero":"Fanny","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR04","name":"Claude","hero":"Claude","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR05","name":"Khufra","hero":"Khufra","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR06","name":"Esmeralda","hero":"Esmeralda","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR07","name":"Granger","hero":"Granger","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR08","name":"Silvanna","hero":"Silvanna","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR09","name":"Alice","hero":"Alice","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR10","name":"Natalia","hero":"Natalia","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR11","name":"Zilong","hero":"Zilong","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR12","name":"Freya","hero":"Freya","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR13","name":"Odette","hero":"Odette","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR14","name":"Lancelot","hero":"Lancelot","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_R53","name":"JOKER Alice","hero":"JOKER Alice","rarity":"common","set":"Joker","deck":"hod","joker":1},{"id":"HD_R54","name":"JOKER Obsidia","hero":"JOKER Obsidia","rarity":"common","set":"Joker","deck":"hod","joker":1},{"id":"HD_R01","name":"Akai","hero":"Akai","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R02","name":"Saber","hero":"Saber","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R03","name":"Chou","hero":"Chou","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R04","name":"Minsitthar","hero":"Minsitthar","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R05","name":"Gatotkaca","hero":"Gatotkaca","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R06","name":"Lapu-Lapu","hero":"Lapu-Lapu","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R07","name":"Nolan","hero":"Nolan","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R08","name":"Arlott","hero":"Arlott","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R09","name":"Granger","hero":"Granger","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R10","name":"Paquito","hero":"Paquito","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R11","name":"Cecilion","hero":"Cecilion","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R12","name":"Freya","hero":"Freya","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R13","name":"Yu Zhong","hero":"Yu Zhong","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R14","name":"Angela","hero":"Angela","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R15","name":"Odette","hero":"Odette","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R16","name":"Vexana","hero":"Vexana","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R17","name":"Lolita","hero":"Lolita","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R18","name":"Floryn","hero":"Floryn","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R19","name":"Faramis","hero":"Faramis","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R20","name":"Kadita","hero":"Kadita","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R21","name":"Harith","hero":"Harith","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R22","name":"Xavier","hero":"Xavier","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R23","name":"Lou Yi","hero":"Lou Yi","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R24","name":"Lukas","hero":"Lukas","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R25","name":"Rafaela","hero":"Rafaela","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R26","name":"Estes","hero":"Estes","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R27","name":"Alucard","hero":"Alucard","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R28","name":"Miya","hero":"Miya","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R29","name":"Zilong","hero":"Zilong","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R30","name":"Layla","hero":"Layla","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R31","name":"Clint","hero":"Clint","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R32","name":"Claude","hero":"Claude","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R33","name":"Ling","hero":"Ling","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R34","name":"Popol And Kupa","hero":"Popol And Kupa","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R35","name":"Kimmy","hero":"Kimmy","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R36","name":"Fanny","hero":"Fanny","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R37","name":"Lancelot","hero":"Lancelot","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R38","name":"Carmilla","hero":"Carmilla","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R39","name":"Dyrroth","hero":"Dyrroth","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R40","name":"Esmeralda","hero":"Esmeralda","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R41","name":"Tigreal","hero":"Tigreal","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R42","name":"Johnson","hero":"Johnson","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R43","name":"Uranus","hero":"Uranus","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R44","name":"Baxia","hero":"Baxia","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R45","name":"Gloo","hero":"Gloo","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R46","name":"Fredrinn","hero":"Fredrinn","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R47","name":"Chip","hero":"Chip","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R48","name":"Atlas","hero":"Atlas","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R49","name":"Edith","hero":"Edith","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R50","name":"Leomord","hero":"Leomord","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R51","name":"Aurora","hero":"Aurora","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R52","name":"Khaleed","hero":"Khaleed","rarity":"common","set":"Poker","deck":"hod"}];
+var REALMS = [{"id":"RM01","name":"Moniyan 1"},{"id":"RM02","name":"Moniyan 2"},{"id":"RM03","name":"Moniyan 3"},{"id":"RM04","name":"Moniyan 4"},{"id":"RM05","name":"Cadia 1"},{"id":"RM06","name":"Cadia 2"},{"id":"RM07","name":"Cadia 3"},{"id":"RM08","name":"Cadia 4"},{"id":"RM09","name":"Babren Lands 1"},{"id":"RM10","name":"Babren Lands 2"},{"id":"RM11","name":"Babren Lands 3"},{"id":"RM12","name":"The Abyss 1"},{"id":"RM13","name":"The Abyss 2"},{"id":"RM14","name":"Northern Vale 1"},{"id":"RM15","name":"Northern Vale 2"},{"id":"RM16","name":"Northern Vale 3"},{"id":"RM17","name":"Azrya"},{"id":"RM18","name":"Vonetis Sea"},{"id":"RM19","name":"Agelta 1"},{"id":"RM20","name":"Agelta 2"},{"id":"RM21","name":"Agelta 3"},{"id":"RM22","name":"Agelta 4"},{"id":"RM23","name":"Sanctum Island 1"},{"id":"RM24","name":"Sanctum Island 2"}];
+const CARDS = CARD_DATA.cards.concat(MLBB_CARDS, HOD_CARDS), SCENES = CARD_DATA.scenes;
+// bonus pictures that drop from a pack of their own deck: Chapters (Tarot) and Realms (Hand of Destiny)
+const SCENE_DEF = {
+  tarot:{ key:'__scenes', list:SCENES, name:'Chapters', one:'Chapter', col:'#9db2b0' },
+  hod:  { key:'__realms', list:REALMS, name:'Realms', one:'Realm', col:'#9db2b0' }
+};
+const sceneDefOf = k => Object.values(SCENE_DEF).find(x => x.key === k);
+const sceneDefById = id => Object.values(SCENE_DEF).find(x => x.list.some(sc => sc.id === id));
+const landImg = id => cardImg(id + '_l');
 // border gradient per card: the card's own edge colour (top-left), its most striking art colour (middle), its edge colour (bottom-right)
 var CARD_EDGE = {"SSR01":["#74704d","#978e66","#747150"],"SSR02":["#bf9c66","#cb9f61","#746341"],"SSR03":["#607671","#6594a9","#717460"],"SSR04":["#60745f","#6bacb8","#68745c"],"SSR05":["#747048","#458c85","#746f48"],"SSR06":["#747455","#c3451b","#745938"],"SSR07":["#6e5378","#7d63ad","#646674"],"SSR08":["#746c49","#d5c47f","#70745c"],"SSR09":["#745c39","#8c6743","#74603e"],"SSR10":["#75755c","#bcb884","#73755f"],"SSR11":["#746d59","#bbb06a","#747057"],"SSR12":["#a89963","#f3da99","#747049"],"SSR13":["#7d6950","#ab8165","#a38a78"],"SSR14":["#bcc29b","#928a66","#b1ad83"],"SSR15":["#747251","#9d8752","#74613c"],"CB00":["#746f70","#ae5c16","#746f70"],"CB01":["#b76461","#c95958","#bd726d"],"CB02":["#5e743a","#898c47","#818653"],"CB03":["#886776","#d59647","#63518f"],"CB04":["#3e479e","#8c6341","#3e48a0"],"CB05":["#27579a","#0441a1","#224d90"],"CB06":["#207e9a","#00749e","#1e7b98"],"CB07":["#852f26","#8c0b08","#752521"],"CB08":["#746860","#c5c0ad","#746661"],"CB09":["#524874","#cec4a5","#575174"],"CB10":["#717e7d","#953b34","#6b7b7c"],"CB11":["#758f70","#78abcc","#809670"],"CB12":["#6d7468","#cbbc9e","#74695a"],"CB13":["#58786f","#b49d73","#7c876e"],"CB14":["#744044","#8c0013","#742f31"],"CB15":["#783d33","#8c1113","#742924"],"CB16":["#7b6854","#ba987c","#806d59"],"CB17":["#778cb3","#5371b8","#6480b1"],"CB18":["#803456","#e32130","#863154"],"CB19":["#bd914f","#d28438","#bb904f"],"CB20":["#b6a38e","#8797af","#c4a784"],"CB21":["#a57f5f","#d07840","#837d5e"],"AC_Adam":["#f3e6dc","#8c6f5a","#f2e7df"],"AC_Amon":["#6e9eb0","#6391a4","#7296a5"],"AC_Aucuses":["#af8546","#8c581d","#a7804b"],"AC_Herabergen":["#e1d8b3","#a89678","#cdc3a5"],"AC_Leodero":["#325574","#5886a4","#46728c"],"AC_Medici":["#8a1d1f","#8c0108","#861e1f"],"AC_Ouroboros":["#eaeaf1","#b7b3bc","#dedfe7"],"AC_Sasrir":["#555174","#665e8c","#595874"],"PM_EarthMother":["#607472","#8c7e44","#74724e"],"PM_EternalBlazingSu":["#95712e","#c4932d","#9c7b46"],"PM_EvernightGoddess":["#742224","#ef2226","#742626"],"PM_GodofCombat":["#743852","#e29c54","#744c35"],"PM_GodofKnowledgean":["#355b91","#519fe5","#3d659c"],"PM_GodofSteamandMac":["#6d6c74","#8c7454","#746a67"],"PM_LordofMysteries":["#4f3574","#6a538c","#594274"],"PM_LordofStorms":["#597597","#76a3c4","#5c7f92"],"SR01":["#5a7450","#f1f1ba","#597450"],"SR02":["#2c5b74","#09558c","#2b5b74"],"SR03":["#3f746f","#1e8c88","#3e746f"],"SR04":["#543e74","#8c6446","#564174"],"SR05":["#537452","#f1f0b8","#547452"],"SR06":["#3a4574","#353c8c","#3a4574"],"SR07":["#354e74","#28478c","#344d74"],"SR08":["#743f26","#8c3806","#744028"],"SR09":["#354d74","#2e458c","#354e74"],"SR10":["#3a4574","#333a8c","#394474"],"SR11":["#583e74","#60198c","#573c74"],"SR12":["#4d745c","#368c61","#4a745b"],"SR13":["#4b5474","#6e7a8c","#4a5374"],"SR14":["#742f32","#8c2720","#742e31"],"TC_AlgerWilson":["#3f5374","#1e458c","#3e5274"],"TC_AudreyHall":["#4e745c","#258c4f","#4c745b"],"TC_Cattleya":["#644174","#6b248c","#634074"],"TC_DerrickBerg":["#74434e","#91696c","#74424e"],"TC_EmlynWhite":["#742d46","#8c093c","#742c45"],"TC_ForsWall":["#854642","#8c2d27","#844440"],"TC_GehrmanSparrow":["#464b74","#302d8c","#464a74"],"TC_KleinMoretti":["#625674","#7f7a8c","#625674"],"TC_LeonardMitchell":["#75272d","#8c0e18","#74262b"],"TC_XioDerecha":["#7e5436","#8c4b1a","#7c5234"],"OC01":["#384f74","#0f418c","#374f74"],"OC02":["#384f74","#528c69","#385074"],"OC03":["#384f74","#0d3f8c","#374f74"],"OC04":["#384f74","#0e408c","#385074"],"OC05":["#384f74","#0d3f8c","#374f74"],"OC06":["#384f74","#0d408c","#374f74"],"OC07":["#384f74","#f3a63a","#385074"],"OC08":["#384f74","#0d3f8c","#374f74"],"OC09":["#384f74","#0d408c","#374f74"],"OC10":["#374f74","#0c3f8c","#374f74"],"OC11":["#384f74","#93867a","#385074"],"OC12":["#384f74","#0d3f8c","#385074"],"OC13":["#384f74","#16468c","#385074"],"OC14":["#384f74","#0d3f8c","#384f74"],"OC15":["#384f74","#0d3f8c","#374f74"],"OC16":["#384f74","#0e3f8c","#374f74"],"OC17":["#384f74","#0c3f8c","#374f74"],"OC18":["#374f74","#0d408c","#374f74"],"OC19":["#384f74","#98243f","#374f74"],"OC20":["#384f74","#0d3f8c","#385074"],"OC21":["#384f74","#0e408c","#374f74"],"OC22":["#374f74","#0d3f8c","#374f74"],"PWC01":["#ffffff","#979082","#c8c7c7"],"PWC02":["#b2b1b1","#d0c7b3","#b2b1b0"],"PWC03":["#ffffff","#bfbaad","#e3e3e3"],"PWC04":["#e8e8e8","#b1a999","#d4d4d4"],"PWC05":["#cccccc","#8c5c53","#d0cfcf"],"PWC06":["#d9d8d8","#8c8577","#dbdbda"],"PWC07":["#b6b5b6","#b3ada0","#dedede"],"PWC08":["#ffffff","#a79c86","#dadada"],"PWC09":["#b2b0b0","#aba394","#d9d9d8"],"PWC10":["#c0bfbf","#d6cfc2","#c6c5c5"],"PWC11":["#cfcfcf","#a8997b","#e8e8e8"],"PWC12":["#c7c6c6","#b1aa9b","#e9e8e8"],"PWC13":["#ffffff","#ad9b77","#dfdede"],"PWC14":["#c9c8c8","#8c857c","#cac9c9"],"PWC15":["#c0bfbf","#aba69b","#bebebd"],"PWC16":["#b1b1b1","#988d77","#d7d7d7"],"PWC17":["#c4c4c4","#969289","#dedede"],"PWC18":["#b1b0b0","#8c877b","#cac9c9"],"PWC19":["#f5f4f4","#b19f77","#dbdada"],"PWC20":["#d0cfcf","#a89266","#ffffff"],"PWC21":["#ffffff","#8d8576","#cfcece"],"PWC22":["#f6f6f7","#8c867a","#d9d9d9"],"ML_AS01":["#94b6c7","#009de4","#889ea3"],"ML_AS02":["#efdb05","#fff400","#c5ca36"],"ML_AS03":["#d8dadb","#e3e1da","#3b5678"],"ML_AS04":["#d6d1cb","#dc7818","#b05a15"],"ML_AS05":["#cfc5c8","#ca145e","#8d2e57"],"ML_AS06":["#0098e0","#00a2eb","#076fb7"],"ML_AS07":["#cf436f","#f32371","#c93e73"],"ML_AS08":["#bbbcc4","#56638c","#384874"],"ML_AS09":["#e3dddc","#cb020b","#a90814"],"ML_AS10":["#d8dbdd","#6bb9f4","#3b7aa3"],"ML_SP01":["#7d4e9c","#f5a863","#505298"],"ML_SP02":["#6e4d8c","#cb5a3e","#6e549c"],"ML_SP03":["#b1b1d2","#d94062","#bf97be"],"ML_SP04":["#a44333","#ee4c1f","#b6512e"],"ML_SP05":["#3e5a74","#98123a","#375c74"],"ML_SP06":["#89a3c2","#1062be","#aca1a6"],"ML_SP07":["#dc7288","#cc4e8f","#df7f85"],"ML_SP08":["#245974","#9a6a58","#2a5b74"],"ML_SP09":["#3c6a74","#b2aa5e","#61aac3"],"ML_SP10":["#b6a9b9","#007cb8","#7d7b91"],"ML_SP11":["#135f91","#004f90","#375574"],"ML_SP12":["#9e9c73","#e1bf54","#8c8b75"],"ML_SP13":["#9e5e95","#ba6991","#9e5f92"],"ML_SP14":["#217a3c","#d5d536","#649f2a"],"ML_SP15":["#b27d41","#de6a0d","#936942"],"ML_SP16":["#b5524a","#eb7935","#da7a7e"],"ML_SP17":["#044b80","#00498c","#747370"],"ML_SP18":["#284c97","#053e99","#0073b0"],"ML_SP19":["#285079","#1a498c","#2a5074"],"ML_SP20":["#a57c4f","#f8ae42","#a47750"],"ML_SP21":["#97672c","#d99309","#675f74"],"ML_PR01":["#745117","#e6a00b","#986d13"],"ML_PR02":["#855c1c","#e69c00","#a4700e"],"ML_PR03":["#744c17","#e09f0d","#976614"],"ML_PR04":["#6e7455","#4293a5","#916c1a"],"ML_PR05":["#8a5330","#e29900","#a46214"],"ML_PR06":["#845130","#e69919","#b07415"],"ML_PR07":["#744a0f","#eaa100","#a65c08"],"ML_PR08":["#8e7792","#efad14","#9d6d16"],"ML_PR09":["#345e85","#e6a208","#a36e0b"],"ML_PR10":["#4c977a","#eaa206","#946b19"],"ML_PR11":["#8f7443","#3d6e9f","#9c6403"],"ML_PR12":["#745c4e","#eea208","#a48634"],"ML_PR13":["#b17f7c","#e09b0c","#95650f"],"ML_PR14":["#742b34","#a62b2d","#af660f"],"ML_PR15":["#a77241","#f5aa0f","#b67b17"],"ML_PR16":["#4c327b","#eda90d","#9a690a"],"ML_PR17":["#7b4f20","#e9a005","#a46e10"],"ML_PR18":["#744d2b","#4e5493","#9e670f"],"ML_PR19":["#745423","#7b8fbb","#9a6515"],"ML_PR20":["#745015","#e09a1d","#926207"],"ML_PR21":["#68756f","#6d76b4","#946e1a"],"ML_PR22":["#745c18","#f3d300","#a07706"],"ML_PR23":["#89583c","#edaa07","#a36708"],"ML_PR24":["#a68028","#ecaa0b","#af7614"],"ML_PR25":["#956c41","#f2ac14","#a97008"],"ML_PR26":["#8f876b","#3e4a8e","#ad811c"],"ML_PR27":["#cc8850","#e89a02","#b26e1c"],"ML_PR28":["#a32759","#dc9508","#976916"],"ML_PR29":["#499ca9","#eda50c","#9e711b"],"ML_PR30":["#745621","#268d9d","#95751d"],"ML_PR31":["#747a89","#ee9e12","#a16010"],"ML_PR32":["#804c28","#f09904","#a6690c"],"ML_PR33":["#744d16","#de8f06","#ac7110"],"ML_PR34":["#744e1c","#e29a00","#9f6711"],"ML_PR35":["#744d11","#df9903","#a87414"],"ML_PR36":["#746647","#4961a0","#9a6b1e"],"ML_PR37":["#745018","#efa105","#a46f0e"],"ML_PR38":["#74533b","#7f65ad","#a06f16"],"ML_PR39":["#74653e","#44668c","#986605"],"ML_PR40":["#74592a","#e89f0d","#9d6705"],"ML_PR41":["#7a6f55","#dc9b13","#9f6905"],"ML_PR42":["#8b5718","#e9a223","#a06909"],"ML_PR43":["#7a5a23","#e2a114","#a7710d"],"ML_ST01":["#c8b6ad","#b58047","#818c97"],"ML_ST02":["#5e6e74","#355b9d","#969aa4"],"ML_ST03":["#bdc4c6","#9b6d45","#746b58"],"ML_ST04":["#516274","#ce9b68","#a38f8a"],"ML_ST05":["#6f7274","#795e8c","#877d8d"],"ML_ST06":["#525574","#24558c","#766d83"],"ML_ST07":["#aca2af","#8c3144","#747482"],"ML_ST08":["#c3bcb8","#923736","#896f7d"],"ML_ST09":["#bcb8ae","#a14830","#746c64"],"ML_ST10":["#617374","#8c755f","#8f9184"],"ML_ST11":["#b4b6bb","#936b31","#576974"],"ML_ST12":["#e3e6e6","#8c5a62","#6a6574"],"ML_ST13":["#76545a","#a03734","#938a87"],"ML_ST14":["#cec5b6","#c19561","#74706b"],"ML_ST15":["#a2aebe","#a16031","#667274"],"ML_ST16":["#b0b5ce","#007ab0","#4f6774"],"ML_ST17":["#667374","#8d6b67","#7e7e7d"],"ML_ST18":["#b5b7c1","#135791","#245881"],"ML_ST19":["#6f746e","#a5825d","#a29891"],"ML_SH01":["#c57f2c","#f8bf2a","#7c5a19"],"ML_SH02":["#ab121b","#b9060f","#74090d"],"ML_SH03":["#67609d","#39298c","#3c2374"],"ML_SH04":["#864970","#bc3329","#742e57"],"ML_SH05":["#e7ad3b","#f9bd25","#925d15"],"ML_SH06":["#cd9f48","#fac22c","#95622b"],"ML_SH07":["#a81e23","#bb030c","#74060f"],"ML_SH08":["#8169b0","#453a8c","#382474"],"ML_SH09":["#48a675","#26ae7d","#07744c"],"ML_SH10":["#99263c","#ad0911","#741423"],"ML_SH11":["#309f89","#0b8c85","#027455"],"ML_SH12":["#8268a7","#9d6b4e","#4b2b74"],"ML_SH13":["#3f3575","#37208c","#3d1f74"],"ML_SH14":["#b0181b","#b9080c","#760f0d"],"ML_SH15":["#8294af","#d1912a","#624074"],"ML_SH16":["#a59180","#e3a833","#573074"],"ML_SH17":["#e9b237","#ffc623","#835f15"],"ML_SH18":["#902c36","#c3060e","#812b0d"],"ML_SH19":["#ac131d","#b8030c","#7e231e"],"ML_CL01":["#9b8763","#8c5b22","#ad9e54"],"ML_CL02":["#d0c1b9","#ce7136","#817696"],"ML_CL03":["#6984a3","#018fc7","#537186"],"ML_CL04":["#8294a1","#18648c","#a47378"],"ML_CL05":["#b5716e","#ae2023","#988c8e"],"ML_CL06":["#af5d70","#9d112f","#8d7075"],"ML_CL07":["#a89d7f","#008c9b","#8f9e9f"],"ML_CL08":["#c9caca","#65538c","#a29498"],"ML_CL09":["#baaca0","#c0522f","#b1897b"],"ML_CL10":["#99a8c9","#216dc1","#7b8998"],"ML_CL11":["#779fab","#8c5017","#848a89"],"ML_CL12":["#ccc6c2","#dc814c","#998d88"],"ML_CL13":["#b19182","#9b4020","#8f6f5a"],"ML_CL14":["#bda884","#dd9b51","#927c6e"],"ML_CL15":["#c0a06e","#ba6c11","#8c7969"],"ML_CL16":["#cac0bf","#9e2036","#a57e7f"],"ML_CL17":["#c3ac86","#f4cf05","#8b7a85"],"ML_CL18":["#b8a49a","#c87866","#957d81"],"ML_CL19":["#d0ae9b","#ae2a15","#845955"],"ML_CL20":["#a98198","#bd1e44","#907584"],"ML_OR01":["#0091d6","#00aff6","#2e79c1"],"ML_OR02":["#0093d8","#00abf5","#0065b5"],"ML_OR03":["#743793","#1d3b92","#472f7c"],"ML_OR04":["#782f89","#65128c","#4d1374"],"ML_OR05":["#cfa74f","#fbc44d","#b78a48"],"ML_OR06":["#0090d4","#00a4ef","#004e9a"],"ML_OR07":["#d59b2f","#df8908","#a36022"],"ML_OR08":["#d69e30","#dc840c","#b25e0e"],"ML_OR09":["#daa239","#de8911","#a8713a"],"ML_OR10":["#0093d8","#00aaf5","#104594"],"ML_OR11":["#6a2184","#72178f","#512274"],"ML_OR12":["#008cce","#00a5ef","#126da7"],"ML_OR13":["#6d2981","#64118c","#744b63"],"ML_OR14":["#6a2284","#75118c","#551f74"],"ML_OR15":["#7f437b","#68118c","#4d1874"],"ML_OR16":["#d79c2e","#da8a13","#a86019"],"ML_OR17":["#733384","#69188c","#632b76"],"ML_OR18":["#0094d3","#00a9f6","#1b4f81"],"ML_OR19":["#792888","#d07132","#682474"]};
+const SCENE_EDGE = {"RM01":["#8eb2e0","#6583ac","#666f7f"],"RM02":["#168dae","#0c7d92","#2c6d7f"],"RM03":["#5f67ae","#45468c","#43337f"],"RM04":["#a38b77","#a38063","#7f6e6b"],"RM05":["#4b6b7f","#4d778c","#50637f"],"RM06":["#54b6c1","#4e9393","#6a7f7a"],"RM07":["#61387f","#974f60","#702a7f"],"RM08":["#6e5a7f","#8c688b","#7f5e7c"],"RM09":["#71797f","#48748c","#919598"],"RM10":["#5d787f","#336d8c","#667d87"],"RM11":["#708190","#62748c","#777f7c"],"RM12":["#741a7f","#8c294c","#7f3f5e"],"RM13":["#6f2d7f","#8c2149","#7f1930"],"RM14":["#2b69af","#1e539b","#4a5d9b"],"RM15":["#3a527f","#3c568c","#344b7f"],"RM16":["#4e73a1","#3e608c","#1f4b7f"],"RM17":["#8b9ea3","#8c7e61","#7c7f71"],"RM18":["#737f7e","#46808c","#769793"],"RM19":["#68707f","#8c8686","#7f7a77"],"RM20":["#cfcad3","#898c6f","#6c787f"],"RM21":["#c7bab1","#9e8877","#7f6e62"],"RM22":["#a28f99","#976e5d","#946d5a"],"RM23":["#a9cbe3","#619cc9","#68a1cf"],"RM24":["#95b2d3","#4e8aba","#709abf"],"SC01":["#7f332a","#8c3b21","#7f2e1a"],"SC02":["#7f7253","#8c4a32","#7f463a"],"SC03":["#7f7464","#8c7857","#7f7461"],"SC04":["#757f74","#8c7358","#7d7f71"],"SC05":["#7f654d","#8c694b","#7f6749"],"SC06":["#7a7f7d","#8c7663","#7a7a7f"],"SC07":["#647c7f","#7a8c78","#7f7d6c"],"SC08":["#777b7f","#7f808c","#7f7e7a"],"SC09":["#7f6b44","#8c7b53","#7f6c48"],"SC10":["#6c7f7f","#61788c","#747e7f"],"SC11":["#7f4335","#8c512b","#7f4e44"],"SC12":["#7d7f7a","#8c826a","#7f7f7b"],"SC13":["#5a7e7f","#8c8469","#73767f"],"SC14":["#767f78","#898c7e","#6c7f75"],"SC15":["#737f7a","#8c4644","#777f7b"],"SC16":["#7f5b54","#8c5036","#7f432c"]};   // pin-board border per Realm / Chapter picture: its own top-left, most striking and bottom-right colours
 const edgeStyle = id => { const e = CARD_EDGE[id]; return e ? ` style="--e1:${e[0]};--e2:${e[1]};--e3:${e[2]}"` : ''; };
 const CARD_BY_ID = Object.fromEntries(CARDS.map(c => [c.id, c]));
 // flavour text per card id (to be written later); placeholder until then
@@ -895,13 +955,26 @@ const FLAVOR = {"SSR01": "He’s also a guardian, a miserable wretch that is con
 // Land of Dawn cards: a voice line of the hero on the card (the skin's own line when the skin has one).
 // Source: Mobile Legends wiki, Hero/Audio pages (English).
 const ML_FLAVOR = {"ML_AS01": "I am the moonlight that breaks through the darkness.","ML_SP01": "In Harmonia, my arrow flies towards hope!","ML_PR01": "Embrace the darkness to fight the darkness.","ML_PR02": "Still a Moon Elf. Now, powered by the latest tech.","ML_PR03": "The moon impartially sheds her grace on every corner of the forest.","ML_ST01": "May the moon forever shine upon us!","ML_SH01": "The way of the hunter: moderate, respectful, and sincere.","ML_CL01": "The forest might burn, the moon may be dark, but our hope outlives everything.","ML_OR01": "The way of the arrow: swift, silent, and precise.","ML_AS02": "Let the shining star show you the way.","ML_AS03": "The gun represents justice, when pointing at the bad guys.","ML_SP03": "Of course people pay attention to me... It's me!","ML_SP04": "Here comes the Blazing Gun of Justice!","ML_SP05": "Time to lay down the law!","ML_PR05": "That once little girl is gonna save someone this time.","ML_PR06": "Another interdimensional crisis averted!","ML_PR07": "My mom sacrificed her life for this city. I won’t let anything happen to it.","ML_ST03": "You can always find your own path to becoming a hero.","ML_SH03": "Now I know better, I’m stronger.","ML_CL03": "My gun only aims at the bad guys.","ML_AS04": "I will protect you.","ML_PR21": "The Noumenon core pulses vibrantly like the heart of Eruditio.","ML_PR22": "Size doesn’t define strength.","ML_PR23": "Just as steel toughens in the fire, tough challenges make me even stronger.","ML_ST09": "Let me show you how unbreakable I am.","ML_SH09": "Outfit checked; energy checked. I am all set for the mission.","ML_CL09": "Acknowledging my weaknesses doesn’t diminish my strength.","ML_OR08": "Real strength comes from shielding others.","ML_AS05": "It’s my way or the high way.","ML_ST12": "Be yourself and blaze your own trail.","ML_CL12": "Even the smallest speck of sand can become a sandstorm.","ML_OR11": "The name’s Ixia. Remember it!","ML_AS06": "Come on, Dexter! It's our showtime!","ML_SP15": "This'll be the heist of the century!","ML_PR36": "Dream! Fight! Set your soul ablaze!","ML_PR37": "Fortune favors the gold… I mean bold!","ML_ST15": "Lucky escape? That's what I'm good at.","ML_SH14": "Gold is dear, diamond is dearer. Neither can be given up though.","ML_CL15": "Show me the money!","ML_OR14": "Me, a thief? No, no, no. I'm only borrowing this.","ML_AS07": "Need some stitches? I can help.","ML_SP16": "Where words fail, melodies speak.","ML_PR38": "Under the eternal eclipse, chaos blooms from shadow.","ML_SH15": "Good girls avoid trouble, while I make it.","ML_CL16": "The distance between life and death is shorter than my needle.","ML_OR15": "Didn't your mother ever tell you? Never get too close to needles.","ML_AS08": "Play as a team, win as a team. It’s that simple.","ML_SP17": "Failure can never catch up with me.","ML_PR39": "This isn’t just a game, it’s a way of life.","ML_ST16": "Keep your eye on the ball.","ML_SH16": "Let’s get this match rolling!","ML_CL17": "Let’s show them why I am the captain.","ML_OR16": "Freedom is something we have to seek with our own power.","ML_AS09": "Here comes the firepower, victory is on me!","ML_SP18": "Calm and cool, just like ice.","ML_PR40": "Whoa, I'm a genius!","ML_ST17": "From courage to strength, we make the impossible possible!","ML_SH17": "Wonder if Eruditio has any new tech for me to play with- I mean, field test.","ML_CL18": "My greatest accomplishment? Making Papa proud of course!","ML_OR17": "I'll let my blasters do the talking.","ML_AS10": "Huh! Time to make the engine roar!","ML_SP19": "I am the frontline!","ML_PR41": "I put the “car” in carnage!","ML_PR42": "Even the smallest existence can burn with the fury of a sun.","ML_ST18": "Enjoy the adrenaline rush at lightning speed.","ML_SH18": "Buckle up! It’s gonna be a bumpy ride!","ML_CL19": "My spanner is handy for fast repairs and busting heads.","ML_OR18": "I don’t need a rearview mirror ‘cause I never look back.","ML_SP02": "Music is the strongest form of magic!","ML_PR04": "They sealed me away out of fear… How right they were.","ML_ST02": "What limits you is not magic itself, but the way you use it.","ML_SH02": "Would you like to have a drink with me?","ML_CL02": "Let's see who has the last laugh.","ML_OR02": "Give life to magic, not magic to life.","ML_SP06": "Hope shines even in my deepest slumber.","ML_PR08": "From the murkiest water, the purest water lily emerges.","ML_PR09": "The umbrella is Yang, the human is Yin. And I am what connects them.","ML_PR10": "Legends say that it may rain when Qinglong roars.","ML_ST04": "Umbrella, show us what you've got.","ML_SH04": "Do you want to be my Shikigami?","ML_CL04": "A thought to miss you, another to hate.","ML_OR03": "Let me read your fortune.","ML_SP07": "Guess who's the stunning brainiac detective? Yep, it's me Lylia!","ML_PR11": "You know? Magic will deeply connect us all.","ML_PR12": "Come on... Let's play some games, please?","ML_ST05": "Come, come! Let me show you some magic!","ML_SH05": "It's time to go to the Eruditio, for some fun!","ML_CL05": "We can be... good friends! Indeed.","ML_OR04": "Adults are so boring. I don't want to grow up.","ML_SP08": "Missions may be aborted, but justice won't.","ML_PR13": "Among a myriad of stars, the Valkyrie’s voyage begins!","ML_PR14": "Honor is earned on the battlefield, is it not, warrior?","ML_PR15": "I emerged from war to put an end to it.","ML_ST06": "Howling winds and freezing storms have honed our indomitable spirit.","ML_SH06": "Stand firm, and hold your ground!","ML_CL06": "We never claim to be undefeated, but unbreakable!","ML_OR05": "I am a daughter of Northern Vale. I swear to protect it till my last breath!","ML_SP09": "There’s duality in us all. Who do we become when it matters most?","ML_PR16": "Life is a duel, and I make the rules.","ML_PR17": "I live everyday, as if it's my last.","ML_ST07": "Darkness nurtured me, but it's time to end its reign.","ML_SH07": "The best assassination comes in the form of art.","ML_CL07": "No one sees me, I was never here.","ML_OR06": "How do you catch a shadow?","ML_SP10": "Wanwan is my name, and this is my stage.","ML_PR18": "I am an advanced species made of zero and one.","ML_PR19": "To me, fun is all that matters!","ML_PR20": "The Flying Swallow is here to clean up Martial City!","ML_ST08": "No one seems to know how nice I am.","ML_SH08": "Blind confidence will get you nowhere.","ML_CL08": "My darts bite!","ML_OR07": "You can try to catch me!","ML_SP11": "I'm the blizzard that hovers over evil!","ML_PR24": "To exist is to grasp a leaf in the wind.","ML_PR25": "Listen, it is the sound of the winds.","ML_PR26": "Music is the divine medium, and I am its conductor.","ML_ST10": "Nothing can't stop me from soaring to the skies.","ML_SH10": "In the name of the winds.","ML_CL10": "My magic flows as freely as the winds.","ML_OR09": "Behold, the fury of the winds!","ML_SP12": "Iron may break, but never my will.","ML_PR30": "A man with a spear is a fortress.","ML_PR31": "Valor isn’t the absence of fear, but the triumph over it.","ML_PR32": "A bright future awaits us.","ML_ST13": "Only the fearless heart can soar to the heavens.","ML_SH12": "Tranquil as a poem, but raging within.","ML_CL13": "Weapons are meant to protect, nothing else.","ML_OR12": "The Dragonborn is back.","ML_SP13": "Music transcends all languages.","ML_SP14": "Everyone possesses a burning spirit.","ML_PR33": "Darkness is the right hand of the Light.","ML_PR34": "The entire galaxy is in the palm of my hand.","ML_PR35": "I must break the code.","ML_ST14": "Bathe in the Holy Light.","ML_SH13": "I am only a shepherd.","ML_CL14": "May the Holy Light be with you!","ML_OR13": "Love others as love yourself.","ML_SP20": "The desert rose thrives in the most unforgiving places.","ML_SP21": "By design, not by fate.","ML_PR43": "There is no such thing as an accident, it is fate misnamed.","ML_ST19": "No secret is safe from me.","ML_SH19": "Let us share this momentary bliss.","ML_CL20": "You, don't want to dance?","ML_OR19": "The night sky tells all.","ML_PR27": "I am the apex of myth and machine!","ML_PR28": "All things perish, yet I remain.","ML_PR29": "Onimusha has no equal.","ML_ST11": "Motion synchronization complete.","ML_SH11": "I am not human, but something more.","ML_CL11": "Beta, initiate tracking sequence.","ML_OR10": "No other way than the Alpha way."};
-const flavorOf = id => FLAVOR[id] || ML_FLAVOR[id] || '';
+// Hand of Destiny flavour text = a voice line of the card's hero (every card, Poker and Joker included)
+const HD_FLAVOR = {"HD_PR02": "I believe in the goodness of people, but I'll get to you if you upset me.", "HD_PR03": "Experience the euphony of suffering.", "HD_SP01": "My kiss, will it grant immortality or death?", "HD_SP02": "I am the Sovereign of the Abyss, the Slayer of Gods.", "HD_SP03": "Shhh! When you gaze into the abyss...", "HD_SP04": "Ha ha ha ha ha ha ha ha ha! Boom shakalaka!", "HD_SP05": "Heh. I do what I want to do.", "HD_SP06": "Thorns remain should petals fall.", "HD_SP07": "There's nowhere for the evil to hide.", "HD_SP08": "My brother and I will shoulder the family glory!", "HD_SP09": "Love outshines the golden crown.", "HD_SP10": "Demons shall bathe in their blood. The light belongs to the righteous.", "HD_UR01": "For ten years, I have sharpened my sword for this moment.", "HD_UR02": "Valor and royalty in a dead body.", "HD_UR03": "Let me clear the way for my master!", "HD_UR04": "It seems that very few people know about Onmyōdō.", "HD_UR05": "Absolute loyalty to the Creator.", "HD_UR06": "Make haste! The battle rages on!", "HD_UR07": "Heh, I've been waiting for too long.", "HD_UR08": "Sniper ready. Give me a target.", "HD_UR09": "I will not succumb to nightmares!", "HD_UR10": "Hmph! I am the power of light incarnate!", "HD_UR11": "Nothing can stop me from soaring to the skies.", "HD_UR12": "Come and join me in my dream world.", "HD_UR13": "Ah, ten years of imprisonment.", "HD_UR14": "I'm Yin, and I won't lose myself, no matter what!", "HD_UR15": "Abyss creatures. Natural traitors.", "HD_AAD1": "Hey, you should loosen up a bit.", "HD_AAD2": "If only, I could forget the past.", "HD_AAD3": "Sand rises when I give the word.", "HD_AAD4": "Gaze upon the edge of the void.", "HD_AAW1": "Perish in the sacred moonlight!", "HD_AAW2": "Holy Light will grant me victory!", "HD_AAW3": "Your demeanor disappoints me!", "HD_AAW4": "My tiger has been with me many years.", "HD_ACR1": "Nothing scares me, not even death.", "HD_ACR2": "Hehe, to me, fun is all that matters!", "HD_ACR3": "Gaze the stars and seek your path.", "HD_ACR4": "Butterfly is born by thy wish. Guided by lantern's light.", "HD_AKS1": "Hope will find a way, even when all is forlorn.", "HD_AKS2": "To live is to trick the Reaper.", "HD_AKS3": "Life is a fight. Try to be the winning side.", "HD_AKS4": "When the body suffers, the spirit blooms.", "HD_ANV1": "You should be ashamed for not trusting yourself.", "HD_ANV2": "The long northern winter will temper your soul!", "HD_ANV3": "As fleeting as a snowflake's breath, as timeless as a glacier's heart.", "HD_ANV4": "Popple and Koopa are the best partners in the world!", "HD_AVS1": "May the blood of my enemies flow from my spear!", "HD_AVS2": "Ha ha ha ha! The Southern Seas are my domain!", "HD_AVS3": "Enjoy being shattered apart.", "HD_AVS4": "3,000 worlds, and not a single worthy foe.", "HD_PTR01": "The gentle moonlight heals my wounds.", "HD_PTR02": "Everything will come to an end.", "HD_PTR03": "Where are you looking? I am here!", "HD_PTR04": "Let me introduce you to my partner, Dexter!", "HD_PTR05": "All shall succumb to my power!", "HD_PTR06": "Death is nothing compared to my beliefs.", "HD_PTR07": "Your death is music to my ears.", "HD_PTR08": "I have a heart of light, therefore I do not fear the darkness!", "HD_PTR09": "Oh, how I've missed the sweet aroma of life's nectar.", "HD_PTR10": "We served the light while working in the dark.", "HD_PTR11": "Ha ha ha! Your whole body is a weak spot!", "HD_PTR12": "The people of Northernvale may be defeated, but never conquered!", "HD_PTR13": "You become what you believe in.", "HD_PTR14": "Dear Odette, your cavalier has arrived!", "HD_R53": "Poor thing. So inept in matters of the heart.", "HD_R54": "The decaying rot is easy prey to the darkness's corruption.", "HD_R01": "Big Bone Dekai has a big bone dream!", "HD_R02": "The heart of a warrior never forgets.", "HD_R03": "Wipe out all the injustice in the world!", "HD_R04": "May the sun forever shine upon my kingdom.", "HD_R05": "Muscle of iron. Bones of steel.", "HD_R06": "This land is our homeland, and it will soon be our burial ground!", "HD_R07": "I have become accustomed to the cold, loneliness of the void.", "HD_R08": "Betrayal. I know the taste of it too well.", "HD_R09": "The vibrato of your soul was exquisite.", "HD_R10": "I earn respect with my fists!", "HD_R11": "Only love and night are everlasting.", "HD_R12": "Your saga shall be rewritten.", "HD_R13": "Let them play the hero. I will be the truth this world desperately needs.", "HD_R14": "Love and hope are the two greatest inventions!", "HD_R15": "My dear Lancelot, thy eternal summer shall not fade.", "HD_R16": "Till Richburg breathes again.", "HD_R17": "Don't worry, my friend. I am your shield.", "HD_R18": "Let's make the whole world green and lively!", "HD_R19": "What wouldn't I give up for the formula of life?", "HD_R20": "The ocean waves are so soothing.", "HD_R21": "I'll hunt you to the ends of the earth!", "HD_R22": "This time, the choice is mine.", "HD_R23": "Where there is light, there are also shadows.", "HD_R24": "Let's fight to our heart's content!", "HD_R25": "Live the moment. Make it count.", "HD_R26": "I believe in resurrection.", "HD_R27": "Let me show you the art of killing!", "HD_R28": "The way of the bow, flexible, reserved, and understated.", "HD_R29": "I could have... done... more.", "HD_R30": "How do you like your code name?", "HD_R31": "Chivalry is dead, and I will revive it.", "HD_R32": "Oh, then all the pretty girls in town may cry. Can you even stand that, buddy?", "HD_R33": "Hear the whisper of my sword.", "HD_R34": "Don't go away! Our game isn't over!", "HD_R35": "Already got them lined up in my sights!", "HD_R36": "I will fight alongside you, brother.", "HD_R37": "From the darkness shines my blade.", "HD_R38": "Love grants us courage to keep on going.", "HD_R39": "You're not fit to be in my presence.", "HD_R40": "Ah! The stars are my beacon!", "HD_R41": "Beneath the lining of glory, blood stains.", "HD_R42": "Oversize is outdated, especially on the racetrack.", "HD_R43": "Hmph. All of your efforts are in vain.", "HD_R44": "Justice is to heart what strength is to body.", "HD_R45": "We are glue, little glue, big mischief!", "HD_R46": "See value in me? Heh, you should.", "HD_R47": "Who said there are no shortcuts in life? I literally invented one.", "HD_R48": "The ocean is not just our home, it is who we are.", "HD_R49": "I am the Priestess of Primal Lightning, the hunter of all the evil gods!", "HD_R50": "A greater cause kept me from the battlefield.", "HD_R51": "Northern Vale's breeze carries whispers from ages past.", "HD_R52": "My determination is a thousand times stronger than my Scimitar."};
+const flavorOf = id => FLAVOR[id] || ML_FLAVOR[id] || HD_FLAVOR[id] || '';
 const RARITY_ORDER = ['ultimate','legendary','epic','rare','common'];
 const POOL = Object.fromEntries(Object.keys(DECKS).map(d => [d, Object.fromEntries(RARITY_ORDER.map(r => [r, CARDS.filter(c => c.deck === d && c.rarity === r)]))]));
-const setsOf = d => [...new Set(CARDS.filter(c => c.deck === d).map(c => c.set))];
+// Jokers (Hand of Destiny, Poker set): locked until all 52 other Poker cards are owned; then they drop like any other Poker card
+const rkey = c => c && c.joker ? 'joker' : c.rarity;
+const glowOf = c => c && c.joker ? '190,60,230' : RARITY[c.rarity].glow;
+const rarRank = c => c.joker ? 0.5 : RARITY_ORDER.indexOf(c.rarity);   // reveal order: UR Joker SSR SR R C
+const jokersOpen = () => !!(S && S.jokerOpen);
+function checkJokers(){
+  if (S.jokerOpen) return false;
+  const list = CARDS.filter(c => c.set === 'Poker');
+  if (list.length && list.every(c => cardTotal(c.id) > 0)){ S.jokerOpen = true; return true; }
+  return false;
+}
+const setsOf = d => { const a = [...new Set(CARDS.filter(c => c.deck === d).map(c => c.set))], i = a.indexOf('Angels'), j = a.indexOf('Deity'); if (i >= 0 && j > i){ a[i] = 'Deity'; a[j] = 'Angels'; } return a; };   // Deity is listed above Angels
 const backOf = (c, ur) => DECKS[c.deck || 'tarot'][ur ? 'backUR' : 'back'];
 // Images: img/cards/tarot, img/cards/mlbb (ML_…), img/scenes (SC01…), img/backs + img/packs (ids with a slash)
-const imgPath = id => id.includes('/') ? id : id.startsWith('ML_') ? 'cards/mlbb/' + id : /^SC\d/.test(id) ? 'scenes/' + id : 'cards/tarot/' + id;
+const imgPath = id => id.includes('/') ? id : id.startsWith('ML_') ? 'cards/mlbb/' + id : id.startsWith('HD_') ? 'cards/hod/' + id : /^(SC|RM)\d/.test(id) ? 'scenes/' + id : 'cards/tarot/' + id;
 const cardImg = id => (window.CARD_IMG && window.CARD_IMG[id]) || `img/${imgPath(id)}.webp`;
 const ownedCard = id => (S.cards && S.cards[id]) || 0;
 const pickFrom = a => a[Math.floor(Math.random() * a.length)];
@@ -919,15 +992,19 @@ function rollDeck(item){
   // no card twice in one pack; a UR or SSR you already own only comes again once you own every one of that rarity in this pack
   const pool = POOL[item.deck || 'tarot'], used = new Set();
   const pick = r => {
-    let list = pool[r].filter(c => !used.has(c.id));
+    let list = pool[r].filter(c => !used.has(c.id) && (!c.joker || jokersOpen()));
     if (r === 'ultimate' || r === 'legendary'){ const missing = list.filter(c => !ownedCard(c.id)); if (missing.length) list = missing; }
-    const c = pickFrom(list.length ? list : pool[r]); used.add(c.id); return c;
+    const c = pickFrom(list.length ? list : pool[r].filter(x => !x.joker || jokersOpen())); used.add(c.id); return c;
   };
   const cards = rar.map(pick);
+  if (window.__jokerAlways && item.deck === 'hod'){   // test button in the preview: a Joker in every pack, whatever the rules say
+    const js = pool.common.filter(c => c.joker && !used.has(c.id));
+    if (js.length){ let i = cards.findIndex(c => c.rarity === 'common'); if (i < 0) i = Math.floor(Math.random() * cards.length); cards[i] = pickFrom(js); }
+  }
   // the cards sit in random spots (a fair shuffle), so the best one is not always in the same place
   for (let i = cards.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [cards[i], cards[j]] = [cards[j], cards[i]]; }
   // Scene bonus: 15% per deck, never a duplicate, stops once all are collected
-  const missing = deckOf(item).scenes ? SCENES.filter(sc => !S.scenes[sc.id]) : [];
+  const sdef = SCENE_DEF[item.deck || 'tarot'], missing = sdef ? sdef.list.filter(sc => !S.scenes[sc.id]) : [];
   const scene = missing.length && Math.random() < .15 ? pickFrom(missing) : null;
   return { cards, scene, pityHit };
 }
@@ -935,22 +1012,23 @@ function rollDeck(item){
 /* ---- Opening a deck ---- */
 let opening = null, packClear = 0;
 // where each card sits (Hearthstone-style star); the strongest card is dealt last, to the top
-const PACK_SLOTS = [ { x:17, y:.95 }, { x:31, y:2.15 }, { x:69, y:2.15 }, { x:83, y:.95 }, { x:50, y:.5 } ];
+const PACK_SLOTS = [ { x:18, y:.66, r:-7 }, { x:50, y:.52, r:0 }, { x:82, y:.66, r:7 }, { x:34, y:1.82, r:-3 }, { x:66, y:1.82, r:3 } ];
 // the label under a card, like Hearthstone's class name
-const SET_LABEL = { 'SSR':'Signature', 'SR':'Character', 'Cards of Blasphemy':'Card of Blasphemy', 'Angels':'Angel', 'Objects':'Object', 'Pathways':'Pathway', 'Promo':'Promo', 'Puzzle':'Puzzle', 'Tarot Club':'Tarot Club' };
+const SET_LABEL = { 'Poker:H':'Hearts', 'Poker:D':'Diamonds', 'Poker:S':'Spades', 'Poker:C':'Clubs', 'SSR':'Signature', 'SR':'Character', 'Cards of Blasphemy':'Card of Blasphemy', 'Angels':'Angel', 'Objects':'Object', 'Pathways':'Pathway', 'Promo':'Promo', 'Deity':'Deity', 'Puzzle':'Puzzle', 'Tarot Club':'Tarot Club', 'Legends':'Legend', 'Gilded':'Gilded', 'Regions':'Region', 'Duo':'Duo', 'Poker':'Poker', 'Joker':'Joker' };
 const setLabel = set => SET_LABEL[set] || set;
 function openDeck(id){
   const item = SHOP.find(x => x.id === id);
-  if (!item || owned(id) < 1 || opening) return;
+  if (!item || owned(id) < 1 || opening || !deckReady(item)) return;
   snap = null;
   S.inv[id] = owned(id) - 1;
   S.opened[id] = (S.opened[id] || 0) + 1;
   const res = rollDeck(item);
   const fresh = {};
   res.cards.forEach(c => { if (!ownedCard(c.id) && !fresh[c.id]) fresh[c.id] = true; gainCard(c.id); });
-  if (res.scene) S.scenes[res.scene.id] = true;
+  const jokerPop = checkJokers();
+  if (res.scene){ S.scenes[res.scene.id] = true; recordNew(sceneDefById(res.scene.id).key, res.scene.id); }
   save();
-  opening = { item, ...res, fresh, flipped:new Set(), done:false };
+  opening = { item, ...res, fresh, flipped:new Set(), done:false, jokerPop };
   // fully decode the art before showing the pack, so flipping never stalls
   const ids = [...res.cards.map(c => c.id), deckOf(item).back, deckOf(item).backUR, ...(res.scene ? [res.scene.id] : [])];
   opening.imgs = ids.map(id => { const im = new Image(); im.src = cardImg(id); return im; });
@@ -962,7 +1040,7 @@ function showOpening(){
   clearTimeout(packClear);
   ov.innerHTML = `
     <div class="pk-cards">${o.cards.map((c, i) => `
-      <button class="pk-card r-${c.rarity}${c.rarity === 'ultimate' ? ' gold' : ''}" data-i="${i}" style="--d:${i * 110}ms;--rc:${RARITY[c.rarity].glow};--x:${PACK_SLOTS[i].x}%;--y:${PACK_SLOTS[i].y}">
+      <button class="pk-card r-${rkey(c)}${c.rarity === 'ultimate' ? ' gold' : ''}" data-i="${i}" style="--d:${i * 110}ms;--rc:${glowOf(c)};--x:${PACK_SLOTS[i].x}%;--y:${PACK_SLOTS[i].y};--rot:${PACK_SLOTS[i].r}deg">
         <span class="pk-aura"></span>
         <span class="pk-inner">
           <img class="pk-back" src="${cardImg(backOf(c, c.rarity === 'ultimate'))}" alt="">
@@ -998,7 +1076,7 @@ function flipCard(i, quiet, lite){
   btn.classList.add('flipped');
   btn.querySelector('.pk-tag').innerHTML = o.fresh[c.id] ? 'NEW' : `<em>×${ownedCard(c.id)}</em>`;
   // effects fire as the card turns face up (about halfway through the flip)
-  setTimeout(() => { if (opening) revealFX(btn, c.rarity, lite); }, 180);
+  setTimeout(() => { if (opening) revealFX(btn, rkey(c), lite); }, 180);
   if (o.flipped.size === o.cards.length) finishReveal();
 }
 /* Card reveal effects, bigger for rarer cards (C keeps the small burst). No shaking.
@@ -1009,11 +1087,16 @@ var RV_PAL = {
   rare:['80,190,255','150,215,255','230,245,255','40,140,230'],
   epic:['190,110,255','225,170,255','250,235,255','140,70,220'],
   legendary:['255,160,60','255,205,120','255,245,225','240,110,30'],
+  joker:['170,70,255','235,40,70','255,225,240','120,40,200'],
   ultimate:['255,70,60','255,200,90','255,245,230','255,120,40']
 };
 /* rarity pop-up lettering: hand-drawn angular U/R/S in chrome (no font needed) */
 // custom angular lettering for the rarity pop-ups (only U, R, S are needed)
 var RGLY={
+ J:'M43 0V55L35 63H15L7 55V45',
+ O:'M15 0H35L43 8V62L35 70H15L7 62V8Z',
+ K:'M7 0V70M43 0L7 40M20 30L43 70',
+ E:'M43 0H7V70H43M7 35H35',
  U:'M7 0V55L15 63H35L43 55V0',
  R:'M7 70V0H35L43 8V27L35 35H7M31 35L43 70',
  S:'M43 8L35 0H15L7 8V27L15 35H35L43 43V62L35 70H15L7 62'
@@ -1037,11 +1120,12 @@ function rvLayer(cls, html = ''){ const el = document.createElement('div'); el.c
 function revealFX(btn, r, lite){
   const rect = btn.getBoundingClientRect(), [x, y] = mid(rect);
   if (r === 'common'){ FX.burst(x, y, .6); return; }
+  if (r === 'joker') FX.burstC(x, y, .1, RV_PAL.joker);
   const pal = RV_PAL[r];
   btn.classList.add('rv-pop', 'rv-' + r);
-  const TAGC = { epic:['#c07bff', '#6b2fd6'], legendary:['#ff9a2e', '#c2410c'], ultimate:['#ff4a3d', '#ffb02e'] };
-  const tag = (txt, big) => { const t = rvLayer('rv-tag rv-t-' + r + (big ? ' big' : ''), rarityLogo(txt, ...TAGC[r], 'rl' + Math.random().toString(36).slice(2, 7))); t.style.left = x + 'px'; t.style.top = (rect.top - 6) + 'px'; setTimeout(() => t.remove(), 1600); };
-  if (lite || S.reduceFx){ FX.burstC(x, y, r === 'rare' ? .8 : 1.2, pal); if (!lite && r !== 'rare') tag(r === 'epic' ? 'SR' : r === 'legendary' ? 'SSR' : 'UR', r !== 'epic'); return; }   // reveal-all / reduced effects: a small coloured burst (+ the rarity tag)
+  const TAGC = { epic:['#c07bff', '#6b2fd6'], legendary:['#ff9a2e', '#c2410c'], ultimate:['#ff4a3d', '#ffb02e'], joker:['#b04bff', '#e0153b'] };
+  const tag = (txt, big) => { const t = rvLayer('rv-tag rv-t-' + r + (big ? ' big' : ''), rarityLogo(txt, ...TAGC[r], 'rl' + Math.random().toString(36).slice(2, 7))); t.style.left = (r === 'joker' ? Math.min(Math.max(x, 100), innerWidth - 100) : x) + 'px'; t.style.top = (rect.top - 6) + 'px'; setTimeout(() => t.remove(), 1600); };
+  if (lite || S.reduceFx){ FX.burstC(x, y, r === 'rare' ? .8 : 1.2, pal); if (!lite && r !== 'rare') tag(r === 'epic' ? 'SR' : r === 'legendary' ? 'SSR' : r === 'joker' ? 'JOKER' : 'UR', r !== 'epic'); return; }   // reveal-all / reduced effects: a small coloured burst (+ the rarity tag)
   if (r === 'rare'){ FX.burstC(x, y, 1.1, pal); return; }
   if (r === 'epic'){
     FX.burstC(x, y, 1.6, pal); FX.ringC(x, y, 130, .8, 3, pal[1], .12); FX.glints(rect.left - 20, rect.top - 20, rect.width + 40, rect.height + 40, 8);
@@ -1050,10 +1134,10 @@ function revealFX(btn, r, lite){
   const dim = r === 'ultimate' ? rvLayer('rv-dim') : null;   // UR: the room goes dark first
   const rays = rvLayer('rv-rays rv-r-' + r); rays.style.left = x + 'px'; rays.style.top = y + 'px';
   const glow = rvLayer('rv-glow rv-g-' + r); glow.style.setProperty('--x', x + 'px'); glow.style.setProperty('--y', y + 'px');
-  if (r === 'legendary'){
+  if (r === 'legendary' || r === 'joker'){
     FX.burstC(x, y, 2.2, pal); FX.ringC(x, y, 160, .9, 4, pal[0]); FX.ringC(x, y, 220, 1, 2.5, pal[1], .18);
     FX.fountain(x, y, 18); FX.glints(rect.left - 30, rect.top - 30, rect.width + 60, rect.height + 60, 8);
-    tag('SSR', true);
+    tag(r === 'joker' ? 'JOKER' : 'SSR', true);
     setTimeout(() => { rays.remove(); glow.remove(); }, 2200);
     return;
   }
@@ -1070,7 +1154,7 @@ function revealAll(){
   o.revealing = true; $('#pack .pk-actions').innerHTML = '';
   // the others turn over quickly with small effects; after a short beat the rarest one gets its full reveal
   // (running several big reveals at once is what made this stutter)
-  const rank = i => RARITY_ORDER.indexOf(o.cards[i].rarity);   // 0 = UR
+  const rank = i => rarRank(o.cards[i]);   // 0 = UR ... 4 = C; a Joker sits between UR and SSR
   const best = left.reduce((a, b) => rank(b) < rank(a) ? b : a), rest = left.filter(i => i !== best).sort((a, b) => rank(b) - rank(a));   // lowest first, the best last
   rest.forEach((i, k) => setTimeout(() => { if (opening === o) flipCard(i, true, true); }, k * 120));
   setTimeout(() => { if (opening === o) flipCard(best, true); }, rest.length * 120 + (rank(best) <= 1 ? 450 : 120));
@@ -1080,7 +1164,7 @@ function finishReveal(){
   setTimeout(() => {
     if (opening !== o) return;
     o.done = true;
-    $('#pack .pk-actions').innerHTML = `<div class="pk-hint">Click anywhere to continue</div>`;
+    $('#pack .pk-actions').innerHTML = `<div class="pk-hint">Tap anywhere to continue</div>`;
   }, 700);
 }
 function afterReveal(){
@@ -1090,19 +1174,32 @@ function afterReveal(){
     if (o.sceneAt == null){ o.done = false; return showSceneStack(); }
     if (o.sceneAt < o.sceneList.length - 1){ o.done = false; return sceneStackNext(); }
   }
+  if (o.jokerPop){ o.jokerPop = false; o.done = false; return showJokerUnlock(); }
   closeOpening();
+}
+// the 52nd Poker card is in: the Jokers are open for collecting
+function showJokerUnlock(){
+  const ov = $('#pack'), o = opening, J = CARDS.filter(c => c.joker);
+  ov.innerHTML = `<div class="jku">
+    <div class="jku-rays"></div><div class="jku-halo"></div>
+    <div class="jku-word">JOKERS</div><div class="jku-sub">Jokers are now unlocked for collecting</div>
+    <div class="jku-cards">${J.map(c => `<img src="${cardImg(c.id)}" alt="">`).join('')}</div>
+    <div class="jku-flash"></div><div class="pk-hint">Tap to continue</div></div>`;
+  setTimeout(() => { const r = ov.querySelector('.jku-word')?.getBoundingClientRect(); if (!r || opening !== o) return; FX.burstC(...mid(r), 2, RV_PAL.joker); FX.glints(r.left, r.top - 30, r.width, r.height + 60, 10); }, 450);
+  setTimeout(() => { if (opening === o) o.done = true; }, 900);
 }
 /* Open all with new scenes: like the single-pack "Scene Unlocked", but the scenes sit in a stack (the next ones
    peeking out behind on the left). Tap: the front one flies off to the right and the next slides forward. */
+const sdOf = () => SCENE_DEF[(opening && opening.item && opening.item.deck) || 'tarot'];
 function showSceneStack(){
   const ov = $('#pack'), o = opening, L = o.sceneList; o.sceneAt = 0;
   ov.innerHTML = `
     <div class="sc-wrap sc-multi${L.length === 1 ? ' one' : ''}">
-      <div class="sc-title">Scene Unlocked</div>
+      <div class="sc-title">${sdOf().one} Unlocked</div>
       <div class="sc-count">${L.length > 1 ? `1 / ${L.length}` : ''}</div>
       <div class="sc-stack">${L.map((sc, i) => `<div class="sc-img sc-card" data-i="${i}"><img src="${cardImg(sc.id)}" alt=""></div>`).join('')}</div>
       <div class="sc-name">${esc(L[0].name)}</div>
-      <div class="pk-sub">${Object.keys(S.scenes).length} of ${SCENES.length} scenes</div>
+      <div class="pk-sub">${sdOf().list.filter(x => S.scenes[x.id]).length} of ${sdOf().list.length} ${sdOf().name.toLowerCase()}</div>
       <div class="pk-hint">Tap to continue</div>
     </div>`;
   sceneStackLayout();
@@ -1132,11 +1229,11 @@ function showScene(sc){
   const ov = $('#pack'), o = opening;
   ov.innerHTML = `
     <div class="sc-wrap">
-      <div class="sc-title">Scene Unlocked</div>
+      <div class="sc-title">${sdOf().one} Unlocked</div>
       <div class="sc-img"><img src="${cardImg(sc.id)}" alt=""></div>
       <div class="sc-name">${esc(sc.name)}</div>
-      <div class="pk-sub">${Object.keys(S.scenes).length} of ${SCENES.length} scenes</div>
-      <div class="pk-hint">Click anywhere to continue</div>
+      <div class="pk-sub">${sdOf().list.filter(x => S.scenes[x.id]).length} of ${sdOf().list.length} ${sdOf().name.toLowerCase()}</div>
+      <div class="pk-hint">Tap anywhere to continue</div>
     </div>`;
   setTimeout(() => { const r = ov.querySelector('.sc-img')?.getBoundingClientRect(); if (!r || !opening) return; FX.flash(...mid(r), 240, .7); FX.burst(...mid(r), 2); FX.glints(r.left, r.top, r.width, r.height, 10); }, 350);
   setTimeout(() => { if (opening === o) o.done = true; }, 700);   // short pause so a double tap doesn't skip it
@@ -1151,59 +1248,113 @@ function closeOpening(){
 }
 
 /* ---- Looking at one card ---- */
-function inspectCard(id, isScene){
-  const c = isScene ? SCENES.find(x => x.id === id) : CARD_BY_ID[id]; if (!c) return;
+function inspectCard(id, isScene, isLand){
+  if (/^HD_DUO\d/.test(id)){   // a joined Duo picture
+    const k = +id.slice(6), pr = CARDS.filter(c => c.set === 'Duo').sort((a, b) => a.id.localeCompare(b.id)).slice(k * 2 - 2, k * 2), ov = $('#inspect');
+    ov.innerHTML = `<div class="in-wrap land"><div class="in-card"><img src="${cardImg(id)}" alt=""></div><div class="in-name">${pr.map(c => esc(c.name)).join(' &amp; ')}</div><div class="in-meta"><b style="color:${RARITY.rare.color}">R</b> · Duo · Owned ×${ownedCard(pr[0].id)} / ×${ownedCard(pr[1].id)}</div></div>`;
+    ov.classList.add('open'); return;
+  }
+  const sd = isScene ? sceneDefById(id) : null, c = isScene ? (sd && sd.list.find(x => x.id === id)) : CARD_BY_ID[id]; if (!c) return;
   const ov = $('#inspect');
-  ov.innerHTML = `<div class="in-wrap${isScene ? ' land' : ''}">
-    <div class="in-card"><img src="${cardImg(id)}" alt="">${!isScene && (c.rarity === 'ultimate' || c.rarity === 'legendary') ? '<span class="pk-glare in-glare"></span>' : ''}</div>
+  const holo = !isScene && (c.rarity === 'ultimate' || c.rarity === 'legendary' || c.joker);   // UR, SSR and J tilt with your finger and catch the light; SR and R keep the sweeping glare; C has neither
+  ov.innerHTML = `<div class="in-wrap${isScene || isLand ? ' land' : ''}">
+    <div class="in-card${holo ? ' holo' : ''}"><img src="${isLand ? landImg(id) : cardImg(id)}" alt="">${holo ? '<span class="in-foil"></span>' : !isScene && (c.rarity === 'epic' || c.rarity === 'rare') ? '<span class="pk-glare in-glare"></span>' : ''}</div>
     <div class="in-name">${esc(c.name)}</div>
-    ${isScene ? '<div class="in-meta">Scene</div>' : `${flavorOf(id) ? `<p class="in-flavor">${esc(flavorOf(id))}</p>` : ''}<div class="in-meta"><b style="color:${RARITY[c.rarity].color}">${RARITY[c.rarity].name}</b> · ${esc(setLabel(c.set))}${c.hero ? ' · ' + esc(c.hero) : ''} · Owned ×${ownedCard(id)} · Collected ×${cardTotal(id)}</div>`}
+    ${isScene ? `<div class="in-meta">${sd.one}</div>` : `${flavorOf(id) ? `<p class="in-flavor">${esc(flavorOf(id))}</p>` : ''}<div class="in-meta">${rarBadge(c)} · ${esc(setLabel(c.set))}${c.hero ? ' · ' + esc(c.hero) : ''} · Owned ×${ownedCard(id)} · Collected ×${cardTotal(id)}</div>`}
   </div>`;
   ov.classList.add('open');
+  if (holo) holoTilt(ov.querySelector('.in-card'));
+}
+// drag on a UR / SSR / J card: it tilts toward the finger and a soft light follows
+function holoTilt(card){
+  if (!card) return;
+  const ov = $('#inspect');
+  const move = e => {
+    if (ov.classList.contains('art')) return;
+    const r = card.getBoundingClientRect(), t = e.touches ? e.touches[0] : e;
+    const x = Math.min(1, Math.max(0, (t.clientX - r.left) / r.width)), y = Math.min(1, Math.max(0, (t.clientY - r.top) / r.height));
+    card.style.transform = `perspective(700px) rotateY(${(x - .5) * 30}deg) rotateX(${(.5 - y) * 30}deg)`;
+    card.style.setProperty('--px', (x * 100) + '%'); card.style.setProperty('--py', (y * 100) + '%'); card.classList.add('hot');
+  };
+  const rest = () => { card.style.transform = ''; card.classList.remove('hot'); };
+  card.addEventListener('pointermove', move); card.addEventListener('touchmove', move, { passive:true });
+  card.addEventListener('pointerleave', rest); card.addEventListener('touchend', rest); card.addEventListener('pointercancel', rest);
 }
 function closeInspect(){ $('#inspect').classList.remove('open'); }
 
 /* ---- Collection ---- */
 let colFilter = 'all', colGroup = 'all';
 // each collection is its own group; new ones (other decks) get added here
-const COLLECTIONS = [{ id:'tarot', name:'Tarot', sets:setsOf('tarot'), scenes:true }, { id:'mlbb', name:'MLBB', sets:setsOf('mlbb') }];
+const COLLECTIONS = [{ id:'tarot', name:'Tarot', sets:setsOf('tarot'), sceneKey:'__scenes' }, { id:'mlbb', name:'MLBB', sets:setsOf('mlbb') }, { id:'hod', name:'H.O.D.', sets:setsOf('hod'), sceneKey:'__realms' }];
 // finishing a whole set pays this much XP and gold (by the set's rarity)
 const SET_REWARD = { common:20, rare:35, epic:50, legendary:100, ultimate:200 };
-const SCENE_REWARD = 50, SCENES_KEY = '__scenes';
+const SET_BONUS = { 'Artist Series':1200, 'Special':1200, 'SSR':600, 'Gilded':450, 'Promo':350, 'Joker':150,
+  'Prestige':850, 'Cards of Blasphemy':450, 'Legends':350, 'Regions':750, 'Starlight':500, 'Angels':500, 'Deity':500, 'Puzzle':500,
+  'SR':250, 'Tarot Club':250, 'Shiny':200, 'Duo':150, 'Poker':200, 'Objects':200, 'Pathways':200, 'Classic':200, 'Origin':200 };   // what each set pays (XP and gold)   // sets with their own reward
+const SCENE_REWARD = 500, SCENES_KEY = '__scenes';
+const SCENE_PAY = {};   // a bonus-card set that pays more than the default
+const scenePay = k => SCENE_PAY[k] || SCENE_REWARD;
 // A set can be claimed again and again: the first time needs one of every card,
 // each later claim needs ×2 of every card and uses one copy of each (×2 → ×1, ×3 → ×2 ...).
 const setTimes = key => +S.setClaims[key] || 0;   // how many times this set has been claimed (old saves stored true = once)
+// what the next claim of a set pays: its own reward; repeat claims of UR / SSR sets pay double (their duplicates only
+// start dropping once every UR / SSR of that pack is owned, so a second full set takes about 4x the packs)
+function setPay(set){
+  if (set.startsWith('Poker:')) return POKER_SUIT_PAY;
+  const list = keyCards(set), r = list.length ? list[0].rarity : 'common', base = SET_BONUS[set] || SET_REWARD[r];
+  return setTimes(set) && (r === 'ultimate' || r === 'legendary') ? base * 2 : base;
+}
+// Poker is claimed one suit at a time (13 cards each): Hearts, Diamonds, Spades, Clubs. Card ids R01-13 Spades, R14-26 Hearts, R27-39 Clubs, R40-52 Diamonds.
+const POKER_SUITS = [['Poker:H','Hearts','♥','#ff5a6e',14],['Poker:D','Diamonds','♦','#ff8a5c',40],['Poker:S','Spades','♠','#cfe0ff',1],['Poker:C','Clubs','♣','#9fe3b0',27]];
+const POKER_SUIT_PAY = 75;
+const RANKS13 = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+function pokerIdx(c){ return c.set === 'Poker' && /^HD_R\d+$/.test(c.id) ? +c.id.slice(4) - 1 : -1; }
+const pokerKeyOf = c => { const i = pokerIdx(c); return i < 0 ? null : POKER_SUITS.find(x => i >= x[4] - 1 && i < x[4] + 12)[0]; };
+const claimKeyOf = c => pokerKeyOf(c) || c.set;
+const keyCards = key => key.startsWith('Poker:') ? CARDS.filter(c => pokerKeyOf(c) === key) : CARDS.filter(c => c.set === key);
 function setReady(set){
-  const list = CARDS.filter(c => c.set === set), need = setTimes(set) ? 2 : 1;
+  if (set === 'Poker') return POKER_SUITS.some(x => setReady(x[0]));
+  const list = keyCards(set), need = setTimes(set) ? 2 : 1;
   return list.length > 0 && list.every(c => ownedCard(c.id) >= need);
 }
 function claimBtn(key, done, rw, repeat){
   const times = setTimes(key), again = repeat && times > 0;
-  if (times && !(again && done)) return `<button class="set-claim got" disabled>Claimed${times > 1 ? ` ×${times}` : ''}</button>`;
-  return `<button class="set-claim${done ? ' ready' : ''}" ${done ? `data-act="setclaim" data-set="${esc(key)}"` : 'disabled'}>${again ? 'Again' : 'Claim'} <em>${rw}${ico('i-gem')} ${rw}${ico('i-coin')}</em></button>`;
+  if (times && !(again && done)) return `<button class="set-claim got" disabled>Claimed</button>`;
+  return `<button class="set-claim${done ? ' ready' : ''}" ${done ? `data-act="setclaim" data-set="${esc(key)}"` : 'disabled'}>Claim</button>`;
 }
+// what a claim pays, under the progress bar (dimmed once the set has been claimed and the next claim is not ready)
+const claimPay = (rw, dim) => `<div class="cc-pay${dim ? ' dim' : ''}">${rewardsHtml(rw, rw)}</div>`;   // Poker suit lines: same look as a quest's reward
+// category headers: under the Claim button, one gradient "+500" (cyan to gold) for both XP and gold
+const claimPay2 = (rw, dim) => `<div class="cc-pay2${dim ? ' dim' : ''}">${ico('i-gem')}${ico('i-coin')}<b>+${rewNum(rw)}</b></div>`;
 // how many of a card you've collected in total; old saves didn't count it, so guess from owned + copies used by repeat claims
 function cardTotal(id){
   if (S.cardsGot && S.cardsGot[id] != null) return S.cardsGot[id];
-  const c = CARD_BY_ID[id], used = c ? Math.max(0, setTimes(c.set) - 1) : 0;
+  const c = CARD_BY_ID[id], used = c ? Math.max(0, setTimes(claimKeyOf(c)) - 1) : 0;
   return ownedCard(id) + used;
+}
+// the newest pictures found per category (header default); S.newest[setKey] = up to 3 ids, newest first
+function recordNew(key, id){
+  if (!S.newest || typeof S.newest !== 'object') S.newest = {};
+  S.newest[key] = [id, ...(S.newest[key] || []).filter(x => x !== id)].slice(0, 3);
 }
 function gainCard(id){
   if (!S.cardsGot) S.cardsGot = {};
+  if (!cardTotal(id) && CARD_BY_ID[id]) recordNew(CARD_BY_ID[id].set, id);
   S.cardsGot[id] = cardTotal(id) + 1;
   S.cards[id] = ownedCard(id) + 1;
 }
 function claimSet(set, el){
-  if (set === SCENES_KEY){
-    if (S.setClaims[set] || !SCENES.every(sc => S.scenes[sc.id])) return;
+  const sdc = sceneDefOf(set);
+  if (sdc){
+    if (S.setClaims[set] || !sdc.list.every(sc => S.scenes[sc.id])) return;
     S.setClaims[set] = true;
-    earnTag = { k:'scenes', n:'All scenes' };
-    return grant({ xp:SCENE_REWARD, gold:SCENE_REWARD }, el.getBoundingClientRect(), 'All scenes unlocked', null, null, 1.6);
+    earnTag = { k:'scenes:' + set, n:'All ' + sdc.name.toLowerCase() };
+    return grant({ xp:scenePay(set), gold:scenePay(set) }, el.getBoundingClientRect(), `All ${sdc.name.toLowerCase()} unlocked`, null, null, 1.6);
   }
-  const list = CARDS.filter(c => c.set === set);
-  if (!setReady(set)) return;
+  const list = keyCards(set);
+  if (!list.length || !setReady(set)) return;
   snapshot();
-  const n = SET_REWARD[list[0].rarity], times = setTimes(set);
+  const n = setPay(set), times = setTimes(set);
   if (times) list.forEach(c => S.cards[c.id] = ownedCard(c.id) - 1);   // repeat claims use up one copy of each card
   S.setClaims[set] = times + 1;
   earnTag = { k:'set:' + set, n:setLabel(set), kind:'set' };
@@ -1212,26 +1363,66 @@ function claimSet(set, el){
 // Puzzle: the 8 pieces side by side as one picture that loops forever left and right; tap it to see the pieces one by one
 var pzGrid = false;   // the Puzzle set shows its pieces as a grid (with ×2, ×3 like other cards) instead of the picture
 function puzzleStrip(list){
-  const pieces = [...list].sort((a, b) => a.id.localeCompare(b.id));
-  const one = pieces.map(c => `<div class="pz${ownedCard(c.id) ? '' : ' dark'}"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt=""></div>`).join('');
+  let pieces = [...list].sort((a, b) => a.id.localeCompare(b.id));
+  const po = Array.isArray(S.pzOrder) ? S.pzOrder : []; if (po.length) pieces = pieces.map((c, n) => [c, n]).sort((a, b) => { const x = po.indexOf(a[0].id), y = po.indexOf(b[0].id); return (x < 0 ? 1e6 : x) - (y < 0 ? 1e6 : y) || a[1] - b[1]; }).map(x => x[0]);
+  const one = pieces.map(c => `<div class="pz${ownedCard(c.id) ? '' : ' dark'}" data-pz="${c.id}"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt=""></div>`).join('');
   return `<div class="pz-strip" id="pzStrip" data-act="pzview"><div class="pz-track">${one}${one}${one}</div></div>`;   // tap: the pieces laid out with their counts
 }
 function setupPuzzle(){
-  const el = $('#pzStrip'); if (!el) return;
-  const third = () => el.scrollWidth / 3;
-  requestAnimationFrame(() => { el.scrollLeft = third(); });
-  el.addEventListener('scroll', () => {
-    const t = third();
-    if (el.scrollLeft < t * .5) el.scrollLeft += t;
-    else if (el.scrollLeft > t * 1.5) el.scrollLeft -= t;
-  }, { passive:true });
-  // on PC: mouse wheel and click-drag move the strip sideways (phones swipe natively)
-  el.addEventListener('wheel', e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)){ el.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive:false });
-  let down = null, moved = false;
-  el.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; down = { x:e.clientX, id:e.pointerId }; moved = false; el.classList.add('drag'); });
-  el.addEventListener('pointermove', e => { if (!down) return; if (!moved && Math.abs(e.clientX - down.x) > 4){ moved = true; el.setPointerCapture(down.id); } if (moved){ el.scrollLeft -= e.clientX - (down.last ?? down.x); down.last = e.clientX; } });
-  const up = () => { if (down){ down = null; el.classList.remove('drag'); } };
-  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
+  const el = $('#pzStrip'); if (!el || el._pz) return; el._pz = 1;
+  const tr = el.querySelector('.pz-track'); if (!tr) return;
+  // the strip drifts left on its own with a transform (sub-pixel, so it stays smooth); a finger / the mouse drags it, it keeps a little momentum
+  const SPEED = 9;   // px per second
+  let off = 0, vel = 0, down = null, moved = false, hold = 0, holdT = 0, last = performance.now();
+  const third = () => tr.offsetWidth / 3 || 1;
+  const draw = () => { const t = third(); off = ((off % t) + t) % t; tr.style.transform = `translate3d(${-(off + t).toFixed(2)}px,0,0)`; };
+  const frame = now_ => {
+    if (!el.isConnected) return;
+    const dt = Math.min(.05, (now_ - last) / 1000); last = now_;
+    if (!down){
+      if (Math.abs(vel) > 8){ off += vel * dt; vel *= Math.pow(.04, dt); } else vel = 0;
+      if (!hold && !ro && !document.hidden) off += SPEED * dt;
+    }
+    draw(); requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+  const stopHold = () => { clearTimeout(holdT); hold = 1; holdT = setTimeout(() => { hold = 0; }, 1500); };
+  // press and hold a piece, then drag: move it to another place (all 3 copies together); the order is saved in S.pzOrder
+  let ro = null, rt = 0, rsx = 0, rsy = 0;
+  const copies = () => { const k = tr.children.length / 3; return [0, 1, 2].map(c => [...tr.children].slice(c * k, c * k + k)); };
+  el.addEventListener('pointerdown', e => {
+    down = { x:e.clientX, off0:off, lx:e.clientX, lt:performance.now(), id:e.pointerId }; moved = false; vel = 0; clearTimeout(holdT); hold = 1; el.classList.add('drag');
+    const pz = e.target.closest('.pz'); if (!pz) return; rsx = e.clientX; rsy = e.clientY; clearTimeout(rt);
+    rt = setTimeout(() => {
+      const k = tr.children.length / 3, idx = [...tr.children].indexOf(pz) % k;
+      down = null; moved = false; el.classList.remove('drag'); try { el.setPointerCapture(e.pointerId); } catch(_){}
+      ro = { k, cur:idx }; tr.querySelectorAll('.pz').forEach((x, i) => { if (i % k === idx) x.classList.add('lift'); }); el.classList.add('moving');
+    }, 450);
+  });
+  el.addEventListener('pointermove', e => {
+    if (!ro){ if (!down && Math.hypot(e.clientX - rsx, e.clientY - rsy) > 10) clearTimeout(rt); else if (down && Math.hypot(e.clientX - rsx, e.clientY - rsy) > 10) clearTimeout(rt); return; }
+    e.preventDefault();
+    const r = el.getBoundingClientRect();
+    if (e.clientX < r.left + 50) off -= 6; else if (e.clientX > r.right - 50) off += 6;   // near an edge: the strip moves
+    const hit = [...tr.children].map((c, i) => [i, c.getBoundingClientRect()]).find(([, b]) => e.clientX >= b.left && e.clientX <= b.right);
+    if (!hit) return; const over = hit[0] % ro.k; if (over === ro.cur) return;
+    copies().forEach(c => { const held = c[ro.cur], ref = c[over]; if (over > ro.cur) ref.after(held); else ref.before(held); });
+    ro.cur = over;
+  }, { passive:false });
+  el.addEventListener('pointermove', e => {
+    if (!down || ro) return;
+    const dx = e.clientX - down.x;
+    if (!moved && Math.abs(dx) > 5){ moved = true; try { el.setPointerCapture(down.id); } catch(_){} }
+    if (moved){ off = down.off0 - dx; const t = performance.now(); if (t - down.lt > 16){ vel = -(e.clientX - down.lx) / ((t - down.lt) / 1000); down.lx = e.clientX; down.lt = t; } }
+  });
+  const roEnd = () => { clearTimeout(rt); if (!ro) return; tr.querySelectorAll('.lift').forEach(x => x.classList.remove('lift')); el.classList.remove('moving');
+    S.pzOrder = [...tr.children].slice(0, ro.k).map(x => x.dataset.pz); save(); ro = null; moved = true; setTimeout(() => { moved = false; }, 400); stopHold(); };
+  ['pointerup','pointercancel'].forEach(n => el.addEventListener(n, roEnd));
+  el.addEventListener('touchmove', e => { if (ro) e.preventDefault(); }, { passive:false });
+  el.addEventListener('contextmenu', e => e.preventDefault());
+  const up = () => { if (!down) return; down = null; el.classList.remove('drag'); if (!moved) vel = 0; stopHold(); };
+  ['pointerup','pointercancel','lostpointercapture'].forEach(n => el.addEventListener(n, up));
+  el.addEventListener('wheel', e => { const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; off += d; stopHold(); e.preventDefault(); }, { passive:false });
   el.addEventListener('click', e => { if (moved){ e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
 }
 
@@ -1328,8 +1519,8 @@ function goalWaiting(q){
   return Object.keys(V).some(k => (V[k] || 0) >= q.goal && !P[k]);
 }
 function colClaimable(){
-  if (SCENES.length && SCENES.every(sc => S.scenes[sc.id]) && !S.setClaims[SCENES_KEY]) return true;
-  return [...new Set(CARDS.map(c => c.set))].some(set => setReady(set));
+  if (Object.values(SCENE_DEF).some(x => x.list.length && x.list.every(sc => S.scenes[sc.id]) && !S.setClaims[x.key])) return true;
+  return [...new Set(CARDS.map(c => c.set))].some(set => setReady(set));   // (Poker counts when any suit is ready)
 }
 function renderPanel(){
   $('#boardTitle').textContent = S.tab === 'quests' && arranging ? 'Arrange' : TAB_TITLES[S.tab];
@@ -1345,7 +1536,6 @@ function renderPanel(){
   if (S.tab !== 'progress') $('#progPop').classList.remove('open');
   if (S.tab === 'quests'){
     const visible = S.quests.filter(q => isVisible(q) && q.kind !== 'scaling' && q.kind !== 'counter' && q.kind !== 'tally' && q.kind !== 'bounty' && !isTracker(q));
-    const done = visible.filter(isDone).length;
     $('#boardSub').textContent = arranging ? '' : visible.length ? '' : 'Post a quest to begin';
     const top = S.quests.filter(q => !q.parent);
     $('#panel').innerHTML = `${!top.length ? '<div class="list qboard"><div class="empty">The board is empty.</div></div>'
@@ -1354,15 +1544,12 @@ function renderPanel(){
         ? '<button class="post save" id="arrangeBtn">SAVE</button>'
         : '<button class="post" id="postBtn">+ Post a quest</button>'}</div>`;
   } else if (S.tab === 'progress'){
-    { const pq = S.pview && S.pview !== 'steps' && byId(S.pview) && isTracked(byId(S.pview)) ? byId(S.pview) : null;
-      $('#boardSub').textContent = ''; }
+    $('#boardSub').textContent = '';
     $('#panel').innerHTML = renderProgress();
   } else if (S.tab === 'inventory'){
-    const total = SHOP.reduce((a, it) => a + owned(it.id), 0);
     $('#boardSub').textContent = '';
     $('#panel').innerHTML = renderInventory();
   } else if (S.tab === 'collection'){
-    const have = CARDS.filter(c => ownedCard(c.id)).length;
     $('#boardSub').textContent = '';
     $('#panel').innerHTML = renderCollection();
     setupPuzzle();
@@ -1720,7 +1907,7 @@ async function reopen(q, key){
 
 /* ================= Reset / testing ================= */
 function resetProgress(){
-  S.xp = 0; S.gold = 0; S.steps = {}; S.inv = {}; S.pity = {}; S.cards = {}; S.scenes = {}; S.setClaims = {}; S.opened = {}; S.rewardedLevel = 1;
+  S.xp = 0; S.gold = 0; S.steps = {}; S.inv = {}; S.pity = {}; S.cards = {}; S.scenes = {}; S.setClaims = {}; S.opened = {}; S.cardsGot = {}; S.jokerOpen = false; S.rewardedLevel = 1;
   if (S.daily) S.daily = { at:S.daily.at, streak:0 };   // the login streak starts over (today's reward stays taken)
   S.quests.forEach(q => {
     q.count = 0; q.undo = null; q.streak = 0; q.bestStreak = 0; q.lastBoth = 0; q.streakUndo = null;
@@ -2351,7 +2538,6 @@ $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeS
 /* ================= Settings ================= */
 const closeSettings = () => $('#settings').classList.remove('open');
 function renderSync(){
-  const hasNative = !!(native() && native().connectHealth);
   const on = S.sync && S.sync.connected;
   $('#syncDot').classList.toggle('on', !!on);
   $('#syncState').textContent = on ? `Connected · last sync ${S.sync.last ? timeAgo(S.sync.last) : 'pending'}` : 'Not connected';
@@ -2498,16 +2684,18 @@ $('#panel').addEventListener('click', e => {
   if (act === 'wk-next'){ weekOffset = Math.max(0, weekOffset - 1); render(); return; }
   if (act === 'progress'){ S.tab = 'progress'; weekOffset = 0; save(); render(); window.scrollTo({ top:0 }); return; }
   if (act === 'info'){ const open = el.classList.toggle('open'); document.querySelectorAll('.info.open').forEach(x => x !== el && x.classList.remove('open')); if (open) return; }
+  if (act === 'packinfo'){ openPackInfo(el.dataset.item); return; }
   if (act === 'qty'){ changeQty(el.dataset.item, +el.dataset.d); return; }
   if (act === 'buy'){ tryBuy(el.dataset.item, el); return; }
   if (act === 'useitem'){ useItem(el.dataset.item); return; }
-  if (act === 'inspect'){ inspectCard(el.dataset.id, !!el.dataset.scene); return; }
+  if (act === 'inspect'){ inspectCard(el.dataset.id, !!el.dataset.scene, !!el.dataset.land); return; }
   if (act === 'setclaim'){ claimSet(el.dataset.set, el); return; }
+  if (act === 'cover'){ openCover(el.dataset.set); return; }
   if (act === 'colg'){ colGroup = el.dataset.g; render(); return; }
   if (act === 'colf'){ colFilter = el.dataset.r; render(); return; }
   if (act === 'colset'){ const k = el.dataset.set, i = colSets.indexOf(k); if (i < 0) colSets.push(k); else colSets.splice(i, 1); const y = scrollY; render(); scrollTo(0, y); return; }
   if (act === 'pzview'){ pzGrid = !pzGrid; const y = scrollY; render(); scrollTo(0, y); return; }
-  if (act === 'colfold'){ const k = el.dataset.set; colOpen[k] = colOpen[k] === false; const y = scrollY; render(); scrollTo(0, y); return; }
+  if (act === 'colfold'){ const k = el.dataset.set; colOpen[k] = colOpen[k] === false; S.colOpen = Object.fromEntries(Object.entries(colOpen).filter(([, v]) => v === false)); save(); const y = scrollY; render(); scrollTo(0, y); return; }
   if (act === 'opensettings'){ openSettings(); return; }
   if (act === 'earn'){ earnToggle(!earnOpen); return; }
   if (act === 'earnpop') return;
@@ -2569,13 +2757,80 @@ document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () =>
 })();
 $('#toastUndo').addEventListener('click', () => { if (!snap) return; S = JSON.parse(snap); snap = null; save(); hideToast(); render(); });
 $('#levelup').addEventListener('click', hideLevelUp);
+// Cards in a category grid: press and hold (a moment) and let go = the card gets BIG (2x2) or small again; press and hold, then drag = move it
+// to another place. Big sizes are S.big, the order is S.order[set]. (Poker, Promo, Joker, Realms etc. keep hold = see the art.)
+(function(){
+  const TILE = '#panel .cc-bd .col-grid > .ct', idOf = t => t.dataset.id || t.dataset.cid;
+  const setOf = g => { const m = g.closest('.cc-fold')?.querySelector('.cc-mid'); return m ? m.dataset.set : null; };
+  let timer = 0, sx = 0, sy = 0, cur = null, fired = 0;
+  const clearHold = () => { clearTimeout(timer); document.querySelectorAll('.ct.holding').forEach(x => x.classList.remove('holding')); };
+  document.addEventListener('dragstart', e => { if (e.target.closest && e.target.closest('#panel .col-grid, #panel .sh-car')) e.preventDefault(); }, true);   // no picture ghost when dragging cards or swiping banners with a mouse
+  document.addEventListener('pointerdown', e => {
+    const t = e.target.closest(TILE); if (!t || e.button > 0) return;
+    e.stopImmediatePropagation(); sx = e.clientX; sy = e.clientY; clearTimeout(timer);
+    cur = { t, id:idOf(t), grid:t.parentNode, armed:false, drag:false, pid:e.pointerId };
+    t.classList.add('holding');
+    timer = setTimeout(() => { if (!cur) return; cur.armed = true; t.classList.remove('holding'); t.classList.add('armed'); try { t.setPointerCapture(cur.pid); } catch(_){} }, 380);
+  }, true);
+  function startDrag(e){
+    const { t } = cur; cur.drag = true; t.classList.remove('armed'); t.classList.add('lifted');
+    const r = t.getBoundingClientRect(), g = t.cloneNode(true); g.classList.remove('big', 'br', 'lifted', 'armed', 'holding'); g.classList.add('ghost');
+    g.style.cssText = `position:fixed;left:0;top:0;width:${r.width}px;height:${r.height}px;z-index:90;pointer-events:none;margin:0;will-change:transform`;
+    document.body.appendChild(g); cur.ghost = g; cur.dx = e.clientX - r.left; cur.dy = e.clientY - r.top; cur.last = 0;
+  }
+  // the other cards slide to their new places instead of jumping (FLIP)
+  const flip = (grid, change) => {
+    const kids = [...grid.children].filter(x => !x.classList.contains('ghost')), was = new Map(kids.map(x => [x, x.getBoundingClientRect()]));
+    change();
+    kids.forEach(x => { const a = was.get(x), b = x.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top; if (Math.abs(dx) + Math.abs(dy) > 1 && x !== cur.t) x.animate([{ transform:`translate(${dx}px,${dy}px)` }, { transform:'none' }], { duration:200, easing:'cubic-bezier(.2,.8,.3,1)' }); });
+  };
+  document.addEventListener('pointermove', e => {
+    if (!cur) return;
+    if (!cur.armed){ if (Math.hypot(e.clientX - sx, e.clientY - sy) > 10){ clearHold(); cur = null; } return; }
+    e.preventDefault();
+    if (!cur.drag){ if (Math.hypot(e.clientX - sx, e.clientY - sy) < 8) return; startDrag(e); }
+    cur.ghost.style.transform = `translate3d(${e.clientX - cur.dx}px,${e.clientY - cur.dy}px,0) scale(1.05)`;
+    if (e.clientY < 110) scrollBy(0, -12); else if (e.clientY > innerHeight - 110) scrollBy(0, 12);   // near an edge: the page scrolls
+    const t = performance.now(); if (t - cur.last < 140) return;   // let the cards finish sliding before the next move
+    const grid = cur.grid, gr = grid.getBoundingClientRect(), isBig = cur.t.classList.contains('big');
+    // a big card: pointer on the right side of the grid = it sits to the right (columns 2-3), on the left = columns 1-2
+    if (isBig){ const rel = (e.clientX - gr.left) / gr.width, side = rel > .55 ? true : rel < .4 ? false : cur.t.classList.contains('br'); if (side !== cur.t.classList.contains('br')){ cur.last = t; flip(grid, () => cur.t.classList.toggle('br', side)); return; } }
+    const over = document.elementsFromPoint(e.clientX, e.clientY).find(x => x !== cur.t && x.matches && x.matches('.ct') && x.parentNode === grid);
+    let target = null, after = false;
+    if (over){ const b = over.getBoundingClientRect(); target = over; after = e.clientX > b.left + b.width / 2 && e.clientY > b.top + b.height * .25; }
+    else if (e.clientX >= gr.left && e.clientX <= gr.right && e.clientY >= gr.top - 10 && e.clientY <= gr.bottom + 10){   // empty space: next to the nearest card
+      let bd = 1e9; [...grid.children].forEach(x => { if (x === cur.t || x.classList.contains('ghost')) return; const b = x.getBoundingClientRect(), d = Math.hypot(e.clientX - (b.left + b.width / 2), e.clientY - (b.top + b.height / 2)); if (d < bd){ bd = d; target = x; } });
+      if (target){ const b = target.getBoundingClientRect(); after = e.clientY > b.bottom || (e.clientY > b.top && e.clientX > b.left + b.width / 2); }
+    }
+    if (!target) return;
+    const ref = after ? target.nextSibling : target; if (ref === cur.t || (after && target.nextSibling === cur.t) || target.previousSibling === cur.t && !after) return;
+    cur.last = t; flip(grid, () => target.parentNode.insertBefore(cur.t, ref));
+  }, { capture:true, passive:false });
+  const end = () => {
+    clearHold(); if (!cur) return; const { t, id, drag, armed, ghost, grid } = cur; cur = null;
+    t.classList.remove('armed', 'lifted'); if (ghost) ghost.remove();
+    if (drag){
+      const k = setOf(grid); if (k){ if (!S.order || typeof S.order !== 'object') S.order = {}; S.order[k] = [...grid.children].map(idOf).filter(Boolean); }
+      if (t.classList.contains('big') && t.dataset.id){ if (!S.big || typeof S.big !== 'object') S.big = {}; S.big[id] = t.classList.contains('br') ? 2 : 1; }
+      save();
+      fired = performance.now();
+    } else if (armed){
+      fired = performance.now();
+      if (t.dataset.id){ if (!S.big || typeof S.big !== 'object') S.big = {}; if (S.big[id]) delete S.big[id]; else S.big[id] = 1; save(); t.classList.toggle('big', !!S.big[id]); t.classList.remove('br'); t.classList.add('pop'); setTimeout(() => t.classList.remove('pop'), 400); }
+    }
+  };
+  ['pointerup','pointercancel'].forEach(n => document.addEventListener(n, end, true));
+  document.addEventListener('touchmove', e => { if (cur && cur.armed) e.preventDefault(); }, { passive:false, capture:true });   // a held finger must not scroll the page while a card moves
+  document.addEventListener('click', e => { if (performance.now() - fired < 500 && e.target.closest(TILE)){ e.stopPropagation(); e.preventDefault(); } }, true);
+  document.addEventListener('contextmenu', e => { if (e.target.closest(TILE)) e.preventDefault(); }, true);
+})();
 // hold a card tile in the collection (or search results): it opens straight to the art; letting go shows the full view
 (function(){
   let timer = 0, sx = 0, sy = 0, on = false, quiet = 0;
   document.addEventListener('pointerdown', e => {
-    const t = e.target.closest('#panel [data-act="inspect"]'); if (!t) return;
+    const t = e.target.closest('#panel [data-act="inspect"]'); if (!t || t.matches('.cc-bd .col-grid > .ct')) return;   // (cards in the plain grids use hold = big / drag instead)
     sx = e.clientX; sy = e.clientY; clearTimeout(timer);
-    timer = setTimeout(() => { on = true; quiet = performance.now(); inspectCard(t.dataset.id, !!t.dataset.scene); $('#inspect').classList.add('art'); }, 350);
+    timer = setTimeout(() => { on = true; quiet = performance.now(); inspectCard(t.dataset.id, !!t.dataset.scene, !!t.dataset.land); $('#inspect').classList.add('art'); }, 350);
   });
   document.addEventListener('pointermove', e => { if (!on && Math.hypot(e.clientX - sx, e.clientY - sy) > 12) clearTimeout(timer); }, { passive:true });
   const up = () => { clearTimeout(timer); if (on){ on = false; quiet = performance.now(); $('#inspect').classList.remove('art'); } };
@@ -2623,9 +2878,11 @@ function handleBack(){
     return;
   }
   if ($('#pack').classList.contains('dl')){ const pk = $('#pack'); if (pk.onclick) pk.onclick(); return; }   // daily reward: back = tap (open the card, then continue)
+  if ($('#cvp')) return closeCover();
   if ($('#levelup').classList.contains('show')) return hideLevelUp();
   if ($('#lvlPop').classList.contains('open')) return toggleLvlPop(false);
   if ($('#ask').classList.contains('open')) return answer(false);
+  if ($('#pki')) return closePackInfo();   // after the buy dialog, which sits on top of it
   if ($('#modal').classList.contains('open')) return closeSheet();
   if ($('#wPick').classList.contains('open')) return $('#wPick').classList.remove('open');
   if ($('#widgets').classList.contains('open')) return closeWidgets();
@@ -3031,7 +3288,7 @@ function earnPanel(){
   const lv = L.find(r => r.k === 'lv'); if (lv) other.push(row('#f0b429', 'Level up', lv.lv ? `Lv ${lv.lv[0]} → ${lv.lv[1]}` : '', lv.xp, lv.gold));
   const dl = L.find(r => r.k === 'daily'); if (dl) other.push(row('#2ee6d6', 'Daily reward', (dl.parts || []).slice(-1)[0] || '', dl.xp, dl.gold));
   L.filter(r => r.k.startsWith('set:')).forEach(r => other.push(row('#c792ff', 'Set complete', r.n + (r.c > 1 ? ' ×' + r.c : ''), r.xp, r.gold)));
-  const sc = L.find(r => r.k === 'scenes'); if (sc) other.push(row('#9db2b0', 'All scenes', '', sc.xp, sc.gold));
+  L.filter(r => r.k === 'scenes' || r.k.startsWith('scenes:')).forEach(sc => other.push(row('#9db2b0', sc.k === 'scenes' ? 'All chapters' : sc.n, '', sc.xp, sc.gold)));
   // anything not in a row: earned before this version, or from somewhere not tagged
   const ex = T.xp - L.reduce((a, r) => a + r.xp, 0), eg = T.gold - L.reduce((a, r) => a + r.gold, 0);
   if (ex > 0 || eg > 0) other.push(row('#4e6260', 'Earlier today', '', Math.max(0, ex), Math.max(0, eg)));
@@ -3440,7 +3697,7 @@ document.querySelectorAll('.tip-host').forEach(host => {
   if (host){ host.innerHTML = streakInfo();
     host.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleSkPop(host.querySelector('.sk-info')); }); } }
 function questHero(q){
-  const map = dayMap(q), logs = allLogs(q).sort((a, b) => b.t - a.t), t0 = now();
+  const map = dayMap(q), logs = allLogs(q).sort((a, b) => b.t - a.t);
   const xp = logs.reduce((a, e) => a + (e.xp || 0), 0), gold = logs.reduce((a, e) => a + (e.gold || 0), 0);
   let k, big, unit, sub, tier = 0, art;
   if (hasStreak(q)){
@@ -3448,7 +3705,7 @@ function questHero(q){
     tier = flameTier(n); k = q.kind === 'pair' ? 'Full-list streak' : q.kind === 'avoid' ? 'Days clean' : q.kind === 'target' ? 'Targets hit in a row' : 'Current streak'; big = fmt(n);
     unit = q.kind === 'target' ? (n === 1 ? 'time' : 'times') : n === 1 ? 'day' : 'days';
     if (q.kind === 'avoid') q.best = Math.max(q.best || 0, n);
-    sub = `Best ${fmt(q.kind === 'avoid' ? q.best : best)}${q.kind === 'avoid' && (q.slips || []).length ? ` · slipped ${q.slips.length}×` : ''}${m > 1 ? ` · <b style="color:${tierCol(tier)[0]}">+${Math.round((m - 1) * 100)}%</b> reward bonus` : ''}`; art = FLAME(tier, 64);
+    sub = `Best ${fmt(q.kind === 'avoid' ? q.best : best)}${q.kind === 'avoid' && (q.slips || []).length ? ` · slipped ${q.slips.length}×` : ''}${m > 1 ? ` · <span style="white-space:nowrap"><b style="color:${tierCol(tier)[0]}">+${Math.round((m - 1) * 100)}%</b> reward</span>` : ''}`; art = FLAME(tier, 64);
   } else if (q.kind === 'scaling'){
     const w = weekClaims(q); tier = -1; k = `This ${periodOf(q) === 1 ? 'day' : periodWord(q)}`; big = '×' + w; unit = '';
     sub = `Next claim pays ${scaledReward(q, w + 1).xp} XP · resets ${new Date(periodEnd(q)).toLocaleDateString(undefined, { weekday:'short' })}`; art = `<div class="hx-ic">${qbIcon(q)}</div>`;
@@ -3569,6 +3826,8 @@ function stepsHud(){
     return `<div class="sh-col${act ? ' tap' : ''}${i === ti ? ' td' : ''}${cls === 'green' ? ' met' : ''}"${act}><span class="sh-v">${fut ? '' : short(v)}</span><div class="sh-segs">${segs}</div>${dn}</div>`;
   }).join('');
   const fd = t => new Date(t).toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  // an unclaimed goal bonus in an earlier week: the ‹ arrow glows like the Steps tab
+  const olderGoal = q && goalDays(q).some(k => k < dayKey(days[0])), newerGoal = q && weekOffset > 0 && goalDays(q).some(k => k > dayKey(days[6]));   // gold arrows: a goal bonus waits in an older / a newer week
   // one row per day, today at the top
   const rows = q ? days.filter((t, i) => ti < 0 || i <= ti).reverse().map(t => {   // newest first
     const k = dayKey(t), d = stepDue(q, k), lab = t === today ? 'Today' : new Date(t).toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' });
@@ -3586,7 +3845,7 @@ function stepsHud(){
       <div class="hud-num">${String(tv).padStart(5, '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}<small>/ ${fmt(goal)}</small></div>
       <div class="hud-seg">${seg10}</div>
       <div class="hud-lab"><span data-act="distunit">${distTxt}</span><span>${tv >= goal ? 'GOAL HIT' : fmt(goal - tv) + ' TO GOAL'}</span></div></div>
-    <div class="hud"><div class="hud-bar"><span class="hud-wk"><button data-act="wk-prev" aria-label="Previous week">‹</button>// WEEK · ${fd(days[0]).toUpperCase()} – ${fd(days[6]).toUpperCase()}<button data-act="wk-next" aria-label="Next week"${weekOffset === 0 ? ' disabled' : ''}>›</button></span><span>AVG ${fmt(avg)}</span></div>
+    <div class="hud"><div class="hud-bar"><span class="hud-wk"><button data-act="wk-prev" aria-label="Previous week"${olderGoal ? ' class="s"' : ''}>‹</button>// WEEK · ${fd(days[0]).toUpperCase()} – ${fd(days[6]).toUpperCase()}<button data-act="wk-next" aria-label="Next week"${weekOffset === 0 ? ' disabled' : newerGoal ? ' class="s"' : ''}>›</button></span><span>AVG ${fmt(avg)}</span></div>
       <div class="sh-cols">${cols}</div>
       ${q && (q.goalXp || q.goalGold) ? `<div class="hud-note"><i class="g"></i>Goal hit · tap to claim <i class="gr"></i>Claimed <i class="rd"></i>Goal</div>` : ''}</div>
     ${q ? `<div class="hud"><div class="hud-bar"><span>// RECORD</span><span>+${fmt(q.xpPer)} / +${fmt(q.goldPer)} PER ${fmt(q.chunk)}</span></div>${rows}</div>` : `<div class="empty">Post a Steps quest to start earning rewards for walking.</div>`}
@@ -3618,7 +3877,7 @@ function renderInventory(){
       </div>
     </div>
     <div class="inv-name">${esc(it.name)}</div>
-    <div class="inv-hint dka-hint" data-act="${n ? 'useitem' : 'goshop'}" data-item="${it.id}">${n ? 'SWIPE UP TO OPEN' : 'GET MORE IN THE SHOP'}</div>
+    <div class="inv-hint dka-hint" data-act="${n ? 'useitem' : 'goshop'}" data-item="${it.id}">${n ? 'SWIPE UP TO OPEN' : 'GET MORE IN SHOP'}</div>
     <div class="dka-stats"><div><span>Opened</span><b>${fmt(opened)}</b></div><div><span>Collected</span><b>${got}/${all.length}</b></div></div>
     ${it.pity ? `<div class="ur-slots" title="UR guaranteed in ${it.pity - pity}">${Array.from({ length:it.pity }, (_, i) => i === it.pity - 1
       ? '<i class="ur"><b>UR</b></i>' : `<i class="${i < pity ? 'on' : ''}"></i>`).join('')}</div>` : ''}
@@ -3629,19 +3888,20 @@ function renderInventory(){
    best first. Tap to flip one, double-tap anywhere to flip them all. ---- */
 function openAll(id){
   const item = SHOP.find(x => x.id === id), n = owned(id);
-  if (!item || n < 1 || opening) return;
+  if (!item || n < 1 || opening || !deckReady(item)) return;
   snap = null;
   S.inv[id] = 0; S.opened[id] = (S.opened[id] || 0) + n;
   let cards = [], scenes = 0; const fresh = {}, sceneList = [];
   for (let i = 0; i < n; i++){
     const res = rollDeck(item);
     res.cards.forEach(c => { if (!ownedCard(c.id) && !fresh[c.id]) fresh[c.id] = true; gainCard(c.id); });
-    if (res.scene){ S.scenes[res.scene.id] = true; scenes++; sceneList.push(res.scene); }
+    if (res.scene){ S.scenes[res.scene.id] = true; recordNew(sceneDefById(res.scene.id).key, res.scene.id); scenes++; sceneList.push(res.scene); }
     cards = cards.concat(res.cards);
   }
+  const jokerPop = checkJokers();
   save();
-  cards.sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity));   // the best first (the top of the stack), the lowest last
-  opening = { item, cards, all:true, fresh, scene:null, flipped:new Set(), done:false, scenes, sceneList };
+  cards.sort((a, b) => rarRank(a) - rarRank(b));   // the best first (the top of the stack), the lowest last
+  opening = { item, cards, all:true, fresh, scene:null, flipped:new Set(), done:false, scenes, sceneList, jokerPop };
   const ids = [...new Set(cards.map(c => c.id)), deckOf(item).back, deckOf(item).backUR, ...sceneList.map(sc => sc.id)];
   Promise.all(ids.map(x => { const im = new Image(); im.src = cardImg(x); return im.decode().catch(() => {}); })).then(showOpenAll);
 }
@@ -3649,7 +3909,7 @@ function openAll(id){
    Tap the front card to flip it, tap again (or swipe it left) for the next one. The flipped cards collect
    in a tray at the bottom. Double-tap the background to flip everything. Ends on a grid of all cards. */
 function oaCardHTML(c, i){
-  return `<button class="oa-c r-${c.rarity}" data-i="${i}" style="--rc:${RARITY[c.rarity].glow}">
+  return `<button class="oa-c r-${rkey(c)}" data-i="${i}" style="--rc:${glowOf(c)}">
     <span class="oa-in"><img class="oa-b" src="${cardImg(backOf(c, c.rarity === 'ultimate'))}" alt=""><span class="oa-f"><img src="${cardImg(c.id)}" alt=""></span></span><span class="oa-tag"></span></button>`;
 }
 function showOpenAll(){
@@ -3687,7 +3947,7 @@ function oaTap(i){
     o.flipped.add(i);
     const btn = $(`#pack .oa-stage .oa-c[data-i="${i}"]`), c = o.cards[i];
     btn.classList.add('flipped'); btn.querySelector('.oa-tag').innerHTML = o.fresh[c.id] ? 'NEW' : '';
-    setTimeout(() => { if (opening === o) revealFX(btn, c.rarity); }, 160);
+    setTimeout(() => { if (opening === o) revealFX(btn, rkey(c)); }, 160);
   } else oaNext();
 }
 function oaNext(){
@@ -3698,17 +3958,19 @@ function oaNext(){
   if (o.idx >= o.cards.length) return oaSummary();
   oaLayout();
 }
+// the same card pulled twice or more shows once, with ×N in its corner
+function oaGroups(o){ const m = new Map(); o.cards.forEach((c, i) => { const g = m.get(c.id); if (g) g.n++; else m.set(c.id, { c, i, n:1 }); }); return [...m.values()]; }
 function oaSummary(){
   const o = opening; if (!o) return;
   o.cards.forEach((_, i) => o.flipped.add(i)); o.summary = true;
   const ov = $('#pack');
-  ov.innerHTML = `<div class="oa"><div class="oa-h"><b>${fmt(o.cards.length / o.item.cards)} ${esc(o.item.name)}s</b><span>${o.cards.length} cards</span></div>
-    <div class="oa-grid">${o.cards.map((c, i) => oaCardHTML(c, i).replace('class="oa-c', 'class="oa-c flipped')).join('')}</div>  
+  ov.innerHTML = `<div class="oa"><div class="oa-h"><b>${fmt(o.cards.length / o.item.cards)} ${esc(o.item.name)}s</b><span>${o.cards.length} cards${oaGroups(o).length < o.cards.length ? ' · ' + oaGroups(o).length + ' different' : ''}</span></div>
+    <div class="oa-grid">${oaGroups(o).map(g => oaCardHTML(g.c, g.i).replace('class="oa-c', 'class="oa-c flipped').replace('</button>', g.n > 1 ? `<span class="oa-q">×${g.n}</span></button>` : '</button>')).join('')}</div>  
     <div class="oa-foot"><div class="pk-hint">Tap to continue</div></div></div>`;
   ov.querySelectorAll('.oa-c').forEach(b => { const c = o.cards[+b.dataset.i]; b.querySelector('.oa-tag').innerHTML = o.fresh[c.id] ? 'NEW' : ''; b.addEventListener('click', e => { e.stopPropagation(); inspectCard(c.id); }); });
   // tap anywhere but a card (that opens the card) to go on: new scenes first, if any, then close
   o.done = false; setTimeout(() => { if (opening === o) o.done = true; }, 600);   // a short pause so the double-tap that got here doesn't skip it
-  const best = ov.querySelector('.oa-c'); const top = o.cards[0]; if (best && top.rarity !== 'common') setTimeout(() => revealFX(best, top.rarity), 200);
+  const best = ov.querySelector('.oa-c'); const top = o.cards[0]; if (best && rkey(top) !== 'common') setTimeout(() => revealFX(best, rkey(top)), 200);
 }
 function oaRevealAll(){ const o = opening; if (o && o.all && !o.done && !o.summary) oaSummary(); }
 (function(){
@@ -3725,7 +3987,7 @@ $('#openAllBtn').addEventListener('click', e => { e.stopPropagation(); openAll(e
 
 
 /* ---- Collection 2: pack tabs, category chips (multi-select), overview bars, folding sets ---- */
-var colSets = [], colOpen = {};
+var colSets = [], colOpen = {}, colInit = false;   // colOpen[k] === false: that set is folded (remembered in S.colOpen)
 function colRing(f1, f2, c){
   const R = 9, C = 2 * Math.PI * R;
   // first lap = cards owned (rarity colour); once full, a gold lap = cards owned ×2 (progress to claim again)
@@ -3734,32 +3996,87 @@ function colRing(f1, f2, c){
     ${f1 >= 1 && f2 > 0 ? `<circle cx="12" cy="12" r="${R}" fill="none" stroke="#f5c542" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="${C * f2} ${C}"/>` : ''}</svg>`;
 }
 function colInfo(set){
-  if (set === SCENES_KEY){
-    const got = SCENES.filter(sc => S.scenes[sc.id]).length, n = SCENES.length;
-    return { name:'Scenes', col:'#9db2b0', got, n, f1:got / n, f2:0, ready:got === n && !S.setClaims[set] };
+  const sd = sceneDefOf(set);
+  if (sd){
+    const got = sd.list.filter(sc => S.scenes[sc.id]).length, n = sd.list.length;
+    return { name:sd.name, col:sd.col, got, n, f1:got / n, f2:0, ready:got === n && !S.setClaims[set] };
   }
   const list = CARDS.filter(c => c.set === set), n = list.length, r = list[0].rarity;
   const got = list.filter(c => ownedCard(c.id)).length, two = list.filter(c => ownedCard(c.id) >= 2).length;
-  return { name:setLabel(set), list, rar:r, col:RARITY[r].color, got, two, n, f1:got / n, f2:two / n, ready:setReady(set) };
+  return { name:set === 'Joker' && !jokersOpen() ? 'Joker (Locked)' : setLabel(set), list, rar:r, col:set === 'Joker' ? '#b04bff' : RARITY[r].color, got, two, n, f1:got / n, f2:two / n, ready:setReady(set) };
+}
+// ---- Category header pictures: up to 3 you chose (S.cover[set]), else the 3 newest you found, else 3 empty card backs ----
+function coverOk(k, id){   // is this picture still something the player has?
+  const sd = sceneDefOf(k);
+  if (sd) return !!S.scenes[id] && sd.list.some(sc => sc.id === id);
+  if (/^HD_DUO\d+$/.test(id)){ const L = CARDS.filter(c => c.set === 'Duo').sort((a, b) => a.id.localeCompare(b.id)), n = +id.slice(6) - 1; return k === 'Duo' && !!L[n * 2] && !!L[n * 2 + 1] && ownedCard(L[n * 2].id) > 0 && ownedCard(L[n * 2 + 1].id) > 0; }
+  const cid = id.replace(/_l$/, ''), c = CARD_BY_ID[cid];
+  return !!c && c.set === k && ownedCard(cid) > 0;
+}
+function headIds(k, I, sd, duo){
+  const own = sd ? sd.list.filter(sc => S.scenes[sc.id]).map(sc => sc.id) : duo ? duoPreview(I.list) : I.list.filter(c => ownedCard(c.id)).map(c => c.id);
+  const cov = ((S.cover || {})[k] || []).filter(id => coverOk(k, id)).slice(0, 3);
+  if (cov.length) return cov;
+  if (duo) return own.slice(0, 3);
+  const nw = ((S.newest || {})[k] || []).filter(id => coverOk(k, id));
+  return [...nw, ...own.filter(id => !nw.includes(id))].slice(0, 3);
+}
+// Tap the pictures on a category header: pick up to 3 of your own cards for it. Pages swipe sideways:
+// regular sets 4 x 2 per page, Realms / Chapters 2 x 3, Duo: joined art 2 x 2 and single cards 4 x 1.
+function closeCover(){ const el = $('#cvp'); if (el){ el.remove(); render(); } }
+function openCover(k){
+  const sd = sceneDefOf(k), duo = k === 'Duo', I = colInfo(k);
+  let groups;   // [{ title, ids, cols, rows, land }]
+  if (sd) groups = [{ ids:sd.list.filter(sc => S.scenes[sc.id]).map(sc => sc.id), cols:2, rows:3, land:true }];
+  else if (duo){
+    const L = [...I.list].sort((a, b) => a.id.localeCompare(b.id)), joined = [], singles = [];
+    for (let i = 0; i < L.length; i += 2){
+      const a = L[i], b = L[i + 1];
+      if (b && ownedCard(a.id) && ownedCard(b.id)) joined.push('HD_DUO' + String(i / 2 + 1).padStart(2, '0'));
+      [a, b].forEach(c => { if (c && ownedCard(c.id)) singles.push(c.id + '_l'); });
+    }
+    groups = [{ title:'Joined art', ids:joined, cols:2, rows:2, land:true }, { title:'Single cards', ids:singles, cols:4, rows:1, land:true }];
+  } else groups = [{ ids:I.list.filter(c => ownedCard(c.id)).map(c => c.id), cols:4, rows:2 }];
+  groups = groups.filter(g => g.ids.length); if (!groups.length) return;
+  const sel = ((S.cover || {})[k] || []).filter(id => coverOk(k, id));
+  const el = document.createElement('div'); el.id = 'cvp'; el.className = 'cvp';
+  const draw = () => {
+    el.innerHTML = `<div class="cvp-sheet"><div class="cvp-t"><b>Select up to 3</b><span>${sel.length}/3</span></div>
+      ${groups.map(g => { const per = g.cols * g.rows, pages = Math.ceil(g.ids.length / per);
+        return `${g.title ? `<div class="cvp-h">${g.title}</div>` : ''}<div class="cvp-pg" data-pg="${pages}"><div class="cvp-sc">${Array.from({ length:pages }, (_, p) => `<div class="cvp-page" style="--cols:${g.cols}">${g.ids.slice(p * per, p * per + per).map(id => { const n = sel.indexOf(id) + 1;
+          return `<button class="cvp-c${g.land ? ' l' : ''}${n ? ' on' : ''}" data-id="${id}"><img src="${cardImg(id)}" alt="">${n ? `<i>${n}</i>` : ''}</button>`; }).join('')}</div>`).join('')}</div>${pages > 1 ? `<div class="cvp-dots">${Array.from({ length:pages }, (_, p) => `<u${p ? '' : ' class="on"'}></u>`).join('')}</div>` : ''}</div>`; }).join('')}
+      <div class="cvp-dn"><button data-cv="clear">Clear</button><button class="a" data-cv="done">Done</button></div></div>`;
+    el.querySelectorAll('.cvp-sc').forEach(sc => sc.addEventListener('scroll', () => { const p = Math.round(sc.scrollLeft / sc.clientWidth); sc.parentNode.querySelectorAll('.cvp-dots u').forEach((u, i) => u.classList.toggle('on', i === p)); }, { passive:true }));
+  };
+  const keep = () => { if (!S.cover || typeof S.cover !== 'object') S.cover = {}; if (sel.length) S.cover[k] = [...sel]; else delete S.cover[k]; save(); };
+  el.addEventListener('click', e => {
+    if (e.target === el || e.target.closest('[data-cv="done"]')) return closeCover();
+    if (e.target.closest('[data-cv="clear"]')){ sel.length = 0; keep(); const sx = [...el.querySelectorAll('.cvp-sc')].map(c => c.scrollLeft); draw(); el.querySelectorAll('.cvp-sc').forEach((c, i) => c.scrollLeft = sx[i]); return; }
+    const c = e.target.closest('.cvp-c'); if (!c) return;
+    const id = c.dataset.id, at = sel.indexOf(id);
+    if (at >= 0) sel.splice(at, 1); else if (sel.length >= 3){ showToast('Up to 3 pictures', false); return; } else sel.push(id);
+    keep(); const sx = [...el.querySelectorAll('.cvp-sc')].map(x => x.scrollLeft); draw(); el.querySelectorAll('.cvp-sc').forEach((x, i) => x.scrollLeft = sx[i]);
+  });
+  draw(); document.body.appendChild(el);
 }
 function renderCollection(){
   const packs = COLLECTIONS.filter(g => colGroup === 'all' || colGroup === g.id);
   const keys = [];
-  packs.forEach(g => { g.sets.forEach(s => keys.push(s)); if (g.scenes) keys.push(SCENES_KEY); });
+  packs.forEach(g => { g.sets.forEach(s => keys.push(s)); if (g.sceneKey) keys.push(g.sceneKey); });
   if (colGroup === 'all'){   // all packs: rarest sets first, scenes last
-    const rk = k => k === SCENES_KEY ? 99 : RARITY_ORDER.indexOf((CARDS.find(c => c.set === k) || {}).rarity);
+    const rk = k => sceneDefOf(k) ? 99 : RARITY_ORDER.indexOf((CARDS.find(c => c.set === k) || {}).rarity);
     keys.sort((a, b) => rk(a) - rk(b));
   }
-  colSets = (colSets || []).filter(k => keys.includes(k)); colOpen = colOpen || {};   // drop picks from a pack that is no longer shown (the app can draw before these vars are set)
+  colSets = (colSets || []).filter(k => keys.includes(k)); if (!colInit){ colInit = true; colOpen = S.colOpen && typeof S.colOpen === 'object' && !Array.isArray(S.colOpen) ? { ...S.colOpen } : {}; } colOpen = colOpen || {};   // drop picks from a pack that is no longer shown (the app can draw before these vars are set)
   const tile = colTile;
   // pack picker: one tile per pack with its card back and how many you have
-  const pkCol = { all:'200,220,218', tarot:'255,107,26', mlbb:'124,92,255' };
+  const pkCol = { all:'200,220,218', tarot:'255,107,26', mlbb:'124,92,255', hod:'255,184,58' };
   const pkTile = (id, name) => {
     const L = CARDS.filter(c => id === 'all' || COLLECTIONS.find(g => g.id === id).sets.includes(c.set));
     const art = id === 'all' ? COLLECTIONS.map(g => `<img src="${cardImg(DECKS[g.id].back)}" alt="">`).join('') : `<img class="v-ur" src="${cardImg(DECKS[id].backUR)}" alt=""><img class="v-n" src="${cardImg(DECKS[id].back)}" alt="">`;   // V: UR back behind, normal back in front
     return `<button class="pk-tile${colGroup === id ? ' on' : ''}" style="--r:${pkCol[id] || '200,220,218'}" data-act="colg" data-g="${id}">${art}<b>${esc(name)}</b><small>${L.filter(c => ownedCard(c.id)).length}/${L.length}</small></button>`;
   };
-  let html = `<div class="pk-tiles">${pkTile('all', 'All')}${COLLECTIONS.map(g => pkTile(g.id, g.id === 'mlbb' ? 'Land of Dawn' : g.name)).join('')}</div>`;
+  let html = `<div class="pk-tiles">${pkTile('all', 'All')}${COLLECTIONS.map(g => pkTile(g.id, g.id === "mlbb" ? "Land of Dawn" : g.id === "hod" ? "H.O.D." : g.name)).join('')}</div>`;
   // search bar (magnifying glass in the title row): results replace the sets while something is typed
   if (colSearch) html += `<div id="ccRes">${colQ ? colSearchHTML(colQ) : ''}</div>`;
   html += `<div id="ccMain"${colSearch && colQ ? ' hidden' : ''}>`;
@@ -3769,33 +4086,40 @@ function renderCollection(){
   // overview bars for whatever pack tab is picked (hidden while categories are picked)
   if (!colSets.length){
     const pool = CARDS.filter(c => packs.some(g => g.sets.includes(c.set)));
-    const title = colGroup === 'all' ? 'All packs' : colGroup === 'mlbb' ? 'Land of Dawn' : packs[0].name;
+    const title = colGroup === 'all' ? 'All packs' : colGroup === 'mlbb' ? 'Land of Dawn' : colGroup === 'hod' ? 'Hand of Destiny' : packs[0].name;
     html += `<div class="cc-over"><div class="cc-tt"><b>${esc(title)}</b><span>${pool.filter(c => ownedCard(c.id)).length}/${pool.length}</span></div>${RARITY_ORDER.map(r => {
       const L = pool.filter(c => c.rarity === r); if (!L.length) return '';
       const g = L.filter(c => ownedCard(c.id)).length;
       return `<div class="cc-row"><span style="color:${RARITY[r].color}">${RARITY[r].name}</span><span class="cc-bar"><i style="width:${g / L.length * 100}%;background:${RARITY[r].color}"></i></span><span>${g}/${L.length}</span></div>`; }).join('')}</div>`;
   }
+  if (!keys.length) html += `<div class="empty">No cards yet.<br>This pack is coming soon.</div>`;
   (colSets.length ? keys.filter(k => colSets.includes(k)) : keys).forEach(k => {
     const I = colInfo(k), open = colOpen[k] !== false;
-    const scene = k === SCENES_KEY;
-    const prevIds = scene ? SCENES.filter(sc => S.scenes[sc.id]).map(sc => sc.id) : I.list.filter(c => ownedCard(c.id)).map(c => c.id);
-    // 3 cards in the preview: owned ones face up in front, topped up with face-down backs (1 up 2 down, 2 up 1 down, 3 up)
-    const up = prevIds.slice(0, 3), downs = scene ? [] : I.list.filter(c => !ownedCard(c.id)).map(c => backOf(c)).slice(0, 3 - up.length);
-    const prev = [...downs, ...up];
-    const claim = scene ? claimBtn(SCENES_KEY, I.got === I.n, SCENE_REWARD) : claimBtn(k, I.ready, SET_REWARD[I.rar], true);
-    const cnt = !scene && setTimes(k) ? `${I.two}/${I.n} ×2` : `${I.got}/${I.n}`;
-    html += `<section class="cc-fold${open ? ' open' : ''}${I.ready ? ' ready' : ''}" style="--c:${I.col};--rows:${open ? (k === 'Puzzle' ? (pzGrid ? 3 : 1) : Math.ceil(I.n / 3)) : 0}">
-      <div class="cc-hd" data-act="colfold" data-set="${esc(k)}">
-        <div class="cc-pv${scene ? ' land' : ''}">${prev.map(id => `<img src="${cardImg(id)}" alt="">`).join('') || '<i></i>'}</div>
-        <div class="cc-mid"><b>${esc(I.name)}<small>${cnt}</small></b><div class="cc-bar"><i style="width:${I.f1 * 100}%"></i>${I.f1 >= 1 && I.f2 ? `<i class="gold" style="width:${I.f2 * 100}%"></i>` : ''}</div></div>
-        ${claim}
+    const sd = sceneDefOf(k), scene = !!sd, duo = k === 'Duo', wide = scene || duo;
+    const prev = headIds(k, I, sd, duo), noneOwned = !prev.length;
+    const bkDeck = scene ? (k === '__realms' ? 'hod' : 'tarot') : (I.list[0].deck || 'tarot'), bkUR = !scene && I.rar === 'ultimate';
+    const pay = scene ? scenePay(k) : setPay(k);
+    const poker = k === 'Poker';
+    const claim = poker ? '' : scene ? claimBtn(k, I.got === I.n, pay) : claimBtn(k, I.ready, pay, true);
+    const payHtml = poker ? '' : claimPay2(pay, !I.ready);
+    const cnt = !scene && !poker && setTimes(k) ? `${I.got}/${I.n} <span class="nx" title="Progress to the next claim (2 of each card)">${I.two}/${I.n}</span> (${setTimes(k)}x)` : `${I.got}/${I.n}`;   // after a claim: what you own, then (gold) how many cards already have the 2 copies the next claim needs
+    html += `<section class="cc-fold${open ? ' open' : ''}${I.ready ? ' ready' : ''}" style="--c:${I.col};--rows:${open ? (k === 'Puzzle' ? (pzGrid ? 3 : 1) : duo ? Math.ceil(I.n / 2) * 1.5 : FAN_SET[k] ? 1.5 : k === 'Poker' ? 4 : Math.ceil(I.n / 3) + 0) : 0}">
+      <div class="cc-hd">
+        <div class="cc-pv${wide && !noneOwned ? ' land' : ''} n${noneOwned ? 3 : prev.length}"${noneOwned ? '' : ` data-act="cover" data-set="${esc(k)}"`}>${noneOwned ? [0, 1, 2].map(() => `<img class="bk" src="${cardImg(DECKS[bkDeck][bkUR ? 'backUR' : 'back'])}" alt="">`).join('') : prev.map((id, i) => `<img${/^HD_DUO\d/.test(id) ? ' class="dj"' : ''} src="${cardImg(id)}" style="z-index:${prev.length - i}" alt="">`).join('')}</div>
+        <div class="cc-mid" data-act="colfold" data-set="${esc(k)}"><b>${esc(I.name)}<small>${cnt}</small></b><div class="cc-bar"><i style="width:${I.f1 * 100}%"></i>${I.f1 >= 1 && I.f2 ? `<i class="gold" style="width:${I.f2 * 100}%"></i>` : ''}</div></div>
+        ${poker ? '' : `<div class="cc-act">${claim}${payHtml}</div>`}
       </div>
       ${open ? `<div class="cc-bd">${scene
-        ? `<div class="col-scenes">${SCENES.map(sc => S.scenes[sc.id]
-            ? `<button class="cs" data-act="inspect" data-id="${sc.id}" data-scene="1"><img loading="lazy" decoding="async" src="${cardImg(sc.id)}" alt="${esc(sc.name)}"></button>`
-            : `<div class="cs locked"><span>Undiscovered scene</span></div>`).join('')}</div>`
+        ? `<div class="col-scenes pbd">${sd.list.map((sc, i) => {   // pin board: framed pictures, two per line, a little crooked and uneven
+            const se = SCENE_EDGE[sc.id] || ['#4fe6d8', '#8fb', '#f5c542'], st = `style="--e1:${se[0]};--e2:${se[1]};--e3:${se[2]};--r:${((i * 37) % 7 - 3) * .9}deg;--ty:${((i * 53) % 5 - 2) * 3}px;--tx:${((i * 29) % 5 - 2) * 2}px"`, nm = sc.name.replace(/^Chapter \d+:\s*/, '');
+            return S.scenes[sc.id]
+            ? `<button class="cs pb" ${st} data-act="inspect" data-id="${sc.id}" data-scene="1"><img loading="lazy" decoding="async" src="${cardImg(sc.id)}" alt="${esc(sc.name)}"><span>${esc(nm)}</span></button>`
+            : `<div class="cs pb locked" ${st}><i></i><span>???</span></div>`; }).join('')}</div>`
+        : duo ? duoGrid(I.list)
+        : FAN_SET[k] ? fanGrid(I.list, k)
+        : poker ? pokerSuits(I.list)
         : k === 'Puzzle' ? (pzGrid ? `<div class="col-grid pz-grid">${[...I.list].sort((a, b) => a.id.localeCompare(b.id)).map(tile).join('')}</div><button class="pz-pic" data-act="pzview">Show the picture</button>` : puzzleStrip(I.list))
-        : `<div class="col-grid">${I.list.map(tile).join('')}</div>`}</div>` : ''}
+        : `<div class="col-grid">${orderedList(k, I.list).map(tile).join('')}</div>`}</div>` : ''}
     </section>`;
   });
   return `<div class="collection cc">${html}</div></div>`;
@@ -3867,17 +4191,80 @@ function emblem(L){
 
 /* ---- Collection search: magnifying glass in the title row ---- */
 var colSearch = false, colQ = '';
+// Duo: sideways cards that come in pairs (001+002, 003+004 ...). Own both and they sit together as one picture.
+// Duo: the preview in the folder header; a finished pair shows as its joined picture
+function duoPreview(list){
+  const L = [...list].sort((a, b) => a.id.localeCompare(b.id)), joined = [], singles = [];
+  for (let i = 0; i < L.length; i += 2){
+    const a = L[i], b = L[i + 1];
+    if (b && ownedCard(a.id) && ownedCard(b.id)) joined.push('HD_DUO' + String(i / 2 + 1).padStart(2, '0'));
+    else [a, b].forEach(c => { if (c && ownedCard(c.id)) singles.push(c.id + '_l'); });
+  }
+  // pairs 3 (Khufra) and 5 (Alice / Natalia) have busy art: they go to the back of the preview, shown only if nothing else is owned
+  const busy = id => id === 'HD_DUO03' || id === 'HD_DUO05' || /^HD_PTR(05|06|09|10)_l$/.test(id);
+  return [...joined, ...singles].sort((a, b) => busy(a) - busy(b));
+}
+const DUO_GLOW = [["255,38,145", "254,255,38"], ["38,222,255", "255,246,38"], ["255,139,38", "192,255,38"], ["86,38,255", "207,38,255"], ["255,182,38", "96,38,255"], ["255,156,38", "38,62,255"], ["38,184,255", "73,38,255"]];
+function duoGrid(list){
+  const L = [...list].sort((a, b) => a.id.localeCompare(b.id)), pairs = [];
+  for (let i = 0; i < L.length; i += 2) pairs.push(L.slice(i, i + 2));
+  const pill = n => n > 1 ? `<span class="qty">×${n}</span>` : '';
+  const one = c => { const n = ownedCard(c.id); return n
+    ? `<button class="cs duo-c" data-act="inspect" data-id="${c.id}" data-land="1"><img loading="lazy" decoding="async" src="${landImg(c.id)}" alt="${esc(c.name)}">${pill(n)}</button>`
+    : `<div class="cs duo-c locked"><img loading="lazy" decoding="async" src="${landImg(c.id)}" alt=""></div>`; };
+  return `<div class="col-duo">${pairs.map((p, k) => {
+    const a = ownedCard(p[0].id), b = p[1] ? ownedCard(p[1].id) : 0, id = 'HD_DUO' + String(k + 1).padStart(2, '0');
+    // both owned: the two cards join into one picture (each one's count sits in its own bottom corner)
+    return a && b
+      ? `<button class="duo-one" data-act="inspect" data-id="${id}" data-land="1" style="--g1:${DUO_GLOW[k][0]};--g2:${DUO_GLOW[k][1]}"><img loading="lazy" decoding="async" src="${cardImg(id)}" alt="${esc(p[0].name)} and ${esc(p[1].name)}">${a > 1 ? `<span class="qty ql">×${a}</span>` : ''}${b > 1 ? `<span class="qty">×${b}</span>` : ''}</button>`
+      : `<div class="duo">${p.map(one).join('')}</div>`; }).join('')}</div>`;
+}
+// Two-card categories (Promo, Joker): the cards overlap like a small fan. The Jokers stay locked until all 52 Poker cards are owned.
+const FAN_SET = { Joker:['165,60,255', '235,30,70'], Promo:['235,60,50', '255,184,58'] };
+function fanGrid(list, k){
+  const [g1, g2] = FAN_SET[k], locked = k === 'Joker' && !jokersOpen();
+  const one = (c, cls) => {
+    const n = ownedCard(c.id), img = `<img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt="${n ? esc(c.name) : ''}">`;
+    if (locked) return `<div class="fc ${cls} lk">${img}<b>LOCKED</b></div>`;
+    return n ? `<button class="fc ${cls}" data-act="inspect" data-id="${c.id}">${img}</button>` : `<div class="fc ${cls} off">${img}</div>`;
+  };
+  // the ×N pills sit in the two bottom corners of the category, not on the cards
+  const corner = (c, side) => { const n = locked ? 0 : ownedCard(c.id); return n > 1 ? `<span class="qty fq fq-${side}">×${n}</span>` : ''; };
+  return `<div class="col-fan" style="--g1:${g1};--g2:${g2}">${list.map((c, i) => one(c, i ? 'fb' : 'fa')).join('')}${list[0] ? corner(list[0], 'l') : ''}${list[1] ? corner(list[1], 'r') : ''}</div>${locked ? '<div class="jk-note c"><span>Finish the Poker set to unlock.</span></div>' : ''}`;
+}
+// Poker: four suit lines, each with its own claim; 7 cards per row, extra copies show as stacked edges + a ×N pill, rank on the corner
+function pokerTile(c){
+  const n = ownedCard(c.id), rk = RANKS13[pokerIdx(c) % 13];
+  const img = `<img src="${cardImg(c.id)}" alt="${n ? esc(c.name) : ''}">`;
+  const st = n > 2 ? ' s2' : n > 1 ? ' s1' : '';
+  return `<div class="pkc${st}">${n ? `<button class="ct r-${c.rarity}" data-act="inspect" data-id="${c.id}">${img}</button>` : `<div class="ct locked r-${c.rarity}">${img}</div>`}<i>${rk}</i>${n > 1 ? `<span class="qty">×${n}</span>` : ''}</div>`;
+}
+function pokerSuits(list){
+  return `<div class="pk-suits">${POKER_SUITS.map(([key, name, sym, col]) => {
+    const L = keyCards(key), got = L.filter(c => ownedCard(c.id)).length, two = L.filter(c => ownedCard(c.id) >= 2).length, t = setTimes(key), ready = setReady(key);
+    const cnt = t ? `${got}/13 <span class="nx" title="Progress to the next claim (2 of each card)">${two}/13</span> (${t}x)` : `${got}/13`;
+    const btn = t && !ready ? `<button class="set-claim got" disabled>Claimed</button>` : `<button class="set-claim${ready ? ' ready' : ''}" ${ready ? `data-act="setclaim" data-set="${key}"` : 'disabled'}>Claim</button>`;
+    return `<div class="pk-suit" style="--sc:${col}"><div class="pk-sh"><b><em>${sym}</em> ${name}<small>${cnt}</small></b>${claimPay(POKER_SUIT_PAY, !ready)}${btn}</div><div class="pk-row">${L.map(pokerTile).join('')}</div></div>`;
+  }).join('')}</div>`;
+}
+// cards in your own order (S.order[set], set by dragging) and the ones you made big (S.big[id], by holding); new cards go after
+function orderedList(k, list){
+  const saved = (S.order || {})[k]; if (!Array.isArray(saved) || !saved.length) return list;
+  const pos = id => { const i = saved.indexOf(id); return i < 0 ? 1e6 : i; };
+  return list.map((c, n) => [c, n]).sort((a, b) => pos(a[0].id) - pos(b[0].id) || a[1] - b[1]).map(x => x[0]);
+}
 function colTile(c){
+  if (c.joker && !jokersOpen()) return `<div class="ct locked jl r-common"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt=""><b>LOCKED</b></div>`;
   const n = ownedCard(c.id);
   return n
-    ? `<button class="ct r-${c.rarity}${CARD_EDGE[c.id] && (c.rarity === 'ultimate' || c.rarity === 'legendary') ? ' edge' : ''}"${edgeStyle(c.id)} data-act="inspect" data-id="${c.id}"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt="${esc(c.name)}">${n > 1 ? `<span class="qty">×${n}</span>` : ''}</button>`
-    : `<div class="ct locked r-${c.rarity}"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt=""></div>`;   // not owned: face up but dark, like the puzzle pieces
+    ? `<button class="ct${S.big && S.big[c.id] ? (S.big[c.id] === 2 ? ' big br' : ' big') : ''} r-${c.rarity}${CARD_EDGE[c.id] && (c.rarity === 'ultimate' || c.rarity === 'legendary') ? ' edge' : ''}"${edgeStyle(c.id)} data-act="inspect" data-id="${c.id}"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt="${esc(c.name)}">${n > 1 ? `<span class="qty">×${n}</span>` : ''}</button>`
+    : `<div class="ct locked r-${c.rarity}" data-cid="${c.id}"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt=""></div>`;   // not owned: face up but dark, like the puzzle pieces
 }
 // lower-case, no accents, curly quotes made straight: "Soryu" finds "Sōryū", "its" finds "it's"
 const searchNorm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’‘`]/g, "'").replace(/[“”]/g, '"');
 function cardSearchText(c){
-  const pack = c.deck === 'mlbb' ? 'land of dawn mlbb' : 'tarot';
-  return searchNorm([c.name, c.hero, setLabel(c.set), RARITY[c.rarity].name, pack, ownedCard(c.id) ? flavorOf(c.id) : ''].join('   '));
+  const pack = c.deck === 'mlbb' ? 'land of dawn mlbb' : c.deck === 'hod' ? 'hand of destiny hod' : 'tarot';
+  return searchNorm([c.name, c.hero, setLabel(c.set), c.joker ? 'J joker' : RARITY[c.rarity].name, pack, ownedCard(c.id) ? flavorOf(c.id) : ''].join('   '));
 }
 function colSearchHTML(q){
   const words = searchNorm(q).split(/\s+/).filter(Boolean);
@@ -3888,7 +4275,7 @@ function colSearchHTML(q){
   if (!hits.length) return `<p class="cc-none">No cards match “${esc(q)}”.</p>`;
   const own = hits.filter(c => ownedCard(c.id)).length;
   return `<div class="cc-count">${hits.length} ${hits.length === 1 ? 'card' : 'cards'} · ${own} owned</div>
-    <div class="col-grid cc-hits">${hits.map(c => `<div class="cc-hit${ownedCard(c.id) ? '' : ' off'}">${colTile(c)}<b>${esc(c.name)}</b><small style="color:${RARITY[c.rarity].color}">${RARITY[c.rarity].name}${c.hero && c.hero !== c.name ? ' · ' + esc(c.hero) : ' · ' + esc(setLabel(c.set))}</small></div>`).join('')}</div>`;
+    <div class="col-grid cc-hits">${hits.map(c => `<div class="cc-hit${ownedCard(c.id) ? '' : ' off'}">${colTile(c)}<b>${esc(c.name)}</b><small${c.joker ? ' class="jr"' : ` style="color:${RARITY[c.rarity].color}"`}>${c.joker ? 'J' : RARITY[c.rarity].name}${c.hero && c.hero !== c.name ? ' · ' + esc(c.hero) : ' · ' + esc(setLabel(c.set))}</small></div>`).join('')}</div>`;
 }
 function colSearchUpdate(){
   const res = $('#ccRes'), main = $('#ccMain'); if (!res) return;
@@ -4072,7 +4459,7 @@ async function undoSlip(q){
 }
 async function slipAvoid(q){
   if (slippedToday(q)) return;
-  const n = daysClean(q), best = Math.max(q.best || 0, n), claimed = isDone(q) && q.undo;
+  const claimed = isDone(q) && q.undo;
   if (!await ask('Slipped?', `The count goes back to 0.${claimed ? ' Today’s reward is taken back.' : ''}`, 'Slipped')) return;
   doSlip(q);
 }
@@ -4199,7 +4586,7 @@ $('#vacation').addEventListener('change', e => {
    Newer than this version: Settings > App shows it with its notes and a Download button (opens the APK in the browser),
    the gear gets a dot, and a small banner sits on top of Quests until it's closed (× hides it for that version).
    No notifications. APP_VERSION is kept in step with package.json by scripts/android-version.js (npm run sync). */
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.3.0';
 const UPDATE_REPO = 'Meih125/psych';
 let appVersion = APP_VERSION, upChecking = false;
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
@@ -4666,9 +5053,8 @@ function wBoardHTML(w){
     ${st ? `<div class="wb-l"><span>Steps</span><b>${esc(st.text)}</b></div><span class="wb-bar"><i style="width:${st.pct}%"></i></span>` : ''}
     <div class="wb-ft"><span class="wb-tm">${clock}${wClock(b.reset - now())}</span>${st ? `<small class="${st.syncWarn ? 'warn' : ''}">${esc(st.sync)}</small>` : ''}</span>
     ${st && (st.btn || []).length ? `<span class="wt-b cy">CLAIM</span>` : ''}</div></div></div>`;
-  const tabs = `<div class="wb-tabs">${b.groups.map(x => { const n = wCount(x); return `<button type="button" class="${x.key === tabKey ? 'on' : ''}${x.red ? ' red' : ''}" data-wtab="${x.key}" data-wid="${w.id}"><b>${esc(x.tab)}</b></button>`; }).join('')}</div>`;
+  const tabs = `<div class="wb-tabs">${b.groups.map(x => { return `<button type="button" class="${x.key === tabKey ? 'on' : ''}${x.red ? ' red' : ''}" data-wtab="${x.key}" data-wid="${w.id}"><b>${esc(x.tab)}</b></button>`; }).join('')}</div>`;
   const leftOf = (ends, time) => ends > now() ? wLeft(ends - now()) : time || '';   // days / hours / minutes, no seconds, like the phone
-  const left = g ? leftOf(g.ends, g.time) : '';
   const ghLabel = !g ? '' : g.key === 'due' ? '// DUE SOON' : g.key === 'daily' ? '// RESETS IN' : g.key === 'others' ? '// OTHERS' : '';
   const gh = g && ghLabel ? `<div class="wb-gh${g.key === 'due' ? ' red' : ''}"><span>${ghLabel}</span>${g.key === 'daily' && g.ends ? `<span class="wb-gh-time">${clock}${wLeft(g.ends - now())}</span></span>` : ''}</div>` : '';
   const av = ghLabel ? 312 : 336, all1 = wPaginate(g ? g.rows : [], av + 40), pages = all1.length === 1 ? all1 : wPaginate(g ? g.rows : [], av);   // one page needs no pager, so it gets that room too
@@ -4810,9 +5196,9 @@ function bdOpen(){
   const pk = $('#pack'); if (pk.classList.contains('open')) return;
   const packs = SHOP.filter(x => !x.soon);
   const its = packs.map(it => ({ cover:deckOf(it).cover, name:it.name.replace(/ Pack$/, ''), col:deckOf(it).glow.mid }));
-  its.push({ q:true, name:'Coming soon', col:'#f08a24' });   // the pack that is not out yet
   const face = (k, e) => k.q ? `<span class="c q ${e}"><i>?</i></span>` : `<span class="c ${e}" style="background-image:url(${k.cover})"></span>`;
-  pk.innerHTML = `<div class="dl-pop bd-pop"><div class="dl-head"><b>Happy birthday</b></div>
+  pk.innerHTML = `<div class="dl-pop bd-pop"><div class="bd-rays"></div><div class="bd-cf">${Array.from({ length:22 }, (_, i) => `<i style="left:${(i * 37) % 100}%;animation-duration:${3 + (i % 5) * .7}s;animation-delay:-${(i * .37) % 4}s;width:${5 + i % 4}px;background:${['#ffc94a', '#ffe9a0', '#c98a14', '#fff'][i % 4]}${i % 3 ? '' : ';border-radius:50%'}"></i>`).join('')}</div>
+    <div class="dl-head"><b>Happy Birthday</b><small>A gift for you</small></div>
     <div class="bd-fl">${its.map((k, i) => `<div class="bd-it" style="--gc:${k.col}"><div class="bd-stk">${face(k, 'c1')}${face(k, 'c2')}${face(k, 'c3')}</div><span class="bd-nm">${esc(k.name)} ×${BD_PACKS}</span></div>`).join('')}</div>
     <div class="dl-amt"><svg viewBox="0 0 32 32"><use href="#i-coin"/></svg><b>${BD_GOLD}</b></div><div class="dl-hint">Tap to continue</div></div>`;
   pk.classList.add('open', 'dl');
@@ -4862,7 +5248,7 @@ function takeQuiet(r){
   S.gold -= lv; if (paidTo > newL) S.rewardedLevel = newL;
 }
 function avoidAuto(){
-  const sod = startOfDay(); let gx = 0, gg = 0, days = 0;
+  const sod = startOfDay(); let days = 0;
   S.quests.forEach(q => {
     if (q.kind !== 'avoid') return;
     if (q.autoTo == null || q.autoTo > sod){ q.autoTo = sod; return; }   // from today on
@@ -4875,7 +5261,7 @@ function avoidAuto(){
       const xp = boost(q.xp, r), gold = boost(q.gold, r);
       (q.log ||= []).push({ t:addDays(d, 1) - 1000, xp, gold, auto:true });
       q.count++; q.streak = n; q.bestStreak = Math.max(q.bestStreak || 0, n);
-      giveQuiet({ xp, gold }); gx += xp; gg += gold; days++;
+      giveQuiet({ xp, gold }); days++;
     }
     if (q.log) q.log.sort((a, b) => a.t - b.t);
     q.autoTo = sod;
