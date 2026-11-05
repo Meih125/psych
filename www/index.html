@@ -22,6 +22,7 @@
     <linearGradient id="gBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5c7a78"/><stop offset="1" stop-color="#24393a"/></linearGradient>
     <linearGradient id="gBarHi" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb07a"/><stop offset="1" stop-color="#e0561a"/></linearGradient>
   </defs>
+  <symbol id="i-eye" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></g></symbol>
   <symbol id="i-cal" viewBox="0 0 24 24"><path d="M4 6.5h16V20H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 10.5h16M8.5 3.5v5M15.5 3.5v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 14h2.5v2.5H8z" fill="currentColor"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.4 15.4L21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
   <symbol id="i-coin" viewBox="0 0 32 32"><path d="M16 2.5l11.7 6.75v13.5L16 29.5 4.3 22.75V9.25z" fill="rgba(255,201,74,.16)" stroke="#ffc94a" stroke-width="2" stroke-linejoin="round"/><path d="M7 10l9-5.2 9 5.2" fill="none" stroke="rgba(255,240,200,.55)" stroke-width="1"/><path d="M20.6 12.3A6 6 0 1 0 21.6 17h-5" fill="none" stroke="#ffd76a" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -52,7 +53,7 @@
       <div class="lvl-pop" id="lvlPop"></div>
       <div class="hd-xp">
         <div class="xplabel"><span id="lvlText">Rookie</span></div>
-        <div class="xpbar seg"><div class="xpfill" id="xpFill"></div><span class="xpnum" hidden></span></div>
+        <div class="xpbar seg"><div class="xpfill" id="xpFill"></div><i class="xphead" aria-hidden="true"></i><span class="xpnum" hidden></span></div>
         <div class="hd-lab"><b id="lvA">Lv 1</b><span id="xpText">0 / 100 XP</span><b id="lvB">Lv 2</b></div>
       </div>
     </div>
@@ -80,6 +81,7 @@
 <button class="fab-add" id="fabAdd" type="button" aria-label="Post a quest" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
 <nav class="tabs">
   <div class="tabs-inner">
+    <i class="tab-hl" aria-hidden="true"></i>
     <button class="tab" data-tab="quests"><svg viewBox="0 0 24 24"><use href="#i-swords"/></svg>Quests<span class="badge" hidden></span></button>
     <button class="tab" data-tab="progress"><svg viewBox="0 0 24 24"><use href="#i-chart"/></svg>Progress<span class="badge" hidden></span></button>
     <button class="tab" data-tab="inventory"><svg viewBox="0 0 24 24"><use href="#i-chest"/></svg>Pack<span class="badge" hidden></span></button>
@@ -148,8 +150,9 @@
       <input type="hidden" id="fSince">
     </div>
 
+    <label class="toggle" id="noResetRow" style="display:none;margin-top:14px"><span>Reset<span id="fResetInfo" class="sk-host"></span></span><input type="checkbox" id="fReset" checked><i></i></label>
     <div class="field" id="daysField" data-show="standard pair record scaling target">
-      <span class="lbl">Resets every</span>
+      <span class="lbl" id="daysLbl">Resets every</span>
       <input type="hidden" id="fDays" value="1">
       <div class="days-pick" id="daysPick">
         <button type="button" class="dp-step" data-dd="-1" aria-label="Fewer days">−</button>

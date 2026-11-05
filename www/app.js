@@ -36,8 +36,9 @@ const KIND_HELP = {
 var TICKS = [], tickN = 0, tickT = 0;
 function every(sec, fn){ TICKS.push({ sec, fn }); }
 function tickRun(){ tickN++; for (const k of TICKS) if (tickN % k.sec === 0){ try { k.fn(); } catch(e){} } }
-function tickStart(){ if (!tickT && !document.hidden) tickT = setInterval(tickRun, 1000); }
-function tickStop(){ clearInterval(tickT); tickT = 0; }
+// the tick lands right after each new second starts and is drawn with the next screen frame, so countdowns step evenly
+function tickStart(){ if (tickT || document.hidden) return; const go = () => { tickT = setTimeout(go, 1000 - (Date.now() % 1000) + 4); requestAnimationFrame(tickRun); }; tickT = setTimeout(go, 1000 - (Date.now() % 1000) + 4); }
+function tickStop(){ clearTimeout(tickT); tickT = 0; }
 document.addEventListener('visibilitychange', () => { if (document.hidden) tickStop(); else tickStart(); });
 // Idle: after 30 s with no touch the looping glows / shimmers pause where they are (html.idle in app.css) so the screen
 // can stop redrawing; the first touch, scroll or key brings them straight back. One-off animations are long done by then.
@@ -47,6 +48,8 @@ function wake(){ lastInput = Date.now(); if (document.documentElement.classList.
 addEventListener('scroll', wake, { capture:true, passive:true });
 every(1, () => { if (Date.now() - lastInput > 30000) document.documentElement.classList.add('idle'); });
 
+// one motion language for the whole app: three speeds and three curves (arriving, leaving, moving across)
+var MO = { fast:200, norm:320, slow:500, arrive:'cubic-bezier(.2,.8,.3,1)', leave:'cubic-bezier(.4,0,.3,1)', move:'cubic-bezier(.5,0,.3,1)', spring:'cubic-bezier(.3,1.4,.5,1)' };
 /* ================= Time ================= */
 let NOW_AT = 0;   // set while applying a claim made earlier on a home-screen widget, so it counts for the day it was made
 const now = () => NOW_AT || Date.now();
@@ -59,7 +62,9 @@ const nextMonday = () => addDays(weekStart(), 7);
 const MONTHLY = 99;
 const monthStart = (t = now()) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); };
 const addMonths = (t, n) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth() + n, 1).getTime(); };   // the 1st, n months on
-const cycleAfter = (from, days) => days === MONTHLY ? addMonths(from, 1) : days === 7 ? addDays(weekStart(from), 7) : addDays(from, days);   // Weekly = calendar week, resets Monday 00:00
+// Biweekly = every second Monday 00:00, counted from a fixed Monday (1 Jan 2024), so it never drifts
+const biStart = (t = now()) => { const w = Math.floor(Math.round((weekStart(t) - new Date(2024, 0, 1).getTime()) / 6048e5)); return addDays(weekStart(t), -7 * (((w % 2) + 2) % 2)); };
+const cycleAfter = (from, days) => days === MONTHLY ? addMonths(from, 1) : days === 7 ? addDays(weekStart(from), 7) : days === 14 ? addDays(biStart(from), 14) : addDays(from, days);   // Weekly = calendar week (Monday 00:00), Biweekly = every second Monday, Monthly = the 1st
 const cycleName = d => d === 1 ? 'Daily' : d === 7 ? 'Weekly' : d === 14 ? 'Biweekly' : d === MONTHLY ? 'Monthly' : `Every ${d} days`;
 const pad2 = n => String(n).padStart(2, '0');
 const dayKey = (t = now()) => { const d = new Date(t); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
@@ -274,7 +279,13 @@ function repairClock(){
 }
 // every claim is logged so the Progress tab can show history
 function logClaim(arr, xp, gold){ arr.push({ t:now(), xp, gold }); if (arr.length > 4000) arr.shift(); }
-function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e){} try { pushWidgets(); } catch(e){} }
+// saving is batched: many taps in a row write once (~0.35s after the last), and always flush when the app is hidden/closed
+let saveT = 0;
+function flushSave(){ if (!saveT) return; clearTimeout(saveT); saveT = 0; try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e){} try { pushWidgets(); } catch(e){} }
+function save(){ if (saveT) return; saveT = setTimeout(flushSave, 350); }
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushSave(); });
+window.addEventListener('pagehide', flushSave);
+window.addEventListener('beforeunload', flushSave);
 
 /* ================= Quest logic ================= */
 const byId = id => S.quests.find(q => q.id === id);
@@ -287,6 +298,7 @@ function isDone(q){
   const t = now();
   if (q.kind === 'pair') return listItems(q).every(r => r.until > t);
   if (q.kind === 'scaling' || q.kind === 'counter' || isTracker(q)) return false;
+  if (q.kind === 'record' && q.noReset) return false;   // no reset: any number of entries, any time
   return q.doneUntil > t;
 }
 // Target: its own countdown (Resets every N days). A new cycle starts when the old one runs out.
@@ -309,9 +321,10 @@ const periodOf = q => q.period || 7;
 function periodStart(q){
   if (periodOf(q) === 7) return weekStart();
   if (periodOf(q) === MONTHLY) return monthStart();
+  if (periodOf(q) === 14) return biStart();
   return q.week && now() < addDays(q.week, periodOf(q)) ? q.week : startOfDay();
 }
-const periodEnd = q => periodOf(q) === 7 ? nextMonday() : periodOf(q) === MONTHLY ? addMonths(now(), 1) : addDays(periodStart(q), periodOf(q));
+const periodEnd = q => periodOf(q) === 7 ? nextMonday() : periodOf(q) === MONTHLY ? addMonths(now(), 1) : periodOf(q) === 14 ? addDays(biStart(), 14) : addDays(periodStart(q), periodOf(q));
 const periodWord = q => periodOf(q) === 7 ? 'week' : periodOf(q) === 1 ? 'day' : periodOf(q) === MONTHLY ? 'month' : periodOf(q) === 14 ? '2 weeks' : `${periodOf(q)} days`;
 const weekClaims = q => (q.week === periodStart(q) ? q.weekClaims : 0);
 function scaledReward(q, n){ const f = Math.pow(1 + (q.growth || 0) / 100, Math.max(0, n - 1)); return { xp:Math.min(REWARD_CAP, Math.round(q.xp * f)) || 0, gold:Math.min(REWARD_CAP, Math.round(q.gold * f)) || 0 }; }
@@ -532,7 +545,7 @@ function claimTally(q, input, rect){
   if (!pv.v){ shake(input); return; }
   snapshot();
   const pc = q.carry || 0;
-  const laps = pv.units && rect && !S.reduceFx;   // the fill-up show (not for widget entries or Reduce effects)
+  const laps = pv.units && rect;   // the fill-up show (not for widget entries or Reduce effects)
   tlFrom = { id:q.id, base:Math.min(1, pc / (q.chunk || 1)), total:q.total || 0, units:pv.units, xp:pv.xp, gold:pv.gold, laps };
   q.carry = pv.left; q.total = round2((q.total || 0) + pv.v); q.count = (q.count || 0) + 1;
   logClaim(q.log ||= [], pv.xp, pv.gold); Object.assign(q.log[q.log.length - 1], { v:pv.v, pc });
@@ -603,47 +616,133 @@ function legendFor(q){
   if (q.kind === 'scaling' || q.kind === 'counter') return `<div class="legend"><span>${sw('l1')}Once</span><span>${sw('l2')}Twice</span><span>${sw('l3')}3+ times</span></div>`;
   return `<div class="legend"><span>${sw('l2')}Done</span><span>${sw('')}Not done</span><span><b style="box-shadow:inset 0 0 0 1.5px #f2f7f6"></b>Today</span></div>`;
 }
+var bkSel = {};   // List back-claim: which missing items are ticked, per quest and day
+function bkMissing(q, o){ return listKeys(q).filter(k => !(o && o['p_' + k])); }
+function listBackHtml(q, o, label){
+  const miss = bkMissing(q, o), id = q.id + '|' + selDay, sel = bkSel[id] || (bkSel[id] = new Set(miss)), n = miss.filter(k => sel.has(k)).length;
+  const rows = listKeys(q).map(k => { const r = itemOf(q, k), done = !miss.includes(k);
+    return `<button type="button" class="dl-row${done ? ' done' : ''}"${done ? ' disabled' : ` data-act="bkpick" data-q="${q.id}" data-k="${k}"`}><i class="dl-ck${done ? ' on' : sel.has(k) ? ' sel' : ''}"></i><span>${esc(r.name)}</span><em>${done ? 'done' : rewardsHtml(r.xp, r.gold)}</em></button>`; }).join('');
+  const b = q.bonus && (q.bonus.xp || q.bonus.gold) ? `<span class="mut">Bonus ${rewardsHtml(q.bonus.xp, q.bonus.gold)} if all done</span>` : '<span></span>';
+  return `<div class="dayinfo di-list"><div class="dl-h"><b>${label}</b> · tick what you did</div>${rows}<div class="dl-f">${b}<button class="di-claim" data-act="backclaimlist" data-q="${q.id}" data-day="${selDay}"${n ? '' : ' disabled'}>Claim selected (${n})</button></div></div>`;
+}
 function dayInfo(q, map){
   if (!selDay) return '';
   const o = map[selDay], label = dayLabel(new Date(selDay + 'T00:00'));
-  if (!o) return `<div class="dayinfo"><b>${label}</b> · nothing claimed</div>`;
+  if (q.kind === 'pair' && selDay < dayKey() && bkMissing(q, o).length) return listBackHtml(q, o, label);
+  if (!o){   // a past day nobody claimed: "Claimed?" gives that day's reward and reconnects the streak
+    const can = selDay < dayKey() && ['standard', 'counter', 'scaling'].includes(q.kind);
+    return `<div class="dayinfo di-row"><span><b>${label}</b> · nothing claimed</span>${can ? `<button class="di-claim" data-act="backclaim" data-q="${q.id}" data-day="${selDay}">Claimed?</button>` : ''}</div>`; }
   let what = q.kind === 'pair' ? listKeys(q).filter(k => o['p_' + k]).map(k => esc(itemOf(q, k).name)).join(', ') + (o.bonus ? ' · bonus earned' : '')
-    : q.kind === 'avoid' && o.auto && o.auto === o.n ? 'Auto-claimed' : q.kind === 'scaling' || q.kind === 'counter' ? `Claimed ${o.n}×` : q.kind === 'tally' ? `Logged ${fmtU(q, o.v)}${o.n > 1 ? ` in ${o.n} entries` : ''}` : 'Completed';
+    : q.kind === 'avoid' && o.slip && !o.n ? '<span style="color:#ff8a7f">Slipped</span>' : q.kind === 'avoid' && o.auto && o.auto === o.n ? 'Auto-claimed' : q.kind === 'scaling' || q.kind === 'counter' ? `Claimed ${o.n}×` : q.kind === 'tally' ? `Logged ${fmtU(q, o.v)}${o.n > 1 ? ` in ${o.n} entries` : ''}` : 'Completed';
   return `<div class="dayinfo"><b>${label}</b> · ${what}${rewardsHtml(o.xp, o.gold)}</div>`;
+}
+// A forgotten day: claim it afterwards. It pays that day's reward and, for a daily quest, the streak joins up again.
+async function backClaim(q, key){
+  const D = startOfDay(new Date(key + 'T00:00').getTime()), t = D + 12 * 36e5;
+  if (!(D < startOfDay()) || dayMap(q)[key]) return;
+  if (!await ask(`Claim ${dayLabel(D)}?`, 'You get that day’s reward' + (q.kind === 'standard' && cycleDays(q) === 1 ? ' and your streak joins up again.' : '.'), 'Claim', 'btn-main')) return;
+  snapshot();
+  let R;
+  if (q.kind === 'standard'){
+    const daily = cycleDays(q) === 1, days = new Set((q.log || []).map(e => dayKey(e.t))); days.add(key);
+    let n = 1; if (daily) while (days.has(dayKey(addDays(D, -n)))) n++;
+    R = daily && streakReward(q) ? { xp:boost(q.xp, n), gold:boost(q.gold, n) } : { xp:q.xp, gold:q.gold };
+    (q.log ||= []).push({ t, xp:R.xp, gold:R.gold, back:true, at:now() });
+    if (daily){   // streak = the run of days ending at the latest claimed day
+      const latest = [...days].sort().pop(), L = new Date(latest + 'T00:00').getTime(); let run = 1; while (days.has(dayKey(addDays(L, -run)))) run++;
+      q.streak = run; q.bestStreak = Math.max(q.bestStreak || 0, run); const end = addDays(startOfDay(L), 1); if (end > (q.doneUntil || 0)) q.doneUntil = end;
+    }
+  } else {
+    R = q.kind === 'scaling' ? scaledReward(q, 1) : { xp:q.xp, gold:q.gold };
+    (q.log ||= []).push({ t, xp:R.xp, gold:R.gold, back:true, at:now() });
+  }
+  q.log.sort((a, b) => a.t - b.t); q.count = (q.count || 0) + 1;
+  grant({ xp:R.xp, gold:R.gold }, null, `${q.name}: ${dayLabel(D)} claimed`, q.id);
+  save(); render();
+}
+// List quest, forgotten day: the ticked items are claimed for that day. If that completes the day, the list bonus is paid and a daily list's streak joins up again.
+function backClaimList(q, key){
+  const D = startOfDay(new Date(key + 'T00:00').getTime()), t = D + 12 * 36e5, o = dayMap(q)[key], sel = bkSel[q.id + '|' + key];
+  if (!(D < startOfDay()) || !sel) return;
+  const keys = bkMissing(q, o).filter(k => sel.has(k)); if (!keys.length) return;
+  snapshot();
+  const daily = (q.days || 1) === 1, all = listKeys(q), full = all.every(k => keys.includes(k) || (o && o['p_' + k]));
+  // full days (every item done) so far, plus this one when it becomes full
+  const fd = new Set(); const m = dayMap(q); Object.keys(m).forEach(d => { if (all.every(k => m[d]['p_' + k])) fd.add(d); }); if (full) fd.add(key);
+  let n = 0; if (full && daily){ n = 1; while (fd.has(dayKey(addDays(D, -n)))) n++; }
+  const mul = (v) => full && daily && streakReward(q) ? boost(v, n) : v;
+  let xp = 0, gold = 0;
+  keys.forEach(k => { const r = itemOf(q, k), X = mul(r.xp), G = mul(r.gold); (r.log ||= []).push({ t, xp:X, gold:G, back:true, at:now() }); r.log.sort((a, b) => a.t - b.t); r.count = (r.count || 0) + 1; xp += X; gold += G; });
+  if (full && q.bonus && (q.bonus.xp || q.bonus.gold) && !(m[key] && m[key].bonus)){
+    const BX = mul(q.bonus.xp), BG = mul(q.bonus.gold); (q.bonusLog ||= []).push({ t, xp:BX, gold:BG, back:true, at:now() }); q.bonusLog.sort((a, b) => a.t - b.t); q.bonusCount = (q.bonusCount || 0) + 1; xp += BX; gold += BG; }
+  if (full && daily){
+    const latest = [...fd].sort().pop(), L = new Date(latest + 'T00:00').getTime(); let run = 1; while (fd.has(dayKey(addDays(L, -run)))) run++;
+    q.streak = run; q.bestStreak = Math.max(q.bestStreak || 0, run); const end = addDays(startOfDay(L), 1); if (end > (q.lastBoth || 0)) q.lastBoth = end;
+  }
+  bkSel[q.id + '|' + key] = new Set();   // what is left stays unticked
+  grant({ xp, gold }, null, `${q.name}: ${dayLabel(D)} claimed`, q.id);
+  save(); render();
+}
+// take back a claim made afterwards for a forgotten day: the reward goes back, the entry goes, and the streak is worked out again from what is left
+async function undoBack(q, t, at, what){
+  const pick = L => L.findIndex(e => e.back && e.t === t && (e.at || 0) === at);
+  let L, i, r = null;
+  if (q.kind === 'pair'){
+    if (what){ r = listItems(q).find(x => x.name === what); L = r && r.log; } else L = q.bonusLog;
+  } else L = q.log;
+  i = L ? pick(L) : -1; if (i < 0) return;
+  if (!await ask('Undo this claim?', 'The reward is taken back and ' + dayLabel(new Date(t)) + ' is open again.', 'Undo', 'btn-main')) return;
+  snapshot();
+  const e = L.splice(i, 1)[0]; take({ xp:e.xp || 0, gold:e.gold || 0 }, qTag(q));
+  if (q.kind === 'pair'){ if (r) r.count = Math.max(0, (r.count || 0) - 1); else q.bonusCount = Math.max(0, (q.bonusCount || 0) - 1); }
+  else q.count = Math.max(0, (q.count || 0) - 1);
+  // streak again from the days that are left
+  const run = (days, from) => { let n = 1; while (days.has(dayKey(addDays(from, -n)))) n++; return n; };
+  if (q.kind === 'standard' && cycleDays(q) === 1){
+    const days = new Set((q.log || []).map(x => dayKey(x.t)));
+    if (days.size){ const latest = [...days].sort().pop(), Lt = new Date(latest + 'T00:00').getTime(); q.streak = run(days, Lt); q.doneUntil = addDays(startOfDay(Lt), 1); } else { q.streak = 0; q.doneUntil = 0; }
+  } else if (q.kind === 'pair' && (q.days || 1) === 1){
+    const m = dayMap(q), all = listKeys(q), days = new Set(Object.keys(m).filter(d => all.every(k => m[d]['p_' + k])));
+    if (days.size){ const latest = [...days].sort().pop(), Lt = new Date(latest + 'T00:00').getTime(); q.streak = run(days, Lt); q.lastBoth = addDays(startOfDay(Lt), 1); } else { q.streak = 0; q.lastBoth = 0; }
+  }
+  save(); render();
 }
 function recordChart(q){
   const E = q.entries;
   if (E.length < 2) return '<div class="dayinfo">Log at least two entries to see a chart.</div>';
-  const W = 340, H = 200, pl = 38, pr = 12, pt = 16, pb = 26, cw = W - pl - pr, ch = H - pt - pb;
-  const t0 = E[0].t, t1 = E[E.length - 1].t || t0 + 1;
-  const vs = E.map(e => e.v), lo = Math.min(...vs), hi = Math.max(...vs), pad = Math.max(.5, (hi - lo) * .15);
-  const vmin = lo - pad, vmax = hi + pad;
-  const X = t => pl + (t1 === t0 ? cw / 2 : (t - t0) / (t1 - t0) * cw), Y = v => pt + (vmax - v) / (vmax - vmin) * ch;
+  // attempts in order along the bottom, each day shaded and labelled; the line is your best so far; improving always goes up
+  const W = 340, H = 200, pl = 38, pr = 12, pt = 16, pb = 30, cw = W - pl - pr, ch = H - pt - pb, N = E.length, low = q.better === 'lower';
+  const vs = E.map(e => e.v), lo = Math.min(...vs), hi = Math.max(...vs), pad = Math.max(.5, (hi - lo) * .15), vmin = lo - pad, vmax = hi + pad;
+  const X = i => pl + i / (N - 1) * cw, Y = v => pt + (low ? (v - vmin) : (vmax - v)) / (vmax - vmin) * ch;
   let g = '';
   for (let i = 0; i <= 3; i++){ const v = vmin + (vmax - vmin) * i / 3, yy = Y(v).toFixed(1);
     g += `<line x1="${pl}" x2="${W - pr}" y1="${yy}" y2="${yy}" stroke="rgba(210,240,236,.12)"/><text x="${pl - 6}" y="${(+yy + 3.5).toFixed(1)}" text-anchor="end" font-size="9.5" fill="#6f8583">${fmt(Math.round(v * 10) / 10)}</text>`; }
-  const pts = E.map(e => `${X(e.t).toFixed(1)},${Y(e.v).toFixed(1)}`).join(' ');
-  g += `<polygon points="${pl},${pt + ch} ${pts} ${X(t1).toFixed(1)},${pt + ch}" fill="url(#gBar)" opacity=".35"/>`;
-  g += `<polyline points="${pts}" fill="none" stroke="#ff8a40" stroke-width="1.8" stroke-linejoin="round"/>`;
-  E.forEach(e => { const best = e.v === q.best; g += `<circle cx="${X(e.t).toFixed(1)}" cy="${Y(e.v).toFixed(1)}" r="${best ? 3.6 : 2.2}" fill="${best ? '#ffc49a' : '#ff6b1a'}" stroke="#000" stroke-width=".8"/>`; });
+  // day groups
+  const gr = []; E.forEach((e, i) => { const k = dayKey(e.t), l = gr[gr.length - 1]; if (l && l.k === k) l.b = i; else gr.push({ k, a:i, b:i, t:e.t }); });
+  const step = Math.ceil(gr.length / 6), fd = t => new Date(t).toLocaleDateString(undefined, { day:'numeric', month:'short' });
+  gr.forEach((d, j) => { const x0 = X(d.a), x1 = X(d.b), w = Math.max(x1 - x0, 2);
+    if (j % 2 === 0) g += `<rect x="${(x0 - 2).toFixed(1)}" y="${pt}" width="${(w + 4).toFixed(1)}" height="${ch}" fill="#2ee6d6" opacity=".05"/>`;
+    if (j % step === 0) g += `<text x="${((x0 + x1) / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#9db2b0">${fd(d.t)}</text>`; });
+  let bestSoFar = null; const bp = [];
+  E.forEach((e, i) => { bestSoFar = bestSoFar == null ? e.v : (low ? Math.min(bestSoFar, e.v) : Math.max(bestSoFar, e.v)); bp.push(`${X(i).toFixed(1)},${Y(bestSoFar).toFixed(1)}`); });
+  g += `<polyline points="${bp.join(' ')}" fill="none" stroke="#ff8a40" stroke-width="1.8" stroke-linejoin="round"/>`;
+  E.forEach((e, i) => { const best = e.v === q.best; g += `<circle cx="${X(i).toFixed(1)}" cy="${Y(e.v).toFixed(1)}" r="${best ? 3.4 : 2}" fill="${best ? '#ffc49a' : '#ff6b1a'}" opacity="${best ? 1 : .6}"/>`; });
   const by = Y(q.best).toFixed(1);
   g += `<line x1="${pl}" x2="${W - pr}" y1="${by}" y2="${by}" stroke="#ff3b30" stroke-width="1.1" stroke-dasharray="4 4"/><text x="${pl + 4}" y="${(+by + 13).toFixed(1)}" font-size="9.5" fill="#ff7a6a">Best ${fmt(q.best)}</text>`;
-  const fd = t => new Date(t).toLocaleDateString(undefined, { day:'numeric', month:'short' });
-  g += `<text x="${pl}" y="${H - 8}" font-size="10" fill="#9db2b0">${fd(t0)}</text><text x="${W - pr}" y="${H - 8}" text-anchor="end" font-size="10" fill="#9db2b0">${fd(t1)}</text>`;
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Entries over time">${g}</svg>`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Attempts in order, grouped by day">${g}</svg>`;
 }
 function questHistory(q){
   const tag = kindTag(q);
   if (q.kind === 'record'){
     const E = q.entries, first = E[0], last = E[E.length - 1], u = esc(q.unit);
     const change = first && last ? round2(last.v - first.v) : 0;
-    return `<div class="list"><div class="card">${CORNERS}
+    return `<div class="list pvl"><div class="card">${CORNERS}
         <div class="q-top"><h3>${esc(q.name)}</h3>${tag}</div>
         <div class="sum four">
           <div><b>${first ? fmt(first.v) : '—'}</b><span>Start</span></div>
           <div><b>${q.best != null ? fmt(q.best) : '—'}</b><span>Best</span></div>
           <div><b>${last ? fmt(last.v) : '—'}</b><span>Latest</span></div>
-          <div><b>${first ? (change > 0 ? '+' : '') + fmt(change) : '—'}</b><span>Change ${u}</span></div>
+          <div><b>${fmt(E.length)}</b><span>Attempts</span></div>
         </div>
         ${recordChart(q)}
       </div>
@@ -651,7 +750,7 @@ function questHistory(q){
         ${E.length ? [...E].reverse().slice(0, 30).map((e, i) => `<div class="log-row"><div class="log-l"><div>${fmt(e.v)} ${u}${e.v === q.best ? ' <span class="tag">Best</span>' : ''}</div><small>${dayLabel(e.t)}</small></div>${i === 0 && q.undo ? `<button class="hx-undo" data-act="hxundo" data-q="${q.id}">Undo</button>` : UNDO_OFF}</div>`).join('') : '<div class="empty">No entries yet.</div>'}
       </div></div>`;
   }
-  const map = dayMap(q), logs = allLogs(q).sort((a, b) => b.t - a.t);
+  const map = dayMap(q), logs = allLogs(q).sort((a, b) => (b.at || b.t) - (a.at || a.t));
   const ms = new Date(); ms.setDate(1); ms.setHours(0, 0, 0, 0);
   const monthDays = Object.keys(map).filter(k => new Date(k + 'T00:00') >= ms).length;
   const earned = logs.reduce((a, e) => a + (e.gold || 0), 0);
@@ -692,15 +791,17 @@ function progressChips(){
   const chip = (id, name) => `<button class="chip${(S.pview || 'steps') === id ? ' on' : ''}${id === 'steps' && ready ? ' s' : ''}" data-act="pv" data-pv="${id}">${esc(name)}</button>`;
   return `<div class="chips hud-chips">${chip('steps', 'Steps')}${qs.map(q => chip(q.id, q.name)).join('')}</div>`;
 }
-$('#progMenu').addEventListener('click', e => { e.stopPropagation(); const pop = $('#progPop'); if (pop.classList.contains('open')) return closeProgPop(); renderProgPop(); pop.classList.add('open'); });
+$('#progMenu').addEventListener('click', e => { e.stopPropagation(); const pop = $('#progPop'); if (pop.classList.contains('open')) return closeProgPop(); ppLast = null; renderProgPop(); pop.classList.add('open'); });
 $('#progPop').addEventListener('click', e => e.stopPropagation());
 $('#progPop').addEventListener('change', e => {
   const id = e.target.dataset.pp; if (!id) return;
   S.progHide ||= {};
   if (e.target.checked) delete S.progHide[id]; else S.progHide[id] = true;
+  ppLast = e.target.checked ? id : 'steps';   // closing the dialog opens the quest you just turned on (or Steps)
   save();   // the page behind redraws once the dialog closes (no flicker while toggling)
 });
-function closeProgPop(){ const p = $('#progPop'); if (p.classList.contains('open')){ p.classList.remove('open'); render(); } }
+var ppLast = null;
+function closeProgPop(){ const p = $('#progPop'); if (p.classList.contains('open')){ p.classList.remove('open'); if (ppLast){ S.pview = ppLast; ppLast = null; save(); } render(); } }
 document.addEventListener('click', closeProgPop);
 function renderProgress(){
   if (S.pview && S.pview !== 'steps' && !(byId(S.pview) && isTracked(byId(S.pview)))) S.pview = 'steps';
@@ -766,15 +867,15 @@ const RARITY = {
   common:   { name:'C',   color:'#3fd47a', glow:'63,212,122' }
 };
 const SHOP = [
-  { id:'tarot', deck:'tarot', fan:['SSR03', 'SSR05', 'SSR07', 'SSR02', 'SSR13', 'SSR15'], pop:['SSR04', 'SSR06', 'SSR01', 'SSR12', 'SSR08', 'SSR09'], pbg:['SSR10', 'SSR11'], name:'Tarot Pack', desc:'A price is always exacted for what fate bestows.', price:100, cards:5,
+  { id:'tarot', deck:'tarot', fan:['SSR03', 'SSR05', 'SSR07', 'SSR02', 'SSR13', 'SSR15'], pop:['SSR04', 'SSR06', 'SSR01', 'SSR12', 'SSR08', 'SSR09'], pbg:['SSR10', 'SSR11', 'SSR13'], name:'Lord of Mysteries Pack', desc:'A price is always exacted for what fate bestows.', price:100, cards:5,
     pity:10,   // every 10th deck opened without an Ultimate guarantees one; getting any Ultimate resets the count
     // chance per card; whatever is left (59.9%) is C. A deck with no Rare or better gets one card upgraded to Rare.
     odds:{ ultimate:1.1, legendary:4, epic:10, rare:25 },
     rates:[ { r:'ultimate', pct:'1.1%' }, { r:'legendary', pct:'4%' }, { r:'epic', pct:'10%' }, { r:'rare', pct:'25%', note:'1+ guaranteed' } ] },
-  { id:'mlbb', deck:'mlbb', fan:['ML_AS01', 'ML_SP05', 'ML_AS04', 'ML_SP01', 'ML_SP02', 'ML_SP03'], pop:['ML_SP04', 'ML_SP06', 'ML_AS02', 'ML_AS06', 'ML_SP07', 'ML_SP08'], pbg:['ML_SP09', 'ML_SP10'], name:'Land of Dawn Pack', desc:'Funny you should think people are more reliable than gold!', price:100, cards:5, pity:10,
+  { id:'mlbb', deck:'mlbb', fan:['ML_AS01', 'ML_SP05', 'ML_AS04', 'ML_SP01', 'ML_SP02', 'ML_SP03'], pop:['ML_SP04', 'ML_SP06', 'ML_AS02', 'ML_AS06', 'ML_SP07', 'ML_SP08'], pbg:['ML_SP09', 'ML_SP10', 'ML_SP01'], name:'Land of Dawn Pack', desc:'Funny you should think people are more reliable than gold!', price:100, cards:5, pity:10,
     odds:{ ultimate:1.1, legendary:4, epic:10, rare:25 },
     rates:[ { r:'ultimate', pct:'1.1%' }, { r:'legendary', pct:'4%' }, { r:'epic', pct:'10%' }, { r:'rare', pct:'25%', note:'1+ guaranteed' } ] },
-  { id:'hod', deck:'hod', fan:['HD_UR05', 'HD_SP05', 'HD_UR12', 'HD_SP01', 'HD_UR02', 'HD_UR01'], pop:['HD_UR03', 'HD_SP02', 'HD_PR02', 'HD_PR03', 'HD_UR06', 'HD_SP03'], pbg:['HD_UR07', 'HD_SP04'], name:'Hand of Destiny Pack', desc:'Fate deals the cards. You only choose to play.', price:100, cards:5, pity:10,
+  { id:'hod', deck:'hod', fan:['HD_UR05', 'HD_SP05', 'HD_UR12', 'HD_SP01', 'HD_UR02', 'HD_UR01'], pop:['HD_UR03', 'HD_SP02', 'HD_PR02', 'HD_PR03', 'HD_UR06', 'HD_SP03'], pbg:['HD_UR07', 'HD_SP04', 'HD_UR05'], name:'Hand of Destiny Pack', desc:'Fate deals the cards. You only choose to play.', price:100, cards:5, pity:10,
     odds:{ ultimate:1.1, legendary:4, epic:10, rare:25 },
     rates:[ { r:'ultimate', pct:'1.1%' }, { r:'legendary', pct:'4%' }, { r:'epic', pct:'10%' }, { r:'rare', pct:'25%', note:'1+ guaranteed' } ] },
   { id:'soon4', soon:true }
@@ -832,28 +933,163 @@ function shopBanner(f, isNew){
 }
 
 /* ---- Pack details pop-up: what the pack holds, the cards, and the buy controls ---- */
-function closePackInfo(){ const p = $('#pki'); if (p) p.remove(); }
-function openPackInfo(id){
-  const it = SHOP.find(x => x.id === id); if (!it) return; closePackInfo();
+function closePackInfo(now){
+  const p = $('#pki'); if (!p) return;
+  if (now === true || S.reduceFx || !p._inv || !p._from || !p._from.isConnected || p.dataset.closing){ p.remove(); return; }
+  p.dataset.closing = 1; p.style.pointerEvents = 'none'; const box = p.querySelector('.pki-box');
+  box.animate([{ transform:'none', opacity:1 }, { transform:p._inv, opacity:.3 }], { duration:MO.norm, easing:MO.leave, fill:'forwards' });
+  p.animate([{ backgroundColor:'rgba(3,6,12,.72)' }, { backgroundColor:'rgba(3,6,12,0)' }], { duration:300, fill:'forwards' }).onfinish = () => p.remove();
+}
+// the advert's boot sequence: the title types out between the brackets, the line draws, then the chips, tray, cards and buy bar come in
+// ---- pack advert: UR band + hero + badge (what makes each pack different) ----
+const PKI_FEAT = {
+  hod:{ h:{ t:'DUO PAIRS', s:'Two cards join into one picture', v:'duo' }, b:{ t:'2 JOKERS', s:'Hidden somewhere in the deck', v:'jk' } },
+  tarot:{ h:{ t:'PUZZLE PICTURE', s:'8 cards line up into 1 wide picture', v:'pz' }, b:{ t:'2 CHAPTERS', s:'Wide story scenes to unlock', v:'sc' } },
+  mlbb:{ h:{ t:'ARTIST SERIES', s:'10 cards of featured art', v:'art' }, b:{ t:'HUGE PAYOUTS', s:'1,200 a set<br>4,500 for all', v:'tot' } }
+};
+const PKI_GEM = '<svg width="W" height="W" viewBox="0 0 32 32"><path d="M16 2.5l11 6.8v13.4L16 29.5 5 22.7V9.3z" fill="rgba(143,217,207,.25)" stroke="#8fd9cf" stroke-width="1.8" stroke-linejoin="round"/><path d="M5 9.3L16 16l11-6.7M16 16v13.5" fill="none" stroke="#8fd9cf" stroke-width="1.2"/></svg>';
+const PKI_COIN = '<svg width="W" height="W" viewBox="0 0 20 20"><path d="M10 1.5 L17.5 5.8 V14.2 L10 18.5 L2.5 14.2 V5.8Z" fill="#3a2a06" stroke="#f0b93a" stroke-width="1.5"/><text x="10" y="13.6" text-anchor="middle" font-family="Montserrat" font-weight="700" font-size="9" fill="#f6c453">G</text></svg>';
+function pkiVis(v, w, h, fx){
+  const bob = (i, r) => `${r !== undefined ? '--r:' + r + 'deg;' : ''}${fx ? `animation:pkiBob ${(3.2 + i * .5).toFixed(1)}s ease-in-out ${(-i * .9).toFixed(1)}s infinite alternate` : ''}`;
+  const im = (src, st, cls = 'pki-fi') => `<img class="${cls}" src="${src}" alt="" style="${st}">`;
+  const bx = inner => `<div style="position:relative;width:${w}px;height:${h}px">${inner}</div>`;
+  if (v === 'duo'){
+    const a = landImg('HD_PTR01'), b = landImg('HD_PTR02'), j = cardImg('HD_DUO01');
+    return bx(`<div class="pki-duo" style="position:absolute;inset:0"><div class="pki-mv" style="position:absolute;inset:0;${bob(0)}"><img class="dl" src="${a}" alt="" style="position:absolute;left:0;top:${h * .1}px;height:${h * .8}px;border-radius:5px;box-shadow:0 4px 10px #000a${fx ? '' : ';opacity:0'}"><img class="dr" src="${b}" alt="" style="position:absolute;right:0;top:${h * .1}px;height:${h * .8}px;border-radius:5px;box-shadow:0 4px 10px #000a${fx ? '' : ';opacity:0'}"><img class="dj" src="${j}" alt="" style="position:absolute;left:50%;top:${h * .05}px;height:${h * .9}px;transform:translateX(-50%)${fx ? ' scale(.7);opacity:0' : ''};border-radius:6px;box-shadow:0 0 18px rgba(255,184,58,.8),0 4px 10px #000a"><i class="dfl" style="position:absolute;left:50%;top:50%;width:${h * 1.8}px;height:${h * 1.8}px;margin:-${h * .9}px 0 0 -${h * .9}px;border-radius:50%;background:radial-gradient(closest-side,#fff,rgba(255,236,170,.7) 40%,transparent);opacity:0;pointer-events:none"></i></div></div>`);
+  }
+  if (v === 'jk') return bx(
+    im(cardImg('HD_R53'), `left:${w * .14}px;top:0;height:${h}px;aspect-ratio:480/672;border-radius:4px;box-shadow:0 5px 12px #000c,0 0 12px rgba(200,60,255,.55);transform:rotate(-8deg);${bob(0, -8)}`, 'pki-fi pki-mv') +
+    im(cardImg('HD_R54'), `right:${w * .14}px;top:0;height:${h}px;aspect-ratio:480/672;border-radius:4px;box-shadow:0 5px 12px #000c,0 0 12px rgba(235,30,70,.55);transform:rotate(7deg);${bob(1, 7)}`, 'pki-fi pki-mv'));
+  if (v === 'pz'){
+    const sl = Array.from({ length:8 }, (_, i) => `<div class="sl"><img src="${cardImg('SCR0' + (i + 1))}" alt=""></div>`).join('');
+    return `<div class="pki-cin" style="width:${w}px;height:${h}px"><div class="pki-trk" style="--p:${(8 * (h - 14) * 480 / 672).toFixed(1)}px">${sl}${sl}</div><div class="cgl"></div></div>`;
+  }
+  if (v === 'sc') return bx(
+    im(cardImg('SC16'), `left:${w * .02}px;top:${h * .28}px;width:${w * .62}px;border-radius:4px;box-shadow:0 5px 12px #000c;transform:rotate(-6deg);${bob(0, -6)}`, 'pki-fi pki-mv') +
+    im(cardImg('SC01'), `right:${w * .02}px;top:${h * .06}px;width:${w * .62}px;border-radius:4px;box-shadow:0 5px 12px #000c;transform:rotate(5deg);${bob(1, 5)}`, 'pki-fi pki-mv'));
+  if (v === 'art') return bx(['ML_AS01', 'ML_AS04', 'ML_AS08'].map((id, i) =>
+    im(cardImg(id), `left:${w * (.1 + i * .26)}px;top:${i === 1 ? 0 : h * .06}px;height:${h * .9}px;aspect-ratio:480/672;border-radius:4px;box-shadow:0 5px 12px #000c;transform:rotate(${(i - 1) * 8}deg);z-index:${i === 1 ? 2 : 1};${bob(i, (i - 1) * 8)}`, 'pki-fi pki-mv')).join(''));
+  // payouts: see-through coin columns + XP cube heap, faint rain of coins and gems behind
+  const coin = (cx, cy, R, t) => { const a = .87 * R, b = .55 * R; return `<g transform="translate(${cx} ${cy})"><path d="M${-a} ${-b / 2} L${-a} ${b / 2 + t} L0 ${b + t} L${a} ${b / 2 + t} L${a} ${-b / 2} L0 ${b} Z" fill="rgba(246,196,83,.22)" stroke="#f0b93a" stroke-width=".7"/><path d="M0 ${b} V${b + t}" stroke="#f0b93a" stroke-width=".6" opacity=".7"/><path d="M0 ${-b} L${a} ${-b / 2} L${a} ${b / 2} L0 ${b} L${-a} ${b / 2} L${-a} ${-b / 2}Z" fill="rgba(246,196,83,.16)" stroke="#f6c453" stroke-width="1"/><text y="${b * .5}" text-anchor="middle" font-family="Montserrat" font-weight="700" font-size="${R * .62}" fill="#f6c453" transform="scale(1 .62)" style="transform-origin:0 0">G</text></g>`; };
+  const stk = (cx, base, R, t, n, rot = 0) => `<g transform="rotate(${rot} ${cx} ${base})">${Array.from({ length:n }, (_, i) => coin(cx, base - i * t, R, t)).join('')}</g>`;
+  const cub = (cx, cy, S, rot = 0, glow = 0) => { const a = .87 * S; return `<g transform="translate(${cx} ${cy}) rotate(${rot} 0 ${-S})"${glow ? ' style="filter:drop-shadow(0 0 5px rgba(143,217,207,.8))"' : ''}><path d="M0 0 L${-a} ${-S / 2} L${-a} ${-1.5 * S} L0 ${-S}Z" fill="rgba(143,217,207,.2)" stroke="#8fd9cf" stroke-width=".7"/><path d="M0 0 L${a} ${-S / 2} L${a} ${-1.5 * S} L0 ${-S}Z" fill="rgba(143,217,207,.1)" stroke="#8fd9cf" stroke-width=".7"/><path d="M0 ${-S} L${-a} ${-1.5 * S} L0 ${-2 * S} L${a} ${-1.5 * S}Z" fill="rgba(190,255,248,.34)" stroke="#d6fff9" stroke-width=".7"/></g>`; };
+  const rain = fx ? Array.from({ length:30 }, (_, i) => `<i class="pki-rn" style="left:${(2 + i * 3.2).toFixed(1)}%;animation-duration:${(2.4 + (i * 37 % 20) / 10).toFixed(1)}s;animation-delay:-${((i * 53 % 40) / 10).toFixed(1)}s">${(i % 2 ? PKI_GEM : PKI_COIN).replace(/W/g, 9 + (i % 3) * 2)}</i>`).join('') : '';
+  const sv = `<svg viewBox="0 0 108 84" width="${w}" height="${h}" style="position:absolute;left:0;top:0">${cub(78, 36, 13, -16, 1)}${[[60, 56, 8, 10], [72, 52, 7, -8], [86, 54, 8, 12], [98, 56, 6, -14], [54, 68, 7, -8], [66, 66, 8, 12], [78, 68, 8, -6], [90, 68, 8, 10], [101, 70, 6, -6], [72, 62, 7, 4]].map(c => cub(c[0], c[1], c[2], c[3])).join('')}${stk(15, 72, 10, 4.2, 4, -5)}${stk(37, 74, 10, 4.2, 6, 2)}${stk(57, 76, 10, 4.2, 3, 6)}${coin(8, 80, 6, 3)}${coin(98, 80, 5, 2.5)}${cub(46, 82, 4, 20)}${cub(104, 80, 4, -20)}</svg>`;
+  return `<div style="position:relative;width:${w}px;height:${h}px;overflow:hidden"><div style="position:absolute;inset:0;opacity:.5">${rain}</div><div class="pki-mv" style="position:absolute;inset:0;${bob(0)}">${sv}</div></div>`;
+}
+// the three pieces under the title: the UR band, the hero picture, the small badge
+function pkiFeatHtml(deck, urSets, fx, st){
+  const f = PKI_FEAT[deck]; if (!f) return '';
+  const total = urSets.reduce((a, r) => a + r.n, 0), multi = urSets.length > 1;
+  const txt = urSets.map(r => r.n + ' ' + setLabel(r.set)).join(' · ');
+  const sub = multi ? txt : setLabel(urSets[0].set), fs = Math.max(9, Math.min(11, Math.floor(300 / (txt.length * .62))));
+  const ft = x => `<b class="pki-ft${x.v === 'jk' ? ' jk' : ''}">${x.t}</b><div class="pki-fs">${x.s}</div>`;
+  const HW = { pz:[224, 62], duo:[180, 76], art:[170, 64] }, BW = { jk:[96, 64], sc:[96, 60], tot:[108, 58] };
+  const [hw, hh] = HW[f.h.v], [bw, bh] = BW[f.b.v];
+  const soft = (cls, l, t, w, h, rot, inner) => `<div class="pki-soft ${cls}${st}" style="left:${l}px;top:${t}px;width:${w}px;height:${h}px;transform:rotate(${rot}deg)"><i class="pki-glow"></i><div class="pki-sin">${inner}</div></div>`;
+  return `<i class="pki-ln${fx ? ' fl0' : ''}"></i>` +
+    `<div class="pki-bt${st}"><b class="n">${total}</b><div><b class="u">UR</b><div class="s" style="font-size:${fs}px">${esc(sub)}</div></div></div>` +
+    soft('pki-hero', 14, 172, 240, 118, -3.5, `<div style="display:flex;justify-content:center;padding-top:2px">${pkiVis(f.h.v, hw, hh, fx)}</div><div style="padding:6px 8px 0;text-align:center">${ft(f.h)}</div>`) +
+    soft('pki-badge', deck === 'tarot' ? 258 : 246, 170, 108, 108, 2.5, `<div style="display:flex;flex-direction:column;align-items:center;height:100%"><div>${pkiVis(f.b.v, bw, bh, fx)}</div><div style="margin-top:6px;text-align:center">${ft(f.b)}</div></div>`);
+}
+// the Duo merge: the two cards bob for 2 s, slide into each other, flash, the joined picture comes out (once per open)
+function pkiDuo(b, now){
+  const my = b._t = (b._t || 0) + 1, dl = b.querySelector('.dl'), dr = b.querySelector('.dr'), dj = b.querySelector('.dj'), fl = b.querySelector('.dfl');
+  [dl, dr, dj, fl].forEach(e => e.getAnimations().forEach(a => a.cancel()));
+  if (now){ dl.style.opacity = dr.style.opacity = 0; dj.style.opacity = 1; dj.style.transform = 'translateX(-50%)'; return; }
+  const ok = () => b._t === my && b.isConnected;
+  setTimeout(() => { if (!ok()) return;
+    const d = b.offsetWidth / 2 - dl.offsetWidth / 2 - 4;
+    const o = { duration:520, easing:'cubic-bezier(.5,0,.8,.4)', fill:'forwards' };
+    dl.animate([{ transform:'none' }, { transform:`translateX(${d}px)` }], o); dr.animate([{ transform:'none' }, { transform:`translateX(${-d}px)` }], o);
+    setTimeout(() => { if (!ok()) return;
+      fl.animate([{ opacity:0, transform:'scale(.4)' }, { opacity:1, transform:'scale(1)', offset:.3 }, { opacity:0, transform:'scale(1.5)' }], { duration:480, easing:'ease-out' });
+      dl.style.opacity = dr.style.opacity = 0;
+      dj.animate([{ opacity:0, transform:'translateX(-50%) scale(.7)' }, { opacity:1, transform:'translateX(-50%) scale(1.06)', offset:.6 }, { opacity:1, transform:'translateX(-50%) scale(1)' }], { duration:420, easing:'ease-out', fill:'forwards' });
+    }, 500); }, 2000);
+}
+// the Quill of Alzuhod signs Klein Moretti over the Featured cards (Lord of Mysteries advert only; 6 s after it opens; off with Reduce effects)
+const PKI_SIG_COLS = [50.0, 50.0, 49.5, 49.5, 49.0, 49.0, 48.5, 48.0, 48.0, 47.5, 47.0, 47.0, 46.5, 46.5, 46.5, 46.5, 46.0, 46.0, 45.0, 45.0, 45.0, 44.0, 44.0, 43.5, 43.0, 43.0, 42.5, 42.0, 60.0, 66.5, 65.2, 59.1, 56.4, 54.2, 52.0, 51.5, 49.6, 47.1, 46.3, 45.4, 44.5, 44.1, 42.8, 42.5, 42.5, 41.1, 40.1, 38.7, 37.0, 35.8, 35.0, 34.1, 31.2, 30.3, 30.8, 31.4, 30.4, 29.6, 26.5, 23.6, 28.4, 27.8, 25.5, 27.3, 47.9, 52.0, 54.1, 52.4, 47.8, 45.1, 45.6, 45.7, 48.5, 52.0, 49.9, 48.7, 52.0, 50.8, 50.6, 52.2, 50.0, 49.5, 50.2, 50.0, 46.3, 44.7, 47.4, 51.7, 59.3, 60.1, 60.5, 60.4, 61.0, 61.7, 60.8, 61.7, 61.7, 61.6, 61.0, 59.0, 59.5, 59.0, null, 66.0, 62.8, 62.0, 61.5, 61.5, 61.0, 60.0, 59.0, 58.0, 57.0, 56.5, 55.5, 57.5, 60.5, 62.5, 65.0, 68.0, null, null, null, null, null, null, null, null, null, null, 64.0, 61.0, 59.0, 55.9, 52.5, 49.8, 47.8, 43.3, 35.0, 32.0, 28.5, 26.0, 22.5, 20.5, 18.5, 17.0, 18.0, 20.0, 22.0, 25.0, 28.0, 30.0, 32.0, 33.5, 35.5, 37.0, 38.0, 39.0, 40.0, 40.5, 41.5, 42.0, 42.0, 43.0, 43.0, 43.0, 43.0, 43.0, 43.0, 43.5, 43.5, 43.0, 43.0, 43.0, 43.0, 42.5, 42.0, 42.0, 42.0, 41.0, 60.6, 60.4, 55.1, 48.8, 47.2, 44.4, 42.5, 40.5, 38.5, 37.0, 35.0, 32.5, 31.5, 30.0, 35.6, 34.2, 30.2, 34.0, 34.9, 35.9, 34.2, 34.9, 35.3, 33.2, 28.5, 25.9, 25.2, 23.6, 21.3, 25.0, 24.3, 23.2, 22.0, 17.7, 24.8, 30.2, 34.8, 44.9, 43.2, 42.0, 42.0, 43.4, 42.9, 42.9, 42.5, 44.7, 45.2, 44.8, 44.2, 44.0, 43.3, 42.7, 42.2, 40.6, 40.9, 41.5, 38.7, 38.1, 38.5, 36.9, 42.2, 41.7, 38.2, 36.3, 33.7, 31.5, 30.5, 28.5, 27.0, 28.7, 37.4, 36.5, 33.0, 30.7, 30.6, 35.3, 34.0, 32.7, 30.2, 29.0, 27.7, 26.5, 25.5, 24.0, 33.0, 34.2, 33.8, 31.5, 28.6, 28.1, 27.7, 23.1, 17.6, 16.5, 16.6, 17.0, 20.0, 20.0, 19.5, 19.0, 19.0, 19.0, 19.0, 18.5, 18.0, 18.0, 18.0, 18.0, 17.0, 17.0, 17.0, 17.0, 17.0, 17.0, 17.0, 16.5, 16.0, 16.0, 15.5, 15.5, 15.5, 15.0, 15.0, 15.0, 15.0, 15.0, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.0, 14.0, 14.0, 13.5, 13.5, 13.5, 13.5, 13.5, 13.5, 13.0];
+const PKI_SIG_SEG = [{ t:850, a:0, b:118 }, { t:350, hop:1, a:118, b:130 }, { t:1150, a:130, b:321 }];   // "Klein", a hop, "Moretti"
+function pkiSignHtml(){ return `<div class="pki-sgn"><div class="pki-sgw"><img src="img/fx/sig.webp" alt=""></div><div class="pki-qw"><i class="pki-sp"></i><img class="pki-q" src="img/fx/quill.webp" alt=""></div></div>`; }
+function pkiSign(mk){
+  const o = mk.querySelector('.pki-sgn'); if (!o) return;
+  const cols = PKI_SIG_COLS; let last = null; const Y = cols.map(c => (c != null && (last = c), last)); let nx = null;
+  for (let i = Y.length - 1; i >= 0; i--){ if (cols[i] != null) nx = cols[i]; if (Y[i] == null) Y[i] = nx; }
+  const sm = Y.map((_, i) => { let a = 0, n = 0; for (let k = -6; k <= 6; k++){ const v = Y[i + k]; if (v != null){ a += v; n++; } } return a / n; });
+  const w = o.querySelector('.pki-sgw'), qw = o.querySelector('.pki-qw'), sp = o.querySelector('.pki-sp'), ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const place = (x, l) => { qw.style.transform = `translate(${x}px,${sm[Math.max(0, Math.min(sm.length - 1, Math.round(x)))] - l}px)`; };
+  const alive = () => mk.isConnected && !mk.dataset.closing;
+  qw.animate([{ opacity:0, transform:`translate(-30px,${Y[0] + 20}px)` }, { opacity:1, transform:`translate(0px,${Y[0]}px)` }], { duration:450, easing:'ease-out', fill:'forwards' }).onfinish = () => {
+    if (!alive()) return; qw.getAnimations().forEach(a => a.cancel()); qw.style.opacity = 1; const T0 = performance.now();
+    const fr = t => {
+      if (!alive()) return; const el = t - T0; let acc = 0, g = null, u = 0;
+      for (const k of PKI_SIG_SEG){ if (el < acc + k.t){ g = k; u = (el - acc) / k.t; break; } acc += k.t; }
+      if (!g){ w.style.setProperty('--x', '420px'); sp.style.opacity = 0; qw.animate([{ transform:qw.style.transform, opacity:1 }, { transform:'translate(353px,-60px)', opacity:0 }], { duration:800, easing:'ease-in', fill:'forwards' }); return; }
+      const x = g.a + (g.b - g.a) * ease(u); let l;
+      if (g.hop){ l = 16 * Math.sin(Math.PI * u); sp.style.opacity = 0; }
+      else { const gap = cols[Math.max(0, Math.min(cols.length - 1, Math.round(x)))] == null; l = (gap ? 9 : 0) + Math.sin(el / 27) * 1.2; sp.style.opacity = gap ? 0 : .9; w.style.setProperty('--x', (x + 26) + 'px'); }
+      place(x, l); requestAnimationFrame(fr);
+    };
+    requestAnimationFrame(fr);
+  };
+}
+async function pkiBoot(mk){
+  const inn = mk.querySelector('.pki-in'), txt = inn.querySelector('.txt'), cur = inn.querySelector('.cur'), full = inn.dataset.title, ul = inn.querySelector('.pki-ul'), ln = inn.querySelector('.pki-ln'), duo = inn.querySelector('.pki-duo');
+  const wait = ms => new Promise(r => setTimeout(r, ms)), live = () => mk.isConnected && !mk.dataset.closing && !mk._skip;
+  const done = () => { txt.textContent = full; ul.classList.add('draw'); if (ln){ ln.getAnimations().forEach(a => a.cancel()); ln.classList.remove('fl0'); } if (duo) pkiDuo(duo, true); inn.querySelectorAll('.st').forEach(e => e.classList.add('on')); cur.classList.remove('blink'); cur.classList.add('gone'); };
+  mk._finish = () => { mk._skip = 1; mk._finish = null; done(); };   // a tap on the advert shows everything at once
+  await wait(250);
+  for (const ch of full){ if (!live()) return; txt.append(ch); await wait(31.5 + Math.random() * 31.5); }
+  if (!live()) return; ul.classList.add('draw');
+  if (ln){   // the UR band switches on like a neon sign: background and border only, then its text
+    await ln.animate([{ opacity:0 }, { opacity:.85, offset:.06 }, { opacity:.1, offset:.12 }, { opacity:.7, offset:.2 }, { opacity:0, offset:.27 }, { opacity:0, offset:.38 }, { opacity:.95, offset:.42 }, { opacity:.25, offset:.5 }, { opacity:.9, offset:.56 }, { opacity:.4, offset:.64 }, { opacity:1, offset:.7 }, { opacity:1 }].map(k => ({ ...k, easing:'steps(1)' })), { duration:650, easing:'linear' }).finished.catch(() => {});
+    if (!live()) return; ln.classList.remove('fl0');
+  }
+  for (const e of inn.querySelectorAll('.pki-bt.st,.pki-hero.st,.pki-badge.st,.pki-tray.st,.pki-tag.st,.pki-fc.st,.pki-buy.st')){
+    if (!live()) return; e.classList.add('on');
+    if (e.classList.contains('pki-hero') && duo) pkiDuo(duo);
+    await wait(e.matches('.pki-bt') ? 450 : e.matches('.pki-fc') ? 70 : e.matches('.pki-hero,.pki-badge') ? 130 : 30);
+  }
+  await wait(1500); if (!live()) return; cur.classList.remove('blink'); cur.classList.add('gone'); mk._finish = null;
+}
+function openPackInfo(id, from){
+  const it = SHOP.find(x => x.id === id); if (!it) return; closePackInfo(true);
   const order = ['ultimate', 'legendary', 'epic', 'rare', 'common'], by = {};
   CARDS.filter(c => c.deck === it.deck).forEach(c => { (by[c.set] ||= { set:c.set, rar:c.rarity, n:0 }).n++; });
-  const rows = Object.values(by).sort((a, b) => order.indexOf(a.rar) - order.indexOf(b.rar) || a.n - b.n).slice(0, 5);
-  const q = shopQty[id] || 1, fan = it.pop.map((c, k) => `<img src="${cardImg(c)}" alt="" style="--i:${k - 2.5}">`).join('');
+  const urSets = Object.values(by).filter(r => r.rar === 'ultimate').sort((a, b) => a.n - b.n || a.set.localeCompare(b.set));
+  const q = shopQty[id] || 1, nm = esc(it.name.replace(/ Pack$/, '')).toUpperCase(), fx = !S.reduceFx;
+  const fan = it.pop.map((c, k) => { const d = k - 2.5; return `<img class="pki-fc${fx ? ' st' : ''}" src="${cardImg(c)}" alt="" style="left:calc(50% + ${(d * 50.16).toFixed(1)}px - 33px);top:${(322 + Math.abs(d) * 2).toFixed(1)}px;transform:rotate(${(d * 3.5).toFixed(1)}deg);z-index:${10 - Math.round(Math.abs(d) * 2)};--r:rotate(${(d * 3.5).toFixed(1)}deg)">`; }).join('');
+  const stub = `<svg class="pki-stub" width="34" height="14" viewBox="0 0 34 14" fill="none" stroke="rgba(var(--acr),.95)" stroke-width="1.2"><path d="M0 7 H20 L26 1 H34"/><rect x="24" y="8.5" width="4" height="4" fill="rgba(var(--acr),.95)" stroke="none" transform="rotate(45 26 10.5)"/></svg>`;
+  const stars = Array.from({ length:34 }, (_, k) => `<i style="left:${(k * 37.7 % 100).toFixed(1)}%;top:${(k * 61.3 % 100).toFixed(1)}%;animation-duration:${(2.6 + k % 5 * .8).toFixed(1)}s;animation-delay:-${(k % 7 * .9).toFixed(1)}s;opacity:${(.25 + k % 4 * .15).toFixed(2)}"></i>`).join('');
+  const sparks = fx ? Array.from({ length:16 }, (_, k) => `<i style="left:${(k * 53.3 % 100).toFixed(1)}%;top:${(25 + k * 29.7 % 65).toFixed(1)}%;width:${2 + k % 3}px;height:${2 + k % 3}px;animation-duration:${(7 + k % 6 * 1.3).toFixed(1)}s;animation-delay:-${(k % 9 * 1.4).toFixed(1)}s"></i>`).join('') : '';
   const mk = document.createElement('div'); mk.id = 'pki'; mk.className = 'pki th-' + it.deck;
-  mk.innerHTML = `<div class="pki-box" data-buyhost data-item="${id}">
-    <div class="pki-bg"><img src="${cardImg(it.pbg[0])}" alt=""><img src="${cardImg(it.pbg[1])}" alt=""></div>
-    <b class="pki-nm">${esc(it.name.replace(/ Pack$/, '')).toUpperCase()}</b>
-    <ul class="pki-li">${rows.map(r => `<li><i style="background:${RARITY[r.rar].color}"></i><b>${r.n}</b> ${esc(setLabel(r.set))}</li>`).join('')}<li class="more">…and more</li></ul>
-    <div class="pki-fan art">${fan}</div>
-    <div class="pki-buy">${shopBuy(it)}<div class="sh-qty"><button data-act="qty" data-d="-1" data-item="${id}" aria-label="Fewer"${q <= 1 ? ' disabled' : ''}>‹</button><b>×${q}</b><button data-act="qty" data-d="1" data-item="${id}" aria-label="More"${q >= 99 ? ' disabled' : ''}>›</button></div></div>
-  </div>`;
+  mk.innerHTML = `<div class="pki-box" data-buyhost data-item="${id}"><div class="pki-in" data-title="${nm}">
+    <div class="pki-stars">${stars}</div><div class="pki-sparks">${sparks}</div><i class="pki-mist"></i>
+    <i class="pki-br a"></i><i class="pki-br b"></i><i class="pki-br c"></i><i class="pki-br d"></i>
+    <div class="pki-bg"><img src="${cardImg(it.pbg[0])}" alt=""><img src="${cardImg(it.pbg[1])}" alt=""><img src="${cardImg(it.pbg[2])}" alt=""></div>
+    <div class="pki-tt">${stub}<div class="pki-term"><span class="bkt">[</span><span class="txt">${fx ? '' : nm}</span><span class="cur${fx ? ' blink' : ' gone'}"></span><span class="bkt">]</span></div>${stub}</div><i class="pki-ul${fx ? '' : ' draw'}"></i>
+    ${pkiFeatHtml(it.deck, urSets, fx, fx ? ' st' : '')}
+    <div class="pki-tray${fx ? ' st' : ''}"></div><span class="pki-tag${fx ? ' st' : ''}">// FEATURED</span>${fan}
+    ${fx && it.deck === 'tarot' ? pkiSignHtml() : ''}
+    <div class="pki-buy${fx ? ' st' : ''}"><div class="sh-qty"><button data-act="qty" data-d="-1" data-item="${id}" aria-label="Fewer"${q <= 1 ? ' disabled' : ''}>‹</button><b data-plain>${q}</b><button data-act="qty" data-d="1" data-item="${id}" aria-label="More"${q >= 99 ? ' disabled' : ''}>›</button></div>${shopBuy(it)}</div>
+  </div></div>`;
   mk.addEventListener('click', async e => {
+    if (mk._finish && e.target !== mk && !e.target.closest('button')){ mk._finish(); return; }
     if (e.target === mk) return closePackInfo();
     const qb = e.target.closest('[data-act="qty"]'); if (qb) return changeQty(id, +qb.dataset.d);
     const b = e.target.closest('[data-act="buy"]');
-    if (b){ e.stopPropagation(); const had = owned(id); await tryBuy(id, b); if (owned(id) > had) closePackInfo(); }
+    if (b){ e.stopPropagation(); const had = owned(id); await tryBuy(id, b); if (owned(id) > had) closePackInfo(true); }
   });
   document.body.appendChild(mk);
+  { const s = Math.min(1, innerWidth * .94 / 372, innerHeight * .92 / 500), box = mk.querySelector('.pki-box'); box.style.setProperty('--s', s); box.style.width = 375 * s + 'px'; box.style.height = 503 * s + 'px'; mk.querySelector('.pki-in').style.transform = `scale(${s})`; }
+  if (!S.reduceFx){ pkiBoot(mk); if (it.deck === 'tarot') setTimeout(() => { if (mk.isConnected && !mk.dataset.closing) pkiSign(mk); }, 6000); }
+  // grows out of the banner you tapped (and shrinks back into it on close)
+  if (from && !S.reduceFx){ const box = mk.querySelector('.pki-box'), a = from.getBoundingClientRect(), t = box.getBoundingClientRect();
+    mk._from = from; mk._inv = `translate(${a.left - t.left}px,${a.top - t.top}px) scale(${a.width / t.width},${a.height / t.height})`;
+    box.style.transformOrigin = '0 0';
+    box.animate([{ transform:mk._inv, opacity:.5 }, { transform:'none', opacity:1 }], { duration:MO.norm, easing:MO.arrive });
+    mk.animate([{ backgroundColor:'rgba(3,6,12,0)' }, { backgroundColor:'rgba(3,6,12,.72)' }], { duration:300 }); }
 }
 var shopBan = 0;   // which banner is showing (kept across redraws)
 function renderShop(){
@@ -874,9 +1110,9 @@ function renderShop(){
         <div class="sh-tip"><i class="sw g"></i>Owned, unopened</div></div></div></div>
     ${bs.map(it => `<div class="sh-row th-${it.deck}" data-buyhost data-item="${it.id}">${it === bs[0] ? '<span class="sh-latest">LATEST</span>' : ''}
       ${shopStack(it)}
-      <div class="sh-mid"><h3>${esc(it.name)}</h3>${shopBars(it)}</div>
+      <div class="sh-mid"><h3>${esc(it.name.replace(/ Pack$/, ""))}</h3>${shopBars(it)}</div>
       <div class="sh-right">${shopBuy(it)}
-        <div class="sh-qty"><button data-act="qty" data-d="-1" data-item="${it.id}" aria-label="Fewer"${q(it.id) <= 1 ? ' disabled' : ''}>‹</button><b>×${q(it.id)}</b><button data-act="qty" data-d="1" data-item="${it.id}" aria-label="More"${q(it.id) >= 99 ? ' disabled' : ''}>›</button></div>
+        <div class="sh-qty"><button data-act="qty" data-d="-1" data-item="${it.id}" aria-label="Fewer"${q(it.id) <= 1 ? ' disabled' : ''}>‹</button><b data-plain>${q(it.id)}</b><button data-act="qty" data-d="1" data-item="${it.id}" aria-label="More"${q(it.id) >= 99 ? ' disabled' : ''}>›</button></div>
       </div>
     </div>`).join('')}
     <div class="sh-soon">${ico('i-pouch')}More packs coming soon</div>
@@ -888,7 +1124,7 @@ function changeQty(id, d){
   const it = SHOP.find(x => x.id === id); if (!it) return;
   const q = shopQty[id] = Math.max(1, Math.min(99, (shopQty[id] || 1) + d));
   document.querySelectorAll(`.sh-buy[data-item="${id}"]`).forEach(b => { b.querySelector('span').textContent = fmt(it.price * q); b.classList.toggle('short', S.gold < it.price * q); });
-  document.querySelectorAll(`.sh-qty`).forEach(box => { const [dn, up] = box.querySelectorAll('button'); if (dn.dataset.item !== id) return; dn.disabled = q <= 1; up.disabled = q >= 99; box.querySelector('b').textContent = '×' + q; });
+  document.querySelectorAll(`.sh-qty`).forEach(box => { const [dn, up] = box.querySelectorAll('button'); if (dn.dataset.item !== id) return; dn.disabled = q <= 1; up.disabled = q >= 99; const bb = box.querySelector('b'); bb.textContent = bb.hasAttribute('data-plain') ? q : '×' + q; });
 
 }
 async function tryBuy(id, el){
@@ -934,13 +1170,13 @@ CARD_DATA.cards.forEach(c => c.deck = 'tarot');
 // Land of Dawn Deck (Mobile Legends cards). hero = which champion is on the card.
 var MLBB_CARDS = [{"id": "ML_AS01", "name": "Miya", "hero": "Miya", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS02", "name": "Layla", "hero": "Layla", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS03", "name": "Energy Gunner", "hero": "Layla", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS04", "name": "Steel Elf", "hero": "Lolita", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS05", "name": "Arclight Outlaw", "hero": "Ixia", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS06", "name": "Claude", "hero": "Claude", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS07", "name": "Melissa", "hero": "Melissa", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS08", "name": "The Protector", "hero": "Bruno", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS09", "name": "Hoverjet Outrider", "hero": "Kimmy", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_AS10", "name": "Wild Engine", "hero": "Johnson", "rarity": "ultimate", "set": "Artist Series", "deck": "mlbb"}, {"id": "ML_SP01", "name": "Atomic Pop", "hero": "Miya", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP02", "name": "Atomic Pop", "hero": "Eudora", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP03", "name": "Miss-Hikari", "hero": "Layla", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP04", "name": "Blazing Gun", "hero": "Layla", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP05", "name": "Green Flash", "hero": "Layla", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP06", "name": "Beyond The Clouds", "hero": "Kagura", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP07", "name": "Neobeast", "hero": "Lylia", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP08", "name": "S.A.B.E.R ManHunter", "hero": "Freya", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP09", "name": "Gemini Halo", "hero": "Karina", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP10", "name": "M-World", "hero": "Wanwan", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP11", "name": "Blizzard Storm", "hero": "Vale", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP12", "name": "Empyrean Paladin", "hero": "Zilong", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP13", "name": "Sparkle", "hero": "Estes", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP14", "name": "Rattan Dragon", "hero": "Estes", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP15", "name": "Blazing Trace", "hero": "Claude", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP16", "name": "Sparkle", "hero": "Melissa", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP17", "name": "Firebolt", "hero": "Bruno", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP18", "name": "Frost Wing", "hero": "Kimmy", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP19", "name": "S.A.B.E.R. Automata", "hero": "Johnson", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP20", "name": "Blazing Shadow", "hero": "Esmeralda", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_SP21", "name": "The Foreseer", "hero": "Esmeralda", "rarity": "ultimate", "set": "Special", "deck": "mlbb"}, {"id": "ML_PR01", "name": "Modena Butterfly", "hero": "Miya", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR02", "name": "Doom Catalyst", "hero": "Miya", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR03", "name": "Suzuhime", "hero": "Miya", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR04", "name": "Emerald Enchantress", "hero": "Eudora", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR05", "name": "Twilight Waltz", "hero": "Layla", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR06", "name": "Paranormal Operative", "hero": "Layla", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR07", "name": "Cannon And Roses", "hero": "Layla", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR08", "name": "Water Lily", "hero": "Kagura", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR09", "name": "Jade Blossom", "hero": "Kagura", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR10", "name": "Dragon Maiden", "hero": "Kagura", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR11", "name": "Magitech Arsenal", "hero": "Lylia", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR12", "name": "Haunted Doll", "hero": "Lylia", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR13", "name": "Galactic Vanquisher", "hero": "Freya", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR14", "name": "Raven Shogun", "hero": "Freya", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR15", "name": "War Angel", "hero": "Freya", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR16", "name": "Doom Duelist", "hero": "Karina", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR17", "name": "Black Pearl", "hero": "Karina", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR18", "name": "Pixel Blast", "hero": "Wanwan", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR19", "name": "E-Girl", "hero": "Wanwan", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR20", "name": "Flying Swallow", "hero": "Wanwan", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR21", "name": "Starwatcher", "hero": "Lolita", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR22", "name": "Impish Trickster", "hero": "Lolita", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR23", "name": "Lion Dance", "hero": "Lolita", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR24", "name": "Supernal Tempest", "hero": "Vale", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR25", "name": "Keeper Of The Winds", "hero": "Vale", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR26", "name": "Concerto Of Light", "hero": "Vale", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR27", "name": "Mecha-King Perseus", "hero": "Alpha", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR28", "name": "Revenant Of Roses", "hero": "Alpha", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR29", "name": "Onimusha Commander", "hero": "Alpha", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR30", "name": "Glorious General", "hero": "Zilong", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR31", "name": "Changbanpo Commander", "hero": "Zilong", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR32", "name": "Dragon Of Prosperity", "hero": "Zilong", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR33", "name": "Arcane Magistrate", "hero": "Estes", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR34", "name": "Galaxy Dominator", "hero": "Estes", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR35", "name": "Blacklist International", "hero": "Estes", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR36", "name": "Challenge's Spark", "hero": "Claude", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR37", "name": "Mecha Dragon", "hero": "Claude", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR38", "name": "Umbra Bloom", "hero": "Melissa", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR39", "name": "Street Hype", "hero": "Bruno", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR40", "name": "Astrocat", "hero": "Kimmy", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR41", "name": "Wreck King", "hero": "Johnson", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR42", "name": "Sovereign Of Realms", "hero": "Johnson", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_PR43", "name": "Light Envoy", "hero": "Esmeralda", "rarity": "legendary", "set": "Prestige", "deck": "mlbb"}, {"id": "ML_ST01", "name": "Moon Priestess", "hero": "Miya", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST02", "name": "Cosmic Voyage", "hero": "Eudora", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST03", "name": "Bunny Babe", "hero": "Layla", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST04", "name": "Summer Festival", "hero": "Kagura", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST05", "name": "Future Star", "hero": "Lylia", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST06", "name": "Dragon Hunter", "hero": "Freya", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST07", "name": "Blood Moon", "hero": "Karina", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST08", "name": "Teen Pop", "hero": "Wanwan", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST09", "name": "Astro Mallet", "hero": "Lolita", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST10", "name": "Soaring Devata", "hero": "Vale", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST11", "name": "Star Enforcer", "hero": "Alpha", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST12", "name": "Dynamic Streak", "hero": "Ixia", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST13", "name": "Storm Rider", "hero": "Zilong", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST14", "name": "White Crane", "hero": "Estes", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST15", "name": "Earth's Mightiest", "hero": "Claude", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST16", "name": "Street Football", "hero": "Bruno", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST17", "name": "Charge Leader", "hero": "Kimmy", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST18", "name": "Starblazer", "hero": "Johnson", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_ST19", "name": "Lady Thief", "hero": "Esmeralda", "rarity": "epic", "set": "Starlight", "deck": "mlbb"}, {"id": "ML_SH01", "name": "Jungle Ranger", "hero": "Miya", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH02", "name": "Countess Scarlet", "hero": "Eudora", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH03", "name": "Classic Malefic Gunner", "hero": "Layla", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH04", "name": "Cherry Witch", "hero": "Kagura", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH05", "name": "Star Student", "hero": "Lylia", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH06", "name": "Gladiator", "hero": "Freya", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH07", "name": "Spider Lily", "hero": "Karina", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH08", "name": "Shoujo Commander", "hero": "Wanwan", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH09", "name": "Special Op", "hero": "Lolita", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH10", "name": "Kannagi", "hero": "Vale", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH11", "name": "Sea Gladiator", "hero": "Alpha", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH12", "name": "Eastern Warrior", "hero": "Zilong", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH13", "name": "Crow Bishop", "hero": "Estes", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH14", "name": "Plunderous Pirate", "hero": "Claude", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH15", "name": "Nightwalker", "hero": "Melissa", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH16", "name": "Best DJ", "hero": "Bruno", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH17", "name": "Bio Frontier", "hero": "Kimmy", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH18", "name": "Jeepney Racer", "hero": "Johnson", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_SH19", "name": "Poison Vine", "hero": "Esmeralda", "rarity": "rare", "set": "Shiny", "deck": "mlbb"}, {"id": "ML_CL01", "name": "Burning Bow", "hero": "Miya", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL02", "name": "Flame Red Lips", "hero": "Eudora", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL03", "name": "Green Flash", "hero": "Layla", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL04", "name": "Flower Season", "hero": "Kagura", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL05", "name": "School Idol", "hero": "Lylia", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL06", "name": "Dark Rose", "hero": "Freya", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL07", "name": "Phantom Blade", "hero": "Karina", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL08", "name": "Darting Star", "hero": "Wanwan", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL09", "name": "Soldier In Training", "hero": "Lolita", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL10", "name": "Cerulean Winds", "hero": "Vale", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL11", "name": "Fierce Dragon", "hero": "Alpha", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL12", "name": "Shifting Sand", "hero": "Ixia", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL13", "name": "Elite Warrior", "hero": "Zilong", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL14", "name": "Holy Priest", "hero": "Estes", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL15", "name": "Golden Bullet", "hero": "Claude", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL16", "name": "Twinge Weaver", "hero": "Melissa", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL17", "name": "Vanguard Elite", "hero": "Bruno", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL18", "name": "Steam Researcher", "hero": "Kimmy", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL19", "name": "Fire Chef", "hero": "Johnson", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_CL20", "name": "Ruddy Dusk", "hero": "Esmeralda", "rarity": "common", "set": "Classic", "deck": "mlbb"}, {"id": "ML_OR01", "name": "Moonlight Archer", "hero": "Miya", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR02", "name": "Lightning Weaver", "hero": "Eudora", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR03", "name": "Onmyouji Master", "hero": "Kagura", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR04", "name": "Little Witch", "hero": "Lylia", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR05", "name": "Valkyrie", "hero": "Freya", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR06", "name": "Shadow Blade", "hero": "Karina", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR07", "name": "Agile Tiger", "hero": "Wanwan", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR08", "name": "Steel Elf", "hero": "Lolita", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR09", "name": "Windtalker", "hero": "Vale", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR10", "name": "Blade Of Enmity", "hero": "Alpha", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR11", "name": "Arclight Outlaw", "hero": "Ixia", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR12", "name": "Spear Of The Dragon", "hero": "Zilong", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR13", "name": "Moon Elf King", "hero": "Estes", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR14", "name": "Master Thief", "hero": "Claude", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR15", "name": "Cursed Needle", "hero": "Melissa", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR16", "name": "The Protector", "hero": "Bruno", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR17", "name": "Hoverjet Outrider", "hero": "Kimmy", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR18", "name": "Wild Engine", "hero": "Johnson", "rarity": "common", "set": "Origin", "deck": "mlbb"}, {"id": "ML_OR19", "name": "Astrologer", "hero": "Esmeralda", "rarity": "common", "set": "Origin", "deck": "mlbb"}];
 // Hand of Destiny cards (Mobile Legends). set = category; 'Duo' cards are sideways pairs (land:1 = a landscape picture HD_xxx_l exists)
-var HOD_CARDS = [{"id":"HD_PR02","name":"Kagura","hero":"Kagura","rarity":"ultimate","set":"Promo","deck":"hod"},{"id":"HD_PR03","name":"Granger","hero":"Granger","rarity":"ultimate","set":"Promo","deck":"hod"},{"id":"HD_SP01","name":"Alice","hero":"Alice","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP02","name":"Obsidia","hero":"Obsidia","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP03","name":"Selena","hero":"Selena","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP04","name":"Thamuz","hero":"Thamuz","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP05","name":"Dyrroth","hero":"Dyrroth","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP06","name":"Lancelot","hero":"Lancelot","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP07","name":"Rafaela","hero":"Rafaela","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP08","name":"Fanny","hero":"Fanny","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP09","name":"Odette","hero":"Odette","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP10","name":"Alucard","hero":"Alucard","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_UR01","name":"Saber","hero":"Saber","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR02","name":"Leomord","hero":"Leomord","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR03","name":"Hayabusa","hero":"Hayabusa","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR04","name":"Kagura","hero":"Kagura","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR05","name":"Alpha","hero":"Alpha","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR06","name":"Moskov","hero":"Moskov","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR07","name":"Karrie","hero":"Karrie","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR08","name":"Lesley","hero":"Lesley","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR09","name":"Hanabi","hero":"Hanabi","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR10","name":"Kaja","hero":"Kaja","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR11","name":"Vale","hero":"Vale","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR12","name":"Lunox","hero":"Lunox","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR13","name":"Terizla","hero":"Terizla","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR14","name":"Yin","hero":"Yin","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR15","name":"Arlott","hero":"Arlott","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_AAD1","name":"Layla","hero":"Layla","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAD2","name":"Esmeralda","hero":"Esmeralda","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAD3","name":"Khaleed","hero":"Khaleed","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAD4","name":"Nolan","hero":"Nolan","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAW1","name":"Miya","hero":"Miya","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAW2","name":"Estes","hero":"Estes","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAW3","name":"Harith","hero":"Harith","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAW4","name":"Irithel","hero":"Irithel","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ACR1","name":"Zilong","hero":"Zilong","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ACR2","name":"Wanwan","hero":"Wanwan","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ACR3","name":"Luo Yi","hero":"Luo Yi","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ACR4","name":"Zhuxin","hero":"Zhuxin","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AKS1","name":"Vexana","hero":"Vexana","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AKS2","name":"Faramis","hero":"Faramis","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AKS3","name":"Paquito","hero":"Paquito","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AKS4","name":"Benedetta","hero":"Benedetta","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ANV1","name":"Eudora","hero":"Eudora","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ANV2","name":"Freya","hero":"Freya","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ANV3","name":"Aurora","hero":"Aurora","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ANV4","name":"Popol and Kupa","hero":"Popol and Kupa","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AVS1","name":"Minsitthar","hero":"Minsitthar","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AVS2","name":"Kadita","hero":"Kadita","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AVS3","name":"Badang","hero":"Badang","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AVS4","name":"Martis","hero":"Martis","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_PTR01","name":"Miya","hero":"Miya","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR02","name":"Alucard","hero":"Alucard","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR03","name":"Fanny","hero":"Fanny","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR04","name":"Claude","hero":"Claude","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR05","name":"Khufra","hero":"Khufra","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR06","name":"Esmeralda","hero":"Esmeralda","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR07","name":"Granger","hero":"Granger","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR08","name":"Silvanna","hero":"Silvanna","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR09","name":"Alice","hero":"Alice","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR10","name":"Natalia","hero":"Natalia","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR11","name":"Zilong","hero":"Zilong","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR12","name":"Freya","hero":"Freya","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR13","name":"Odette","hero":"Odette","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR14","name":"Lancelot","hero":"Lancelot","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_R53","name":"JOKER Alice","hero":"JOKER Alice","rarity":"common","set":"Joker","deck":"hod","joker":1},{"id":"HD_R54","name":"JOKER Obsidia","hero":"JOKER Obsidia","rarity":"common","set":"Joker","deck":"hod","joker":1},{"id":"HD_R01","name":"Akai","hero":"Akai","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R02","name":"Saber","hero":"Saber","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R03","name":"Chou","hero":"Chou","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R04","name":"Minsitthar","hero":"Minsitthar","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R05","name":"Gatotkaca","hero":"Gatotkaca","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R06","name":"Lapu-Lapu","hero":"Lapu-Lapu","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R07","name":"Nolan","hero":"Nolan","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R08","name":"Arlott","hero":"Arlott","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R09","name":"Granger","hero":"Granger","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R10","name":"Paquito","hero":"Paquito","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R11","name":"Cecilion","hero":"Cecilion","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R12","name":"Freya","hero":"Freya","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R13","name":"Yu Zhong","hero":"Yu Zhong","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R14","name":"Angela","hero":"Angela","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R15","name":"Odette","hero":"Odette","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R16","name":"Vexana","hero":"Vexana","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R17","name":"Lolita","hero":"Lolita","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R18","name":"Floryn","hero":"Floryn","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R19","name":"Faramis","hero":"Faramis","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R20","name":"Kadita","hero":"Kadita","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R21","name":"Harith","hero":"Harith","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R22","name":"Xavier","hero":"Xavier","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R23","name":"Lou Yi","hero":"Lou Yi","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R24","name":"Lukas","hero":"Lukas","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R25","name":"Rafaela","hero":"Rafaela","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R26","name":"Estes","hero":"Estes","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R27","name":"Alucard","hero":"Alucard","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R28","name":"Miya","hero":"Miya","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R29","name":"Zilong","hero":"Zilong","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R30","name":"Layla","hero":"Layla","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R31","name":"Clint","hero":"Clint","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R32","name":"Claude","hero":"Claude","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R33","name":"Ling","hero":"Ling","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R34","name":"Popol And Kupa","hero":"Popol And Kupa","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R35","name":"Kimmy","hero":"Kimmy","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R36","name":"Fanny","hero":"Fanny","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R37","name":"Lancelot","hero":"Lancelot","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R38","name":"Carmilla","hero":"Carmilla","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R39","name":"Dyrroth","hero":"Dyrroth","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R40","name":"Esmeralda","hero":"Esmeralda","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R41","name":"Tigreal","hero":"Tigreal","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R42","name":"Johnson","hero":"Johnson","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R43","name":"Uranus","hero":"Uranus","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R44","name":"Baxia","hero":"Baxia","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R45","name":"Gloo","hero":"Gloo","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R46","name":"Fredrinn","hero":"Fredrinn","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R47","name":"Chip","hero":"Chip","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R48","name":"Atlas","hero":"Atlas","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R49","name":"Edith","hero":"Edith","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R50","name":"Leomord","hero":"Leomord","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R51","name":"Aurora","hero":"Aurora","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R52","name":"Khaleed","hero":"Khaleed","rarity":"common","set":"Poker","deck":"hod"}];
+var HOD_CARDS = [{"id":"HD_PR02","name":"Kagura","hero":"Kagura","rarity":"ultimate","set":"Promo","deck":"hod"},{"id":"HD_PR03","name":"Granger","hero":"Granger","rarity":"ultimate","set":"Promo","deck":"hod"},{"id":"HD_SP01","name":"Alice","hero":"Alice","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP02","name":"Obsidia","hero":"Obsidia","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP03","name":"Selena","hero":"Selena","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP04","name":"Thamuz","hero":"Thamuz","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP05","name":"Dyrroth","hero":"Dyrroth","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP06","name":"Lancelot","hero":"Lancelot","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP07","name":"Rafaela","hero":"Rafaela","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP08","name":"Fanny","hero":"Fanny","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP09","name":"Odette","hero":"Odette","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_SP10","name":"Alucard","hero":"Alucard","rarity":"ultimate","set":"Gilded","deck":"hod"},{"id":"HD_UR01","name":"Saber","hero":"Saber","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR02","name":"Leomord","hero":"Leomord","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR03","name":"Hayabusa","hero":"Hayabusa","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR04","name":"Kagura","hero":"Kagura","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR05","name":"Alpha","hero":"Alpha","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR06","name":"Moskov","hero":"Moskov","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR07","name":"Karrie","hero":"Karrie","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR08","name":"Lesley","hero":"Lesley","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR09","name":"Hanabi","hero":"Hanabi","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR10","name":"Kaja","hero":"Kaja","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR11","name":"Vale","hero":"Vale","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR12","name":"Lunox","hero":"Lunox","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR13","name":"Terizla","hero":"Terizla","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR14","name":"Yin","hero":"Yin","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_UR15","name":"Arlott","hero":"Arlott","rarity":"legendary","set":"Legends","deck":"hod"},{"id":"HD_AAD1","name":"Layla","hero":"Layla","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAD2","name":"Esmeralda","hero":"Esmeralda","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAD3","name":"Khaleed","hero":"Khaleed","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAD4","name":"Nolan","hero":"Nolan","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAW1","name":"Miya","hero":"Miya","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAW2","name":"Estes","hero":"Estes","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAW3","name":"Harith","hero":"Harith","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AAW4","name":"Irithel","hero":"Irithel","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ACR1","name":"Zilong","hero":"Zilong","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ACR2","name":"Wanwan","hero":"Wanwan","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ACR3","name":"Luo Yi","hero":"Luo Yi","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ACR4","name":"Zhuxin","hero":"Zhuxin","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AKS1","name":"Vexana","hero":"Vexana","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AKS2","name":"Faramis","hero":"Faramis","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AKS3","name":"Paquito","hero":"Paquito","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AKS4","name":"Benedetta","hero":"Benedetta","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ANV1","name":"Eudora","hero":"Eudora","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ANV2","name":"Freya","hero":"Freya","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ANV3","name":"Aurora","hero":"Aurora","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_ANV4","name":"Popol and Kupa","hero":"Popol and Kupa","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AVS1","name":"Minsitthar","hero":"Minsitthar","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AVS2","name":"Kadita","hero":"Kadita","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AVS3","name":"Badang","hero":"Badang","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_AVS4","name":"Martis","hero":"Martis","rarity":"epic","set":"Regions","deck":"hod"},{"id":"HD_PTR01","name":"Miya","hero":"Miya","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR02","name":"Alucard","hero":"Alucard","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR03","name":"Fanny","hero":"Fanny","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR04","name":"Claude","hero":"Claude","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR05","name":"Khufra","hero":"Khufra","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR06","name":"Esmeralda","hero":"Esmeralda","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR07","name":"Granger","hero":"Granger","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR08","name":"Silvanna","hero":"Silvanna","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR09","name":"Alice","hero":"Alice","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR10","name":"Natalia","hero":"Natalia","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR11","name":"Zilong","hero":"Zilong","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR12","name":"Freya","hero":"Freya","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR13","name":"Odette","hero":"Odette","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_PTR14","name":"Lancelot","hero":"Lancelot","rarity":"rare","set":"Duo","deck":"hod","land":1},{"id":"HD_CHB01","name":"Miya","hero":"Miya","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB02","name":"Zilong","hero":"Zilong","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB03","name":"Tigreal","hero":"Tigreal","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB04","name":"Zhuxin","hero":"Zhuxin","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB05","name":"Zilong","hero":"Zilong","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB06","name":"Fanny","hero":"Fanny","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB07","name":"Layla","hero":"Layla","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB08","name":"Layla","hero":"Layla","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB09","name":"Kagura","hero":"Kagura","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB10","name":"Estes","hero":"Estes","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB11","name":"Estes","hero":"Estes","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB12","name":"Vexana","hero":"Vexana","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB13","name":"Odette","hero":"Odette","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB14","name":"Lancelot","hero":"Lancelot","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB15","name":"Hanabi","hero":"Hanabi","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB16","name":"Suyou","hero":"Suyou","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB17","name":"Valentina","hero":"Valentina","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB18","name":"Kagura","hero":"Kagura","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB19","name":"Silvanna","hero":"Silvanna","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_CHB20","name":"Yu Zhong","hero":"Yu Zhong","rarity":"rare","set":"Chibi","deck":"hod"},{"id":"HD_R53","name":"JOKER Alice","hero":"JOKER Alice","rarity":"common","set":"Joker","deck":"hod","joker":1},{"id":"HD_R54","name":"JOKER Obsidia","hero":"JOKER Obsidia","rarity":"common","set":"Joker","deck":"hod","joker":1},{"id":"HD_R01","name":"Akai","hero":"Akai","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R02","name":"Saber","hero":"Saber","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R03","name":"Chou","hero":"Chou","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R04","name":"Minsitthar","hero":"Minsitthar","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R05","name":"Gatotkaca","hero":"Gatotkaca","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R06","name":"Lapu-Lapu","hero":"Lapu-Lapu","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R07","name":"Nolan","hero":"Nolan","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R08","name":"Arlott","hero":"Arlott","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R09","name":"Granger","hero":"Granger","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R10","name":"Paquito","hero":"Paquito","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R11","name":"Cecilion","hero":"Cecilion","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R12","name":"Freya","hero":"Freya","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R13","name":"Yu Zhong","hero":"Yu Zhong","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R14","name":"Angela","hero":"Angela","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R15","name":"Odette","hero":"Odette","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R16","name":"Vexana","hero":"Vexana","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R17","name":"Lolita","hero":"Lolita","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R18","name":"Floryn","hero":"Floryn","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R19","name":"Faramis","hero":"Faramis","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R20","name":"Kadita","hero":"Kadita","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R21","name":"Harith","hero":"Harith","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R22","name":"Xavier","hero":"Xavier","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R23","name":"Lou Yi","hero":"Lou Yi","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R24","name":"Lukas","hero":"Lukas","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R25","name":"Rafaela","hero":"Rafaela","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R26","name":"Estes","hero":"Estes","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R27","name":"Alucard","hero":"Alucard","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R28","name":"Miya","hero":"Miya","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R29","name":"Zilong","hero":"Zilong","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R30","name":"Layla","hero":"Layla","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R31","name":"Clint","hero":"Clint","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R32","name":"Claude","hero":"Claude","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R33","name":"Ling","hero":"Ling","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R34","name":"Popol And Kupa","hero":"Popol And Kupa","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R35","name":"Kimmy","hero":"Kimmy","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R36","name":"Fanny","hero":"Fanny","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R37","name":"Lancelot","hero":"Lancelot","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R38","name":"Carmilla","hero":"Carmilla","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R39","name":"Dyrroth","hero":"Dyrroth","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R40","name":"Esmeralda","hero":"Esmeralda","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R41","name":"Tigreal","hero":"Tigreal","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R42","name":"Johnson","hero":"Johnson","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R43","name":"Uranus","hero":"Uranus","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R44","name":"Baxia","hero":"Baxia","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R45","name":"Gloo","hero":"Gloo","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R46","name":"Fredrinn","hero":"Fredrinn","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R47","name":"Chip","hero":"Chip","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R48","name":"Atlas","hero":"Atlas","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R49","name":"Edith","hero":"Edith","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R50","name":"Leomord","hero":"Leomord","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R51","name":"Aurora","hero":"Aurora","rarity":"common","set":"Poker","deck":"hod"},{"id":"HD_R52","name":"Khaleed","hero":"Khaleed","rarity":"common","set":"Poker","deck":"hod"}];
 var REALMS = [{"id":"RM01","name":"Moniyan 1"},{"id":"RM02","name":"Moniyan 2"},{"id":"RM03","name":"Moniyan 3"},{"id":"RM04","name":"Moniyan 4"},{"id":"RM05","name":"Cadia 1"},{"id":"RM06","name":"Cadia 2"},{"id":"RM07","name":"Cadia 3"},{"id":"RM08","name":"Cadia 4"},{"id":"RM09","name":"Babren Lands 1"},{"id":"RM10","name":"Babren Lands 2"},{"id":"RM11","name":"Babren Lands 3"},{"id":"RM12","name":"The Abyss 1"},{"id":"RM13","name":"The Abyss 2"},{"id":"RM14","name":"Northern Vale 1"},{"id":"RM15","name":"Northern Vale 2"},{"id":"RM16","name":"Northern Vale 3"},{"id":"RM17","name":"Azrya"},{"id":"RM18","name":"Vonetis Sea"},{"id":"RM19","name":"Agelta 1"},{"id":"RM20","name":"Agelta 2"},{"id":"RM21","name":"Agelta 3"},{"id":"RM22","name":"Agelta 4"},{"id":"RM23","name":"Sanctum Island 1"},{"id":"RM24","name":"Sanctum Island 2"}];
 const CARDS = CARD_DATA.cards.concat(MLBB_CARDS, HOD_CARDS), SCENES = CARD_DATA.scenes;
 // bonus pictures that drop from a pack of their own deck: Chapters (Tarot) and Realms (Hand of Destiny)
 const SCENE_DEF = {
-  tarot:{ key:'__scenes', list:SCENES, name:'Chapters', one:'Chapter', col:'#9db2b0' },
-  hod:  { key:'__realms', list:REALMS, name:'Realms', one:'Realm', col:'#9db2b0' }
+  tarot:{ key:'__scenes', list:SCENES, name:'Chapter', one:'Chapter', col:'#9db2b0' },
+  hod:  { key:'__realms', list:REALMS, name:'Realm', one:'Realm', col:'#9db2b0' }
 };
 const sceneDefOf = k => Object.values(SCENE_DEF).find(x => x.key === k);
 const sceneDefById = id => Object.values(SCENE_DEF).find(x => x.list.some(sc => sc.id === id));
@@ -1014,7 +1250,7 @@ let opening = null, packClear = 0;
 // where each card sits (Hearthstone-style star); the strongest card is dealt last, to the top
 const PACK_SLOTS = [ { x:18, y:.66, r:-7 }, { x:50, y:.52, r:0 }, { x:82, y:.66, r:7 }, { x:34, y:1.82, r:-3 }, { x:66, y:1.82, r:3 } ];
 // the label under a card, like Hearthstone's class name
-const SET_LABEL = { 'Poker:H':'Hearts', 'Poker:D':'Diamonds', 'Poker:S':'Spades', 'Poker:C':'Clubs', 'SSR':'Signature', 'SR':'Character', 'Cards of Blasphemy':'Card of Blasphemy', 'Angels':'Angel', 'Objects':'Object', 'Pathways':'Pathway', 'Promo':'Promo', 'Deity':'Deity', 'Puzzle':'Puzzle', 'Tarot Club':'Tarot Club', 'Legends':'Legend', 'Gilded':'Gilded', 'Regions':'Region', 'Duo':'Duo', 'Poker':'Poker', 'Joker':'Joker' };
+const SET_LABEL = { 'Poker:H':'Hearts', 'Poker:D':'Diamonds', 'Poker:S':'Spades', 'Poker:C':'Clubs', 'SSR':'Signature', 'SR':'Beyonder', 'Cards of Blasphemy':'Card of Blasphemy', 'Angels':'Angel', 'Objects':'Artifact', 'Pathways':'Pathway', 'Promo':'Promo', 'Deity':'Deity', 'Puzzle':'Puzzle', 'Tarot Club':'Tarot Club', 'Legends':'Legend', 'Gilded':'Gilded', 'Regions':'Region', 'Duo':'Duo', 'Poker':'Poker', 'Joker':'Joker' };
 const setLabel = set => SET_LABEL[set] || set;
 function openDeck(id){
   const item = SHOP.find(x => x.id === id);
@@ -1051,14 +1287,29 @@ function showOpening(){
         <span class="pk-set">${esc(setLabel(c.set))}</span>
       </button>`).join('')}</div>
     <div class="pk-actions"><div class="pk-hint">Double-tap anywhere to reveal all</div></div>`;
+  ov.querySelectorAll('.pk-front img, .pk-back').forEach(i => { if (i.decode) i.decode().catch(() => {}); });   // pictures ready before the flip
   ov.classList.add('open');
-
+  packDeal(ov, o);
   ov.querySelectorAll('.pk-card').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); flipCard(+b.dataset.i); }));
 }
+// (trial) the cards fly out of the pack you swiped to their spots, one by one; the pack fades away behind them
+function packDeal(ov, o){
+  if (S.reduceFx) return;
+  const stk = document.querySelector('.inv-stack'); if (stk) stk.animate([{ opacity:1 }, { opacity:0 }], { duration:220, fill:'forwards' });   // the pack itself fades; the cards come out from the top
+  const fx = innerWidth / 2, fy = -60, cards = [...ov.querySelectorAll('.pk-card')], total = 780 + Math.max(0, cards.length - 1) * 110;
+  ov.classList.add('dealing'); clearTimeout(packDeal.t); packDeal.anims = []; packDeal.t = setTimeout(() => ov.classList.remove('dealing'), total + 40);   // a tap while dealing skips it (packDealSkip)
+  cards.forEach((b, i) => {
+    b.style.animation = 'none';
+    const c = b.getBoundingClientRect(), dx = fx - (c.left + c.width / 2), dy = fy - (c.top + c.height / 2);
+    packDeal.anims.push(b.animate([{ translate:`${dx}px ${dy}px`, scale:'.45', opacity:0 }, { opacity:1, offset:.1 }, { translate:`${dx * .35}px ${dy * .2}px`, scale:'.9', offset:.55 }, { translate:'0 0', scale:'1', opacity:1 }], { duration:780, delay:i * 110, easing:'cubic-bezier(.3,.7,.3,1)', fill:'backwards' }))
+  });
+}
+function packDealSkip(){ clearTimeout(packDeal.t); (packDeal.anims || []).forEach(a => a.cancel()); packDeal.anims = []; $('#pack').classList.remove('dealing'); }
 // double-tap on empty space turns every card face up (taps on a card only affect that card)
 let packTap = 0;
 $('#pack').addEventListener('click', e => {
   const o = opening; if (!o || o.done || !$('#pack .pk-card')) return;   // not on the scene screen
+  if ($('#pack').classList.contains('dealing')){ e.stopPropagation(); e.preventDefault(); packDealSkip(); return; }   // a tap skips the deal
   if (e.target.closest('.pk-card')){ packTap = 0; return; }   // taps on a card only flip / open that card
   const t = performance.now();
   if (t - packTap < 350){ packTap = 0; e.stopPropagation(); e.preventDefault(); revealAll(); }
@@ -1248,22 +1499,36 @@ function closeOpening(){
 }
 
 /* ---- Looking at one card ---- */
+const EYE = `<button class="in-eye" aria-label="Hide text and effects">${ico('i-eye', '0 0 24 24')}</button>`;
 function inspectCard(id, isScene, isLand){
+  $('#inspect').classList.remove('art', 'locked');
   if (/^HD_DUO\d/.test(id)){   // a joined Duo picture
     const k = +id.slice(6), pr = CARDS.filter(c => c.set === 'Duo').sort((a, b) => a.id.localeCompare(b.id)).slice(k * 2 - 2, k * 2), ov = $('#inspect');
-    ov.innerHTML = `<div class="in-wrap land"><div class="in-card"><img src="${cardImg(id)}" alt=""></div><div class="in-name">${pr.map(c => esc(c.name)).join(' &amp; ')}</div><div class="in-meta"><b style="color:${RARITY.rare.color}">R</b> · Duo · Owned ×${ownedCard(pr[0].id)} / ×${ownedCard(pr[1].id)}</div></div>`;
-    ov.classList.add('open'); return;
+    ov.innerHTML = `<div class="in-wrap land"><div class="in-card"><img src="${cardImg(id)}" alt=""></div><div class="in-name">${pr.map(c => esc(c.name)).join(' &amp; ')}</div><div class="in-meta"><b style="color:${RARITY.rare.color}">R</b> · Duo · Owned ×${ownedCard(pr[0].id)} / ×${ownedCard(pr[1].id)}</div>${EYE}</div>`;
+    ov.classList.add('open'); inspectZoom(ov); return;
   }
   const sd = isScene ? sceneDefById(id) : null, c = isScene ? (sd && sd.list.find(x => x.id === id)) : CARD_BY_ID[id]; if (!c) return;
   const ov = $('#inspect');
-  const holo = !isScene && (c.rarity === 'ultimate' || c.rarity === 'legendary' || c.joker);   // UR, SSR and J tilt with your finger and catch the light; SR and R keep the sweeping glare; C has neither
-  ov.innerHTML = `<div class="in-wrap${isScene || isLand ? ' land' : ''}">
-    <div class="in-card${holo ? ' holo' : ''}"><img src="${isLand ? landImg(id) : cardImg(id)}" alt="">${holo ? '<span class="in-foil"></span>' : !isScene && (c.rarity === 'epic' || c.rarity === 'rare') ? '<span class="pk-glare in-glare"></span>' : ''}</div>
+  const top3 = !isScene && (c.rarity === 'ultimate' || c.rarity === 'legendary' || c.joker), holo = top3 && !S.reduceFx;   // Reduce effects: UR / SSR / J get the plain glare instead of the tilt; SR and R get nothing   // UR, SSR and J tilt with your finger and catch the light; SR and R keep the sweeping glare; C has neither
+  ov.innerHTML = `<div class="in-wrap${isScene || isLand ? ' land' : ''}${isScene ? ' sc' : ''}">
+    <div class="in-card${holo ? ' holo' : ''}"><img src="${isLand ? landImg(id) : cardImg(id)}" alt="">${holo ? '<span class="in-foil"></span>' : !isScene && (top3 || (!S.reduceFx && (c.rarity === 'epic' || c.rarity === 'rare'))) ? `<span class="pk-glare in-glare${c.rarity === 'epic' || c.rarity === 'rare' ? ' in-slow' : ''}"></span>` : ''}</div>
     <div class="in-name">${esc(c.name)}</div>
     ${isScene ? `<div class="in-meta">${sd.one}</div>` : `${flavorOf(id) ? `<p class="in-flavor">${esc(flavorOf(id))}</p>` : ''}<div class="in-meta">${rarBadge(c)} · ${esc(setLabel(c.set))}${c.hero ? ' · ' + esc(c.hero) : ''} · Owned ×${ownedCard(id)} · Collected ×${cardTotal(id)}</div>`}
+    ${EYE}
   </div>`;
-  ov.classList.add('open');
+  ov.classList.add('open'); inspectZoom(ov);
   if (holo) holoTilt(ov.querySelector('.in-card'));
+}
+// the card grows out of the tile you tapped, and shrinks back into it when the card view closes
+var inspectFrom = null;
+function inspectZoom(ov){
+  const src = inspectFrom; inspectFrom = null; ov.classList.remove('zoom'); ov._src = null;
+  const img = ov.querySelector('.in-card'); if (!src || !img || S.reduceFx || !src.isConnected) return;   // the whole card (picture + shine layers) moves
+  const s = (src.querySelector('img') || src).getBoundingClientRect(); if (!s.width) return;
+  ov.classList.add('zoom'); ov._src = src;
+  const t = img.getBoundingClientRect();
+  img.animate([{ transform:`translate(${s.left + s.width / 2 - (t.left + t.width / 2)}px,${s.top + s.height / 2 - (t.top + t.height / 2)}px) scale(${s.width / t.width})` }, { transform:'none' }], { duration:MO.norm, easing:MO.arrive });
+  ov.animate([{ backgroundColor:'rgba(5,11,12,0)' }, { backgroundColor:'rgba(5,11,12,.94)' }], { duration:300, easing:'ease-out' });
 }
 // drag on a UR / SSR / J card: it tilts toward the finger and a soft light follows
 function holoTilt(card){
@@ -1280,17 +1545,85 @@ function holoTilt(card){
   card.addEventListener('pointermove', move); card.addEventListener('touchmove', move, { passive:true });
   card.addEventListener('pointerleave', rest); card.addEventListener('touchend', rest); card.addEventListener('pointercancel', rest);
 }
-function closeInspect(){ $('#inspect').classList.remove('open'); }
+// after every redraw: pictures that are already loaded show at once, the rest fade in when ready; dot highlights placed
+const FADE_IMG = '#panel .col-grid img, #panel .col-duo img, #panel .col-scenes img, #panel .col-fan img, #panel .pk-row img, #panel .cc-pv img, #panel .pz-strip img';
+var lastStreaks = {}, lastRing = null, lastDay = null, lastEarn = null;
+// pictures for the other tabs load quietly while nothing else is going on, so they are ready when you get there
+var preloaded = false;
+function preloadPics(){
+  if (preloaded) return; preloaded = true;
+  const urls = [...new Set([...SHOP.filter(x => !x.soon).map(x => deckOf(x).cover), ...SHOP.flatMap(x => [...(x.fan || []), ...(x.pop || []), ...(x.pbg || [])]).map(cardImg)])];   // only the pack art (a few pictures); the cards load as you scroll to them
+  const idle = window.requestIdleCallback || (f => setTimeout(() => f({ timeRemaining:() => 8 }), 200));
+  let i = 0; const step = dl => { while (i < urls.length && dl.timeRemaining() > 2){ const im = new Image(); im.decoding = 'async'; im.src = urls[i++]; } if (i < urls.length) idle(step); };
+  setTimeout(() => idle(step), 4000);
+}
+let offObs = null;
+function watchLoops(){
+  if (!('IntersectionObserver' in window)) return;
+  if (!offObs) offObs = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('offs', !e.isIntersecting)), { rootMargin: '80px 0px' });
+  document.querySelectorAll('#panel :is(.cc-chip.ready,.set-claim.ready,.sh-latest,.sh-col,.dka-holo,.inv-stack,.dl-btn.ready,.xpbar.boss,.chip.s,.hud-wk button.s,.goal-coin,.flame)').forEach(el => { if (!el._ob){ el._ob = 1; offObs.observe(el); } });
+}
+document.addEventListener('visibilitychange', () => document.documentElement.classList.toggle('bg', document.hidden));
+function afterRender(){
+  preloadPics(); watchLoops();
+  const fx = !S.reduceFx;
+  if (S.tab === 'quests'){
+    // streak numbers roll when they change; the done ring sweeps from where it was (and turns green when full)
+    const now = {};
+    document.querySelectorAll('#panel .qb-item[data-id]').forEach(it => { const b = it.querySelector('.cy-streak .nn b'); if (!b) return; const n = +b.textContent.replace(/\D/g, '') || 0; now[it.dataset.id] = n;
+      if (fx && lastStreaks[it.dataset.id] != null && lastStreaks[it.dataset.id] !== n) rollNum(b, lastStreaks[it.dataset.id], n); });
+    lastStreaks = now;
+    // Earned today counts up (or down after an Undo) to its new numbers
+    const ets = [...document.querySelectorAll('#panel .qb-sumw .et')].map(x => +x.dataset.v || 0);
+    if (fx && lastEarn) document.querySelectorAll('#panel .qb-sumw .et').forEach((x, i) => { if (lastEarn[i] != null && lastEarn[i] !== ets[i]){ const a = lastEarn[i], b = ets[i]; x.textContent = fmt(a); setTimeout(() => invNumTween(x, a, b, 600), 500); } });   // waits for the rewards to fly first
+    lastEarn = ets;
+    const ring = document.querySelector('#panel .qb-ring circle + circle');
+    if (ring){ const da = ring.getAttribute('stroke-dasharray'), col = ring.getAttribute('stroke');
+      if (fx && lastRing && lastRing.da !== da){ ring.style.transition = 'none'; ring.setAttribute('stroke-dasharray', lastRing.da); ring.setAttribute('stroke', lastRing.col); void ring.getBoundingClientRect();
+        ring.style.transition = 'stroke-dasharray .7s cubic-bezier(.3,.8,.3,1), stroke .6s ease, filter .6s ease'; ring.setAttribute('stroke-dasharray', da); ring.setAttribute('stroke', col); }
+      lastRing = { da, col }; }
+    // a new day: the quests light back up one after another, top to bottom
+    const dk = dayKey();
+    if (fx && lastDay && lastDay !== dk) [...document.querySelectorAll('#panel .card.qb-t:not(.done)')].slice(0, 30).forEach((c, i) => c.animate([{ opacity:.35, filter:'saturate(.3)' }, { opacity:1, filter:'none' }], { duration:450, delay:i * 70, easing:'ease-out', fill:'backwards' }));
+    lastDay = dk;
+  }
+  if (!S.reduceFx) document.querySelectorAll(FADE_IMG).forEach(i => { if (i.complete && i.naturalWidth) i.classList.add('ld'); else i.classList.add('fi'); });   // Reduce effects: pictures just appear
+  document.querySelectorAll('.sh-dots, .inv-dots').forEach(c => dotHl(c, false));
+}
+['load','error'].forEach(t => document.addEventListener(t, e => { const i = e.target; if (i && i.tagName === 'IMG' && i.classList.contains('fi')) i.classList.add('ld'); }, true));
+// the "you are here" pill on a row of dots: one element that stretches from the old dot to the new one, like the tab bar
+function dotHl(c, anim, from){
+  if (!c) return; let hl = c.querySelector(':scope > .dot-hl'); if (!hl){ hl = document.createElement('b'); hl.className = 'dot-hl'; c.prepend(hl); }
+  const dots = [...c.children].filter(x => x !== hl), on = dots.find(x => x.classList.contains('on')); if (!on){ hl.style.opacity = 0; return; }
+  const w = c.classList.contains('inv-dots') ? 18 : 16, x = on.offsetLeft + on.offsetWidth / 2 - w / 2; hl.style.opacity = '';
+  clearTimeout(hl.tm);
+  const old = from != null && dots[from] ? dots[from].offsetLeft + dots[from].offsetWidth / 2 - w / 2 : null;
+  if (!anim || S.reduceFx || old == null){ hl.style.transition = 'none'; hl.style.left = x + 'px'; hl.style.width = w + 'px'; void hl.offsetWidth; hl.style.transition = ''; return; }
+  hl.style.transition = 'none'; hl.style.left = old + 'px'; hl.style.width = w + 'px'; void hl.offsetWidth; hl.style.transition = '';
+  const a = Math.min(x, old), b = Math.max(x, old) + w; hl.style.left = a + 'px'; hl.style.width = (b - a) + 'px';
+  hl.tm = setTimeout(() => { hl.style.left = x + 'px'; hl.style.width = w + 'px'; }, 170);
+}
+function closeInspect(){
+  const ov = $('#inspect'), src = ov._src, img = ov.querySelector('.in-card'); ov._src = null;
+  if (!ov.classList.contains('open') || !src || !src.isConnected || !img || S.reduceFx || ov.classList.contains('art')){ ov.classList.remove('open', 'zoom'); return; }
+  const s = (src.querySelector('img') || src).getBoundingClientRect(), t = img.getBoundingClientRect();
+  if (!s.width || s.bottom < 0 || s.top > innerHeight){ ov.classList.remove('open', 'zoom'); return; }
+  ov.classList.add('closing');
+  img.animate([{ transform:'none' }, { transform:`translate(${s.left + s.width / 2 - (t.left + t.width / 2)}px,${s.top + s.height / 2 - (t.top + t.height / 2)}px) scale(${s.width / t.width})` }], { duration:MO.norm, easing:MO.leave, fill:'forwards' });
+  ov.animate([{ backgroundColor:'rgba(5,11,12,.94)' }, { backgroundColor:'rgba(5,11,12,0)' }], { duration:300, easing:'ease-in', fill:'forwards' }).onfinish = () => { ov.getAnimations().forEach(a => a.cancel()); img.getAnimations().forEach(a => a.cancel()); ov.classList.remove('open', 'zoom', 'closing'); };
+}
+// while the card view is open, a finger or wheel on it never scrolls the page behind
+['touchmove','wheel'].forEach(t => document.addEventListener(t, e => { if ($('#inspect').classList.contains('open')) e.preventDefault(); }, { passive:false, capture:true }));
 
 /* ---- Collection ---- */
 let colFilter = 'all', colGroup = 'all';
 // each collection is its own group; new ones (other decks) get added here
-const COLLECTIONS = [{ id:'tarot', name:'Tarot', sets:setsOf('tarot'), sceneKey:'__scenes' }, { id:'mlbb', name:'MLBB', sets:setsOf('mlbb') }, { id:'hod', name:'H.O.D.', sets:setsOf('hod'), sceneKey:'__realms' }];
+const COLLECTIONS = [{ id:'tarot', name:'Lord of Mysteries', sets:setsOf('tarot'), sceneKey:'__scenes' }, { id:'mlbb', name:'MLBB', sets:setsOf('mlbb') }, { id:'hod', name:'Hand of Destiny', sets:setsOf('hod'), sceneKey:'__realms' }];
 // finishing a whole set pays this much XP and gold (by the set's rarity)
 const SET_REWARD = { common:20, rare:35, epic:50, legendary:100, ultimate:200 };
 const SET_BONUS = { 'Artist Series':1200, 'Special':1200, 'SSR':600, 'Gilded':450, 'Promo':350, 'Joker':150,
-  'Prestige':850, 'Cards of Blasphemy':450, 'Legends':350, 'Regions':750, 'Starlight':500, 'Angels':500, 'Deity':500, 'Puzzle':500,
-  'SR':250, 'Tarot Club':250, 'Shiny':200, 'Duo':150, 'Poker':200, 'Objects':200, 'Pathways':200, 'Classic':200, 'Origin':200 };   // what each set pays (XP and gold)   // sets with their own reward
+  'Prestige':1000, 'Cards of Blasphemy':450, 'Legends':350, 'Regions':750, 'Starlight':500, 'Angels':500, 'Deity':500, 'Puzzle':500,
+  'SR':250, 'Tarot Club':250, 'Shiny':200, 'Duo':300, 'Chibi':300, 'Poker':200, 'Objects':200, 'Pathways':200, 'Classic':200, 'Origin':200 };   // what each set pays (XP and gold)   // sets with their own reward
 const SCENE_REWARD = 500, SCENES_KEY = '__scenes';
 const SCENE_PAY = {};   // a bonus-card set that pays more than the default
 const scenePay = k => SCENE_PAY[k] || SCENE_REWARD;
@@ -1450,16 +1783,40 @@ function countUp(el, from, to, delay, dur){
   countTimer = requestAnimationFrame(step);
 }
 let xpShown = null;
+// roll one number's digits (like the gold) from an old value to the new one, in place
+function rollNum(el, from, to){
+  const a = String(from), b = String(to); if (a === b) return;
+  const pad = Math.max(a.length, b.length), A = a.padStart(pad, ' '), B = b.padStart(pad, ' ');
+  el.innerHTML = [...B].map((ch, i) => `<span class="od rl"><i style="transform:translateY(${A[i] === ' ' ? 1 : -+A[i]}em)">0<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9</i></span>`).join('');
+  void el.offsetWidth;
+  [...el.querySelectorAll('i')].forEach((r, i) => { r.style.transform = `translateY(${B[i] === ' ' ? 1 : -+B[i]}em)`; });
+  setTimeout(() => { if (el.isConnected) el.textContent = b; }, 650);
+}
+// the header gold: each digit rolls up or down to the new amount (like an odometer); commas / k stay still
+function goldRoll(v, delay, instant){
+  const el = $('#gold'), txt = fmt(v); el.setAttribute('aria-label', txt);
+  if (S.reduceFx){ if (instant) el.textContent = txt; else countUp(el, goldShown == null ? v : goldShown, v, delay || 0, 650); return; }   // Reduce effects: the old counting number
+  const build = () => { el.innerHTML = [...txt].map(ch => /\d/.test(ch) ? `<span class="od"><i style="transform:translateY(${-+ch}em)">0<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9</i></span>` : `<span class="os">${ch}</span>`).join(''); };
+  const same = el.children.length === txt.length && [...txt].every((ch, i) => /\d/.test(ch) === el.children[i].classList.contains('od') && (/\d/.test(ch) || el.children[i].textContent === ch));
+  if (instant || S.reduceFx || !same){ build(); if (!instant && !S.reduceFx){ const up = goldShown == null || v >= goldShown; el.classList.remove('num-pop', 'g-up', 'g-dn'); void el.offsetWidth; el.classList.add('num-pop', up ? 'g-up' : 'g-dn'); } return; }
+  const up = goldShown == null || v >= goldShown;
+  setTimeout(() => { [...txt].forEach((ch, i) => { const r = el.children[i].querySelector('i'); if (r) r.style.transform = `translateY(${-+ch}em)`; }); el.classList.remove('num-pop', 'g-up', 'g-dn'); void el.offsetWidth; el.classList.add('num-pop', up ? 'g-up' : 'g-dn'); }, delay || 0);
+}
 function renderHeader(){
   if (renderHeader.holdAll) return;   // a reward is waiting for its animation (grant with wait): show nothing new yet
   if (renderHeader.hold){   // a claim is in flight: only refresh gold now, XP comes with the gems
-    if (renderHeader.tween){ renderHeader.tween = false; countUp($('#gold'), goldShown, S.gold, 620, 650); goldShown = S.gold; }
+    if (renderHeader.tween){ renderHeader.tween = false; const g = S.gold - (renderHeader.lvHold || 0); if (g !== goldShown){ goldRoll(g, 620); goldShown = g; } }   // no change (a quest that pays no gold): the purse stays put
     return;
   }
   const delay = renderHeader.delay || 0; renderHeader.delay = 0;
   const leveled = renderHeader.fillFull; renderHeader.fillFull = false;
   const apply = () => {
     const { L, into, need } = levelInfo(S.xp);
+    if (renderHeader.luLock && !leveled) return;   // a header level-up is playing: it sets the bar, emblem and rank itself
+    if (leveled){   // the header level-up (hdrLevelUp) shows the new level: keep the old look until then, bar full
+      const fill = $('#xpFill'); fill.style.width = '100%'; $('.xpbar').style.setProperty('--xw', '100%'); $('.xpbar').classList.add('full'); $('#xpText').textContent = 'LEVEL UP'; xpShown = into;
+      renderHeader.luLock = true; clearTimeout(renderHeader.luSafe); renderHeader.luSafe = setTimeout(() => { if (renderHeader.luLock){ renderHeader.luLock = false; renderHeader(); } }, 7000); return;
+    }
     if (renderHeader.lastL !== L){ $('#lvlEmblem').innerHTML = emblem(L); renderHeader.lastL = L; }
     $('#lvlText').textContent = RANKS[tierOf(L)];
     $('#lvA').textContent = `Lv ${L}`; $('#lvB').textContent = `Lv ${L + 1}`;
@@ -1470,16 +1827,16 @@ function renderHeader(){
     if (isBossStep(L) && tierOf(L + 1) !== tierOf(L)) $('#lvlText').textContent = `${RANKS[tierOf(L)]} · Promotion to ${RANKS[tierOf(L + 1)]}`;
     if (leveled){
       // level up: run the bar to the end, flash it, then start the new level from empty
-      fill.style.width = '100%'; $('.xpbar').classList.add('full'); txt.textContent = 'LEVEL UP';
+      fill.style.width = '100%'; $('.xpbar').style.setProperty('--xw', '100%'); $('.xpbar').classList.add('full'); txt.textContent = 'LEVEL UP';
       setTimeout(() => {
         const fr = fill.getBoundingClientRect(); FX.small(fr.right, fr.top + fr.height / 2);
         $('.xpbar').classList.remove('full');
         fill.style.transition = 'none'; fill.style.width = '0%'; void fill.offsetWidth;
-        fill.style.transition = ''; const li = levelInfo(S.xp); fill.style.width = (li.into / li.need * 100) + '%';
+        fill.style.transition = ''; const li = levelInfo(S.xp); fill.style.width = (li.into / li.need * 100) + '%'; $('.xpbar').style.setProperty('--xw', fill.style.width);
         txt.textContent = `${fmt(li.into)} / ${fmt(li.need)} XP`; xpShown = li.into;
       }, 800);
     } else {
-      fill.style.width = (into / need * 100) + '%';
+      fill.style.width = (into / need * 100) + '%'; $('.xpbar').style.setProperty('--xw', fill.style.width);
       if (delay && xpShown != null && xpShown < into) countUpText(txt, xpShown, into, need, 600);
       else txt.textContent = `${fmt(into)} / ${fmt(need)} XP`;
       xpShown = into;
@@ -1488,10 +1845,10 @@ function renderHeader(){
   delay ? setTimeout(apply, delay) : apply();
   if (renderHeader.tween){
     renderHeader.tween = false;
-    countUp($('#gold'), goldShown, S.gold, 620, 650);
-  } else if (goldShown !== S.gold || !$('#gold').textContent) $('#gold').textContent = fmt(S.gold);
+    if (S.gold - (renderHeader.lvHold || 0) !== goldShown) goldRoll(S.gold - (renderHeader.lvHold || 0), 620);
+  } else if (goldShown !== S.gold - (renderHeader.lvHold || 0) || !$('#gold').textContent) goldRoll(S.gold - (renderHeader.lvHold || 0), 0, true);
   $('#purse').classList.toggle('neg', S.gold < 0);   // owing gold shows in red
-  goldShown = S.gold;
+  goldShown = S.gold - (renderHeader.lvHold || 0);
 }
 function countUpText(el, from, to, need, dur){
   const t0 = performance.now();
@@ -1511,7 +1868,21 @@ function renderTabs(){
     // an orange dot: steps waiting to be claimed (Progress), a set ready to claim (Collection)
     b.classList.toggle('ping', b.dataset.tab === 'progress' ? goalWaiting(sq) : b.dataset.tab === 'collection' ? colClaimable() : false);
   });
+  tabHl(tabHl.last != null && tabHl.last !== S.tab);
+  tabHl.last = S.tab;
 }
+// the orange box behind the open tab: on a tab change it stretches toward the new tab, then its back end catches up
+function tabHl(anim){
+  const hl = document.querySelector('.tab-hl'), t = document.querySelector('.tab.on'); if (!hl || !t) return;
+  const l = t.offsetLeft, w = t.offsetWidth, x0 = parseFloat(hl.style.left), w0 = parseFloat(hl.style.width);
+  clearTimeout(tabHl.tm);
+  if (!anim || S.reduceFx || !(w0 > 0)){ hl.style.transition = 'none'; hl.style.left = l + 'px'; hl.style.width = w + 'px'; void hl.offsetWidth; hl.style.transition = ''; return; }
+  const a = Math.min(l, x0), b = Math.max(l + w, x0 + w0);
+  hl.style.left = a + 'px'; hl.style.width = (b - a) + 'px';
+  tabHl.tm = setTimeout(() => { hl.style.left = l + 'px'; hl.style.width = w + 'px'; }, 90);
+}
+addEventListener('resize', () => tabHl(false));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => tabHl(false));
 // a step goal bonus waiting to be claimed (the Progress tab's dot; day-to-day step claims don't count)
 function goalWaiting(q){
   if (!q || !q.goal || !(q.goalXp || q.goalGold)) return false;
@@ -1522,7 +1893,29 @@ function colClaimable(){
   if (Object.values(SCENE_DEF).some(x => x.list.length && x.list.every(sc => S.scenes[sc.id]) && !S.setClaims[x.key])) return true;
   return [...new Set(CARDS.map(c => c.set))].some(set => setReady(set));   // (Poker counts when any suit is ready)
 }
+// Quests page: instead of rebuilding the whole page after every claim, only the pieces that changed are swapped in;
+// tiles that look the same keep their elements (no flicker, pictures not reloaded, less work for the phone)
+function morphHTML(host, html){
+  const t = document.createElement('template'); t.innerHTML = html;
+  if (!host.firstChild){ host.replaceChildren(...t.content.childNodes); return; }
+  morphKids(host, t.content);
+}
+function morphSame(a, b){ return a.nodeType === b.nodeType && a.nodeName === b.nodeName && (a.nodeType !== 1 || a.getAttribute('data-id') === b.getAttribute('data-id')); }
+function morphKids(a, b){
+  const o = [...a.childNodes], n = [...b.childNodes];
+  if (o.length !== n.length || o.some((x, i) => !morphSame(x, n[i]))){ a.replaceChildren(...n); return; }
+  o.forEach((x, i) => morphNode(x, n[i]));
+}
+function morphNode(a, b){
+  if (a.nodeType === 3){ if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
+  if (a.nodeType !== 1 || a.isEqualNode(b)) return;
+  if (a.namespaceURI !== 'http://www.w3.org/1999/xhtml' || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)){ a.replaceWith(b); return; }   // icons and boxes you type in: swap whole
+  for (const at of [...a.attributes]) if (!b.hasAttribute(at.name)) a.removeAttribute(at.name);
+  for (const at of [...b.attributes]) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+  morphKids(a, b);
+}
 function renderPanel(){
+  renderPanel.stamp = (renderPanel.stamp || 0) + 1; setTimeout(() => { renderPanel.lastTab = S.tab; }, 0);   // (renderPanel.lastTab: the tab drawn before this one)
   $('#boardTitle').textContent = S.tab === 'quests' && arranging ? 'Arrange' : TAB_TITLES[S.tab];
   $('#progMenu').hidden = S.tab !== 'progress';
   $('#openAllBtn').hidden = true;   // the Deck tab shows it when there is something to open
@@ -1538,11 +1931,11 @@ function renderPanel(){
     const visible = S.quests.filter(q => isVisible(q) && q.kind !== 'scaling' && q.kind !== 'counter' && q.kind !== 'tally' && q.kind !== 'bounty' && !isTracker(q));
     $('#boardSub').textContent = arranging ? '' : visible.length ? '' : 'Post a quest to begin';
     const top = S.quests.filter(q => !q.parent);
-    $('#panel').innerHTML = `${!top.length ? '<div class="list qboard"><div class="empty">The board is empty.</div></div>'
+    morphHTML($('#panel'), `${!top.length ? '<div class="list qboard"><div class="empty">The board is empty.</div></div>'
       : arranging ? arrangeBoard() : questBoard()}
       <div class="board-actions">${arranging
         ? '<button class="post save" id="arrangeBtn">SAVE</button>'
-        : '<button class="post" id="postBtn">+ Post a quest</button>'}</div>`;
+        : '<button class="post" id="postBtn">+ Post a quest</button>'}</div>`);   // only the parts that changed are redrawn
   } else if (S.tab === 'progress'){
     $('#boardSub').textContent = '';
     $('#panel').innerHTML = renderProgress();
@@ -1551,8 +1944,14 @@ function renderPanel(){
     $('#panel').innerHTML = renderInventory();
   } else if (S.tab === 'collection'){
     $('#boardSub').textContent = '';
-    $('#panel').innerHTML = renderCollection();
-    setupPuzzle();
+    const html = renderCollection(), arrived = renderPanel.lastTab !== 'collection';
+    // arriving on the tab: the first sets now, the rest a moment later (so the switch never stalls for a frame)
+    let at = -1; for (let n = 0, p = 0; n < 4; n++){ p = html.indexOf('<section class="cc-fold', p + 1); if (p < 0) break; at = p; }
+    const end = html.lastIndexOf('</div></div>');
+    if (arrived && at > 0 && end > at){
+      $('#panel').innerHTML = html.slice(0, at) + html.slice(end); const tail = html.slice(at, end), stamp = renderPanel.stamp = (renderPanel.stamp || 0) + 1;
+      requestAnimationFrame(() => requestAnimationFrame(() => { const m = $('#ccMain'); if (renderPanel.stamp !== stamp || S.tab !== 'collection' || !m) return; m.insertAdjacentHTML('beforeend', tail); setupPuzzle(); afterRender(); }));
+    } else { $('#panel').innerHTML = html; setupPuzzle(); }
   } else if (S.tab === 'shop'){
     $('#boardSub').textContent = '';
     $('#boardTitle').insertAdjacentHTML('beforeend', infoHTML(SHOP[0]));   // drop rates are the same for every deck
@@ -1586,9 +1985,22 @@ function bountyExpire(){
   S.quests.forEach(q => { if (ids.has(q.parent)) q.parent = null; });
   save();
 }
-function render(){ if (tallyHold()) return; const keepY = window.scrollY; bountyExpire(); foldSync(); requestAnimationFrame(updateFab); repairClock(); const sk = document.getElementById('skPop'); if (sk) sk.remove(); renderHeader(); renderTabs(); if (S.tab !== 'quests') earnOpen = false; renderPanel(); if (S.tab === 'quests') fitCorners(); if (earnOpen) earnArrow(); fresh = { id:null, row:null };
+// keep the page still on redraw: remember what sits near the top of the screen, and if it moved (something above it
+// got taller or shorter) scroll by the same amount so it stays where you were looking
+function pageAnchor(){
+  if (scrollY < 40 || S.reduceFx && false) return null;
+  const el = document.elementFromPoint(innerWidth / 2, 150), t = el && el.closest('#panel [data-id], #panel .cc-fold, #panel .qb-gh, #panel [data-set]'); if (!t) return null;
+  const key = t.dataset.id ? `[data-id="${t.dataset.id}"]` : t.classList.contains('cc-fold') ? null : t.dataset.set ? `[data-set="${t.dataset.set}"]` : null;
+  const sel = key || (t.classList.contains('cc-fold') && t.querySelector('.cc-mid') ? `.cc-mid[data-set="${t.querySelector('.cc-mid').dataset.set}"]` : null);
+  if (!sel) return null; const ref = document.querySelector('#panel ' + sel); return ref ? { sel, top:ref.getBoundingClientRect().top } : null;
+}
+function anchorShift(a){ try { const el = document.querySelector('#panel ' + a.sel); return el ? Math.round(el.getBoundingClientRect().top - a.top) : 0; } catch(e){ return 0; } }
+function barPx(){ const d = window.devicePixelRatio || 1, r = document.documentElement.style; r.setProperty('--bh1', Math.max(1, Math.round(4 * d)) / d + 'px'); r.setProperty('--bh2', Math.max(1, Math.round(2 * d)) / d + 'px'); }   // collection bars: whole device pixels, so every row draws them equally thick
+barPx(); addEventListener('resize', barPx);
+function render(){ if (tallyHold()) return; const keepY = window.scrollY; bountyExpire(); foldSync(); requestAnimationFrame(updateFab); repairClock(); const sk = document.getElementById('skPop'); if (sk) sk.remove(); renderHeader(); renderTabs(); if (S.tab !== 'quests') earnOpen = false; const anc = pageAnchor(); renderPanel(); afterRender(); if (S.tab === 'quests') fitCorners(); if (earnOpen) earnArrow(); fresh = { id:null, row:null };
   const on = document.querySelector('.chip.on'); if (on){ const box = on.parentElement; box.scrollLeft = on.offsetLeft - (box.clientWidth - on.offsetWidth) / 2; }
-  if (keepY > 0 && window.scrollY !== keepY) window.scrollTo(0, keepY); }   // a re-render never throws the page back to the top
+  const fix = anc ? anchorShift(anc) : 0;
+  if (keepY > 0 && window.scrollY !== keepY + fix) window.scrollTo(0, keepY + fix); }   // a re-render never throws the page back to the top
 
 /* ================= Actions ================= */
 let snap = null;
@@ -1642,7 +2054,8 @@ function grant(reward, rect, msg, freshId, freshRow, power, wait){   // wait: ms
   save();
   if (QUIET) return;
   fresh = { id:freshId, row:freshRow || null };
-  if (paid) renderHeader.tween = true;
+  if (lvGold) renderHeader.lvHold = (renderHeader.lvHold || 0) + lvGold;   // two separate sequences: the quest's gold goes to the purse now, the level-up gold when its own coins land
+  if (paid || lvGold) renderHeader.tween = true;
   if (newL > oldL) renderHeader.fillFull = true;
   const holdXp = paid && rect && reward.xp > 0;     // the gems will deliver the XP, so the bar waits for them
   if (wait && paid){
@@ -1666,6 +2079,7 @@ function grant(reward, rect, msg, freshId, freshRow, power, wait){   // wait: ms
 }
 function celebrate(reward, rect, freshId, power, newL, oldL, paid){
   if (QUIET) return;
+  { const h = document.documentElement; h.classList.add('busy'); clearTimeout(celebrate.bt); celebrate.bt = setTimeout(() => h.classList.remove('busy'), 1300); }   // background loops rest while the claim plays
   const swirl = celebrate.swirl; celebrate.swirl = false;
   const lite = celebrate.lite; celebrate.lite = false;
   if (paid && lite && rect){   // after Tally's fill-up: just the coins and gems flying to the purse
@@ -1685,7 +2099,8 @@ function celebrate(reward, rect, freshId, power, newL, oldL, paid){
     // light sweep over the card you just claimed
     let card = freshId && document.querySelector(`.item[data-id="${freshId}"] > .card`);
     if (!card && rect){ const hit = document.elementFromPoint(...mid(rect)); card = hit && hit.closest('.card'); }
-    if (card){ card.classList.add('shine'); if (card.classList.contains('done')) card.classList.add('just');
+    if (card) racingEdge(card);
+    else if (card){ card.classList.add('shine'); if (card.classList.contains('done')) card.classList.add('just');
       setTimeout(() => card.classList.remove('shine', 'just'), 1500); borderSwirl(card); }
     if (rect){
       const pw = power || 1 + Math.min(1.2, (reward.xp + reward.gold) / 90);
@@ -1864,7 +2279,36 @@ function claimGoal(q, key, rect){
 }
 // Reopening takes the quest's reward back. Gold may go below zero (you spent it already).
 // If the lost XP drops you a level, that level's reward is taken back too, and is paid again when you re-reach it.
+// Undo plays the claim backwards: the XP and gold fly from the purse back onto the quest, and the gold rolls down
+function undoFly(r, tag){
+  renderHeader.tween = true;
+  const id = tag && tag.k && tag.k.startsWith('q:') ? tag.k.slice(2) : null;
+  setTimeout(() => {
+    const it = id && document.querySelector(`#panel .item[data-id="${id}"] .card`), to = it ? it.getBoundingClientRect() : { left:innerWidth / 2 - 40, top:innerHeight / 2, width:80, height:20 };
+    const ex = to.left + to.width / 2, ey = to.top + to.height / 2;
+    // the claim played backwards: the same number of coins fly from the purse, the same number of gems from the tip of the XP bar, back onto the quest
+    if (r.gold > 0){
+      const purse = $('#purse svg').getBoundingClientRect(), n = Math.min(6, Math.max(2, Math.ceil(r.gold / 6))), sx = purse.left + purse.width / 2 - 11, sy = purse.top + purse.height / 2 - 11;
+      for (let i = 0; i < n; i++){
+        const el = document.createElement('div'); el.className = 'fly'; el.innerHTML = ico('i-coin'); document.body.appendChild(el);
+        const rx = (Math.random() - .5) * 90, ry = (Math.random() - .5) * 40, tx = ex - 11, ty = ey - 11;
+        el.animate([{ transform:`translate(${sx}px,${sy}px) scale(.8)`, opacity:1 }, { transform:`translate(${(sx + tx) / 2 + rx}px,${(sy + ty) / 2 - 50 + ry}px) scale(1.15)`, opacity:1, offset:.65 }, { transform:`translate(${tx}px,${ty}px) scale(.5)`, opacity:0 }], { duration:750, delay:i * 60, easing:'cubic-bezier(.4,0,.55,1)', fill:'both' }).onfinish = () => el.remove();
+      }
+    }
+    if (r.xp > 0){
+      const fill = $('#xpFill').getBoundingClientRect(), bar = $('.xpbar').getBoundingClientRect(), n = Math.min(5, Math.max(2, Math.ceil(r.xp / 8)));
+      const sx = Math.max(bar.left + 4, Math.min(bar.right - 22, fill.right - 9)), sy = bar.top + bar.height / 2 - 9;
+      for (let i = 0; i < n; i++){
+        const el = document.createElement('div'); el.className = 'fly gem'; el.innerHTML = ico('i-gem'); document.body.appendChild(el);
+        const rx = (Math.random() - .5) * 120, up = 70 + Math.random() * 50, tx = ex - 9, ty = ey - 9;
+        el.animate([{ transform:`translate(${sx}px,${sy}px) scale(.7) rotate(${rx > 0 ? 360 : -360}deg)`, opacity:1 }, { transform:`translate(${(sx + tx) / 2 + rx}px,${(sy + ty) / 2 - up}px) scale(1.2) rotate(${rx > 0 ? 160 : -160}deg)`, opacity:1, offset:.62 }, { transform:`translate(${tx}px,${ty}px) scale(.4) rotate(0deg)`, opacity:0 }], { duration:720, delay:i * 55, easing:'cubic-bezier(.45,0,.55,1)', fill:'both' }).onfinish = () => el.remove();
+      }
+    }
+    if (it) it.animate([{ boxShadow:'0 0 0 rgba(255,143,177,0)' }, { boxShadow:'0 0 18px rgba(255,143,177,.45)' }, { boxShadow:'0 0 0 rgba(255,143,177,0)' }], { duration:700, delay:420 });
+  }, 30);
+}
 function take(r, tag){
+  if (!QUIET && (r.xp > 0 || r.gold > 0)) undoFly(r, tag);
   bumpToday(-r.xp, -r.gold, tag);
   const oldL = levelInfo(S.xp).L;
   S.xp = Math.max(0, S.xp - r.xp);
@@ -2073,6 +2517,19 @@ const mid = r => [r.left + r.width / 2, r.top + r.height / 2];
 
 /* Border swirl: two comets of light race around the card's frame (from opposite corners),
    shedding embers, then the frame flashes and the card pops up and settles. */
+// claim (Reduce effects off): a bright line races along the top and bottom edges while the quest's own colour fills in
+// right behind it, then the colour fades and the tile settles into done
+function racingEdge(card){
+  const w = card.offsetWidth, h = card.offsetHeight, NS = 'http://www.w3.org/2000/svg';
+  const kc = getComputedStyle(card).getPropertyValue('--kc').trim() || '255,107,26';
+  const ink = document.createElement('span'); ink.className = 'rc-ink'; ink.style.background = `linear-gradient(90deg,rgba(${kc},.38),rgba(${kc},.14))`;
+  const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('class', 'rc-edge'); svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.innerHTML = `<path d="M1 1.2H${w - 1}"/><path d="M1 ${h - 1.2}H${w - 1}"/>`;
+  svg.style.color = `rgb(${kc})`; card.append(ink, svg);
+  svg.querySelectorAll('path').forEach(p => { p.style.strokeDasharray = w; p.animate([{ strokeDashoffset:w }, { strokeDashoffset:0 }], { duration:520, easing:MO.move, fill:'forwards' }); });
+  ink.animate([{ transform:'scaleX(0)', opacity:1 }, { transform:'scaleX(1)', opacity:1, offset:.72 }, { transform:'scaleX(1)', opacity:0 }], { duration:780, easing:MO.move, fill:'forwards' });
+  svg.animate([{ opacity:1 }, { opacity:1, offset:.6 }, { opacity:0 }], { duration:850, fill:'forwards' }).onfinish = () => { ink.remove(); svg.remove(); };
+}
 function borderSwirl(card){
   if (!BORDER_SWIRL || !card) return;
   const w = card.offsetWidth + 6, h = card.offsetHeight + 6, NS = 'http://www.w3.org/2000/svg';
@@ -2118,7 +2575,7 @@ function borderSwirl(card){
   }, D * .66);
   setTimeout(() => svg.remove(), D + 100);
 }
-function flyCoins(from, amount){
+function flyCoins(from, amount, done){
   const purse = $('#purse svg').getBoundingClientRect();
   const n = Math.min(6, Math.max(2, Math.ceil(amount / 6)));
   const sx = from.left + from.width / 2 - 11, sy = from.top + from.height / 2 - 11;
@@ -2136,6 +2593,7 @@ function flyCoins(from, amount){
       el.remove();
       const p = $('#purse'); p.classList.remove('bump', 'glow'); void p.offsetWidth; p.classList.add('bump', 'glow');
       const ci = $('#purse svg'); ci.classList.remove('coin-pop'); void ci.getBoundingClientRect(); ci.classList.add('coin-pop');
+      if (i === 0 && done) done();   // the purse starts counting as the first coin lands
       if (i === n - 1){ const r = $('#purse svg').getBoundingClientRect(); FX.small(r.left + r.width / 2, r.top + r.height / 2); }
     };
   }
@@ -2175,11 +2633,72 @@ function floatText(from, text, cls){
     { transform:`translate(${x}px,${y - 22}px) scale(1.25)`, opacity:1, offset:.18 },
     { transform:`translate(${x}px,${y - 34}px) scale(1)`, opacity:1, offset:.45 },
     { transform:`translate(${x}px,${y - 78}px) scale(.95)`, opacity:0 }
-  ], { duration:1300, easing:'cubic-bezier(.2,.7,.3,1)', fill:'both' }).onfinish = () => el.remove();
+  ], { duration:1300, easing:MO.arrive, fill:'both' }).onfinish = () => el.remove();
 }
 let luTimer, luEmbers;
 let luGold = 0;
+// Level up in the header (Reduce effects off): the header grows, the emblem gets big and turns into the new one,
+// "LEVEL UP" / "RANK UP" and the reward show beside it, the gold flies to the purse; then it shrinks back, a wave of
+// the new bar colour sweeps across the full bar (teal -> red at a promotion level, red -> teal at a new rank) and the
+// bar starts the new level.
+let hluT = [];
+// emblem upgrade ("sparks gather"): sparks in the new rank's colour fly into the centre, then the new emblem opens from
+// its core outward while the old one fades; a soft ring goes out
+function emblemUpgrade(host, L){
+  renderHeader.lastL = L;
+  const old = host.innerHTML; host.innerHTML = `<div class="emu-o">${old}</div><div class="emu-n">${emblem(L)}</div>`;
+  const o = host.querySelector('.emu-o'), n = host.querySelector('.emu-n'), col = TIER_COL[tierOf(L)];
+  const r = host.getBoundingClientRect(), cx = r.width / 2, cy = r.height / 2;
+  for (let k = 0; k < 14; k++){ const p = document.createElement('i'); p.className = 'emu-sp'; p.style.background = col; p.style.boxShadow = `0 0 6px ${col}`; p.style.left = cx + 'px'; p.style.top = cy + 'px'; host.appendChild(p);
+    const a = k / 14 * Math.PI * 2, d = r.width * .9 + Math.random() * 20;
+    p.animate([{ transform:`translate(${Math.cos(a) * d}px,${Math.sin(a) * d}px)`, opacity:0 }, { opacity:1, offset:.3 }, { transform:'translate(0,0)', opacity:1 }], { duration:520 + Math.random() * 160, easing:'cubic-bezier(.5,0,.8,.5)', fill:'forwards' }).onfinish = () => p.remove(); }
+  n.style.opacity = 0;
+  setTimeout(() => {
+    n.style.opacity = 1; n.animate([{ clipPath:'circle(0% at 50% 50%)', filter:'brightness(2.2)' }, { clipPath:'circle(80% at 50% 50%)', filter:'none' }], { duration:600, easing:'ease-out' });
+    o.animate([{ opacity:1 }, { opacity:0 }], { duration:450, fill:'forwards' });
+    const ring = document.createElement('i'); ring.className = 'emu-ring'; ring.style.borderColor = col; host.appendChild(ring);
+    ring.animate([{ transform:'translate(-50%,-50%) scale(.3)', opacity:1 }, { transform:'translate(-50%,-50%) scale(1.8)', opacity:0 }], { duration:650, easing:'ease-out' }).onfinish = () => ring.remove();
+    setTimeout(() => { if (host.querySelector('.emu-n')) host.innerHTML = emblem(L); }, 700);
+  }, 650);
+}
+function hdrLevelUp(L, gold){
+  hluT.forEach(clearTimeout); hluT = [];
+  if (hdrLevelUp.rel) hdrLevelUp.rel();   // an earlier level-up that never delivered its coins: pay it now
+  let paidOut = false;
+  const rel = hdrLevelUp.rel = () => { if (paidOut) return; paidOut = true; hdrLevelUp.rel = null; renderHeader.lvHold = Math.max(0, (renderHeader.lvHold || 0) - (gold || 0)); const g = S.gold - renderHeader.lvHold; if (g !== goldShown){ goldRoll(g, 0); goldShown = g; } };   // the purse counts up the moment the first coin lands (no 620 ms wait like a quest claim)
+  const top = document.querySelector('.top'), stats = top.querySelector('.stats'), rankUp = L % 10 === 0 && L <= (RANKS.length - 1) * 10;
+  let m = stats.querySelector('.hlu-msg'); if (m) m.remove();
+  top.classList.remove('sm');
+  m = document.createElement('div'); m.className = 'hlu-msg';
+  m.innerHTML = `<div class="hlu-big">${rankUp ? 'RANK UP' : 'LEVEL UP'}</div>${gold ? `<div class="hlu-rw">${ico('i-coin')}<b>+${fmt(gold)}</b></div>` : ''}<div class="hlu-nr" style="color:${isBossStep(L) ? '#ff5a4e' : TIER_COL[tierOf(L)]}">${rankUp ? 'New rank: ' + RANKS[tierOf(L)] : isBossStep(L) ? 'Promotion level' : 'Level ' + L}</div>`;
+  stats.appendChild(m); void m.offsetWidth; top.classList.add('hlu');
+  const T = (f, ms) => hluT.push(setTimeout(f, ms));
+  T(() => emblemUpgrade($('#lvlEmblem'), L), 260);
+  T(() => { const rw = m.querySelector('.hlu-rw svg'); if (rw && gold) flyCoins(rw.getBoundingClientRect(), gold, rel); else rel(); }, 550);
+  T(rel, 3600);   // safety: never leave the purse short
+  T(() => {
+    top.classList.remove('hlu'); setTimeout(() => m.remove(), 400);
+    const bar = $('.xpbar'), fill = $('#xpFill'), boss = isBossStep(L), col = boss ? '#e0392d' : '#2ee6d6';
+    const lt = $('#lvlText'), name = RANKS[tierOf(L)] + (boss && tierOf(L + 1) !== tierOf(L) ? ` · Promotion to ${RANKS[tierOf(L + 1)]}` : '');
+    // the rank line slides up to the new one, in its new colour
+    lt.animate([{ transform:'none', opacity:1 }, { transform:'translateY(-60%)', opacity:0 }], { duration:220, easing:'ease-in' }).onfinish = () => {
+      lt.textContent = name; lt.classList.toggle('boss', boss); if (boss) lt.style.removeProperty('color'); else lt.style.setProperty('color', TIER_COL[tierOf(L)], 'important');
+      lt.animate([{ transform:'translateY(60%)', opacity:0 }, { transform:'none', opacity:1 }], { duration:260, easing:'ease-out' }); };
+    // a wave of the new colour runs across the full bar, then the bar starts the new level
+    const u = document.createElement('i'); u.className = 'hlu-wave'; u.style.background = col; bar.appendChild(u);
+    u.animate([{ width:'0%' }, { width:'100%' }], { duration:650, easing:MO.leave, fill:'forwards' }).onfinish = () => {
+      bar.classList.remove('full'); bar.classList.toggle('boss', boss);
+      const li = levelInfo(S.xp); $('#lvA').textContent = `Lv ${li.L}`; $('#lvB').textContent = `Lv ${li.L + 1}`;
+      fill.style.transition = 'none'; fill.style.width = '0%'; void fill.offsetWidth; fill.style.transition = '';
+      fill.style.width = (li.into / li.need * 100) + '%'; bar.style.setProperty('--xw', fill.style.width);
+      $('#xpText').textContent = `${fmt(li.into)} / ${fmt(li.need)} XP`; xpShown = li.into;
+      u.animate([{ opacity:1 }, { opacity:0 }], { duration:250, fill:'forwards' }).onfinish = () => u.remove();
+      renderHeader.luLock = false; clearTimeout(renderHeader.luSafe); renderHeader();
+    };
+  }, 2300);
+}
 function showLevelUp(L, gold){
+  return hdrLevelUp(L, gold);
   const rankUp = L % 10 === 0 && L <= (RANKS.length - 1) * 10, lu = $('#levelup');
   luGold = gold || 0;
   $('#luReward').innerHTML = luGold ? `<span class="lu-rw-l">Reward</span>${ico('i-coin')}<b>+${fmt(luGold)}</b>` : '';
@@ -2215,7 +2734,7 @@ function showToast(text, canUndo){
   $('#toastUndo').hidden = !canUndo;
   $('#toast').classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(hideToast, 6000);
+  toastTimer = setTimeout(hideToast, canUndo ? 3000 : 1600);   // short, like the mock; a bit longer when it has Undo
 }
 function hideToast(){ $('#toast').classList.remove('show'); }
 function shake(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); el.focus(); }
@@ -2349,6 +2868,9 @@ function updateForm(){
   const kind = getRadio('kind');
   document.querySelectorAll('#form [data-show]').forEach(el => el.style.display = el.dataset.show.split(' ').includes(kind) ? '' : 'none');
   if ((kind === 'standard' || kind === 'record') && $('#fParent').value) $('#daysField').style.display = 'none';
+  const nrShow = kind === 'record' && !$('#fParent').value, nrOn = nrShow && !$('#fReset').checked;   // the toggle is "Resets every" (on = resets, the default); off = no reset, any number of attempts
+  $('#noResetRow').style.display = nrShow ? '' : 'none'; $('#noResetRow').style.marginTop = '14px';
+  $('#daysField').classList.toggle('nr', nrOn);
   const q = editingId && byId(editingId);
   if (kind === 'record'){
     $('#startField').style.display = q ? 'none' : '';
@@ -2418,6 +2940,7 @@ function openSheet(id){
   $('#fGoalXp').value = sq && sq.goalXp != null ? sq.goalXp : GOAL_BONUS; $('#fGoalGold').value = sq && sq.goalGold != null ? sq.goalGold : GOAL_BONUS;
   $('#fShowCount').checked = q ? showsCount(q) : true;
   $('#fTracked').checked = q ? isTracked(q) : false;
+  $('#fReset').checked = !(q && q.kind === 'record' && q.noReset);
   $('#hist').innerHTML = rq ? [...rq.entries].reverse().map(e => {
     const d = new Date(e.t);
     return `<div><span>${d.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' })}</span><b class="${e.v === rq.best ? 'best' : ''}">${fmt(e.v)} ${esc(rq.unit)}</b></div>`;
@@ -2487,7 +3010,8 @@ function saveForm(){
     }
     const st = round2(parseFloat($('#fStep').value));
     Object.assign(q, common, { unit:$('#fUnit').value.trim() || 'unit', better:getRadio('better') || 'lower', step:isFinite(st) && st > 0 ? Math.min(VALUE_CAP, st) : 1,
-      xpPer:int($('#fXpPer').value), goldPer:int($('#fGoldPer').value), parent, days });
+      xpPer:int($('#fXpPer').value), goldPer:int($('#fGoldPer').value), parent, days, noReset:!$('#fReset').checked });
+    if (q.noReset) q.doneUntil = 0;
   } else if (kind === 'tally'){
     if (isNew) q = { id:uid(), kind, log:[], carry:0, total:0, count:0, created:now() };
     const ch = round2(parseFloat($('#fChunk').value));
@@ -2684,23 +3208,38 @@ $('#panel').addEventListener('click', e => {
   if (act === 'wk-next'){ weekOffset = Math.max(0, weekOffset - 1); render(); return; }
   if (act === 'progress'){ S.tab = 'progress'; weekOffset = 0; save(); render(); window.scrollTo({ top:0 }); return; }
   if (act === 'info'){ const open = el.classList.toggle('open'); document.querySelectorAll('.info.open').forEach(x => x !== el && x.classList.remove('open')); if (open) return; }
-  if (act === 'packinfo'){ openPackInfo(el.dataset.item); return; }
+  if (act === 'packinfo'){ openPackInfo(el.dataset.item, el); return; }
   if (act === 'qty'){ changeQty(el.dataset.item, +el.dataset.d); return; }
   if (act === 'buy'){ tryBuy(el.dataset.item, el); return; }
   if (act === 'useitem'){ useItem(el.dataset.item); return; }
-  if (act === 'inspect'){ inspectCard(el.dataset.id, !!el.dataset.scene, !!el.dataset.land); return; }
+  if (act === 'inspect'){ inspectFrom = el; inspectCard(el.dataset.id, !!el.dataset.scene, !!el.dataset.land); return; }
   if (act === 'setclaim'){ claimSet(el.dataset.set, el); return; }
   if (act === 'cover'){ openCover(el.dataset.set); return; }
-  if (act === 'colg'){ colGroup = el.dataset.g; render(); return; }
+  if (act === 'colg'){ if (colGroup === el.dataset.g) return; colSwitch(el.dataset.g); return; }
   if (act === 'colf'){ colFilter = el.dataset.r; render(); return; }
-  if (act === 'colset'){ const k = el.dataset.set, i = colSets.indexOf(k); if (i < 0) colSets.push(k); else colSets.splice(i, 1); const y = scrollY; render(); scrollTo(0, y); return; }
+  if (act === 'colset'){ const k = el.dataset.set, i = colSets.indexOf(k); if (i < 0) colSets.push(k); else colSets.splice(i, 1); const y = scrollY, was = colSnap(); render(); scrollTo(0, y); colMorph(was); return; }
   if (act === 'pzview'){ pzGrid = !pzGrid; const y = scrollY; render(); scrollTo(0, y); return; }
-  if (act === 'colfold'){ const k = el.dataset.set; colOpen[k] = colOpen[k] === false; S.colOpen = Object.fromEntries(Object.entries(colOpen).filter(([, v]) => v === false)); save(); const y = scrollY; render(); scrollTo(0, y); return; }
+  if (act === 'colfold'){ const k = el.dataset.set, opening = colOpen[k] === false, sec = el.closest('.cc-fold'), bd = sec && sec.querySelector('.cc-bd');
+    const apply = () => { colOpen[k] = opening; S.colOpen = Object.fromEntries(Object.entries(colOpen).filter(([, v]) => v === false)); save(); const y = scrollY; render(); scrollTo(0, y); };
+    if (S.reduceFx) return apply();
+    if (!opening && bd){   // closing: the cards ease shut first, then the page redraws
+      if (sec.dataset.anim) return; sec.dataset.anim = 1; bd.style.overflow = 'hidden';
+      bd.animate([{ height:bd.offsetHeight + 'px', opacity:1 }, { height:'0px', opacity:0, paddingTop:'0px', paddingBottom:'0px' }], { duration:280, easing:MO.leave, fill:'forwards' }).onfinish = apply;
+      return;
+    }
+    apply();   // opening: draw it open, then ease the cards open from nothing
+    const s2 = [...document.querySelectorAll('.cc-mid')].find(m => m.dataset.set === k), b2 = s2 && s2.closest('.cc-fold').querySelector('.cc-bd');
+    if (b2){ const h = b2.offsetHeight; b2.style.overflow = 'hidden'; b2.animate([{ height:'0px', opacity:0 }, { height:h + 'px', opacity:1 }], { duration:340, easing:MO.arrive }).onfinish = () => { b2.style.overflow = ''; }; }
+    return; }
   if (act === 'opensettings'){ openSettings(); return; }
   if (act === 'earn'){ earnToggle(!earnOpen); return; }
   if (act === 'earnpop') return;
   if (act === 'skinfo'){ toggleSkPop(el); return; }
   if (act === 'autoslip' && el.dataset.q){ const q = byId(el.dataset.q); if (q) autoSlip(q, +el.dataset.t); return; }
+  if (act === 'bkpick' && el.dataset.q){ const id = el.dataset.q + '|' + selDay, st = bkSel[id]; if (st){ st.has(el.dataset.k) ? st.delete(el.dataset.k) : st.add(el.dataset.k); render(); } return; }
+  if (act === 'undoback' && el.dataset.q){ const q = byId(el.dataset.q); if (q) undoBack(q, +el.dataset.t, +el.dataset.at, el.dataset.w); return; }
+  if (act === 'backclaimlist' && el.dataset.q){ const q = byId(el.dataset.q); if (q) backClaimList(q, el.dataset.day); return; }
+  if (act === 'backclaim' && el.dataset.q){ const q = byId(el.dataset.q); if (q) backClaim(q, el.dataset.day); return; }
   if (act === 'unslip' && el.dataset.q){ const q = byId(el.dataset.q); if (q) undoSlip(q); return; }
   if (act === 'lastundo'){ const q = byId(el.dataset.q); if (q) undoLast(q); return; }
   if (act === 'dayundo'){ const q = byId(el.dataset.q); if (q) undoDay(q, el.dataset.day); return; }
@@ -2737,9 +3276,28 @@ $('#panel').addEventListener('keydown', e => {
   e.preventDefault();
   e.target.closest('.rec-input').querySelector('[data-act=record]').click();
 });
+const TAB_ORDER = ['quests', 'progress', 'inventory', 'collection', 'shop'];
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+  const from = TAB_ORDER.indexOf(S.tab);
   S.tab = b.dataset.tab; arranging = false; if (S.tab === 'progress') weekOffset = 0; save(); render(); window.scrollTo({ top:0 });
+  pageSlide(TAB_ORDER.indexOf(S.tab) - from);
 }));
+// swipe the tab bar sideways to change tab (loops: past the last one comes the first)
+(function(){ const bar = document.querySelector('.tabs'); let x0 = 0, y0 = 0, on = false, swiped = false;
+  bar.style.touchAction = 'pan-y'; bar.style.userSelect = 'none';
+  bar.addEventListener('pointerdown', e => { if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return; on = true; swiped = false; x0 = e.clientX; y0 = e.clientY; });
+  bar.addEventListener('pointercancel', () => { on = false; });
+  bar.addEventListener('pointerup', e => { if (!on) return; on = false; const dx = e.clientX - x0, dy = e.clientY - y0;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const n = TAB_ORDER.length, i = (TAB_ORDER.indexOf(S.tab) + (dx < 0 ? -1 : 1) + n) % n;
+    document.querySelector(`.tab[data-tab="${TAB_ORDER[i]}"]`).click(); swiped = true; });
+  bar.addEventListener('click', e => { if (swiped){ swiped = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+})();
+// the new page fades in (opacity only: sliding a whole heavy page, like Collection, made the switch stutter)
+function pageSlide(d){
+  if (!d || S.reduceFx) return;
+  [$('#panel'), document.querySelector('.board-head')].filter(Boolean).forEach(el => el.animate([{ opacity:0 }, { opacity:1 }], { duration:140, easing:'ease-out' }));
+}
 // swipe the toast sideways to dismiss it (works with a finger or a mouse drag)
 (() => {
   const t = $('#toast'); let x0 = null, dx = 0, id = null;
@@ -2782,7 +3340,7 @@ $('#levelup').addEventListener('click', hideLevelUp);
   const flip = (grid, change) => {
     const kids = [...grid.children].filter(x => !x.classList.contains('ghost')), was = new Map(kids.map(x => [x, x.getBoundingClientRect()]));
     change();
-    kids.forEach(x => { const a = was.get(x), b = x.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top; if (Math.abs(dx) + Math.abs(dy) > 1 && x !== cur.t) x.animate([{ transform:`translate(${dx}px,${dy}px)` }, { transform:'none' }], { duration:200, easing:'cubic-bezier(.2,.8,.3,1)' }); });
+    kids.forEach(x => { const a = was.get(x), b = x.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top; if (Math.abs(dx) + Math.abs(dy) > 1 && x !== cur.t) x.animate([{ transform:`translate(${dx}px,${dy}px)` }, { transform:'none' }], { duration:200, easing:MO.arrive }); });
   };
   document.addEventListener('pointermove', e => {
     if (!cur) return;
@@ -2830,7 +3388,7 @@ $('#levelup').addEventListener('click', hideLevelUp);
   document.addEventListener('pointerdown', e => {
     const t = e.target.closest('#panel [data-act="inspect"]'); if (!t || t.matches('.cc-bd .col-grid > .ct')) return;   // (cards in the plain grids use hold = big / drag instead)
     sx = e.clientX; sy = e.clientY; clearTimeout(timer);
-    timer = setTimeout(() => { on = true; quiet = performance.now(); inspectCard(t.dataset.id, !!t.dataset.scene, !!t.dataset.land); $('#inspect').classList.add('art'); }, 350);
+    timer = setTimeout(() => { on = true; quiet = performance.now(); inspectFrom = null; inspectCard(t.dataset.id, !!t.dataset.scene, !!t.dataset.land); $('#inspect').classList.add('art'); }, 350);
   });
   document.addEventListener('pointermove', e => { if (!on && Math.hypot(e.clientX - sx, e.clientY - sy) > 12) clearTimeout(timer); }, { passive:true });
   const up = () => { clearTimeout(timer); if (on){ on = false; quiet = performance.now(); $('#inspect').classList.remove('art'); } };
@@ -2842,7 +3400,7 @@ $('#levelup').addEventListener('click', hideLevelUp);
 // tap closes; press and hold the card to see only the art (bigger, no text), let go to come back
 (function(){
   const ov = $('#inspect'); let timer = 0, held = 0, sx = 0, sy = 0;
-  const end = () => { clearTimeout(timer); ov.classList.remove('art'); };
+  const end = () => { clearTimeout(timer); if (!ov.classList.contains('locked')) ov.classList.remove('art'); };
   ov.addEventListener('pointerdown', e => {
     if (!e.target.closest('.in-card')) return;
     sx = e.clientX; sy = e.clientY; clearTimeout(timer);
@@ -2851,7 +3409,13 @@ $('#levelup').addEventListener('click', hideLevelUp);
   ov.addEventListener('pointermove', e => { if (!ov.classList.contains('art') && Math.hypot(e.clientX - sx, e.clientY - sy) > 12) clearTimeout(timer); }, { passive:true });
   ['pointerup','pointercancel','pointerleave'].forEach(t => ov.addEventListener(t, () => { if (ov.classList.contains('art')) held = performance.now(); end(); }));
   ov.addEventListener('contextmenu', e => e.preventDefault());
-  ov.addEventListener('click', () => { if (performance.now() - held < 400) return; closeInspect(); });
+  ov.addEventListener('click', e => {
+    if (e.target.closest('.in-eye')){
+      const cd = ov.querySelector('.in-wrap.land .in-card');   // Chapter / Realm pictures are wide: the eye turns the picture on its side so it fills the screen
+      if (cd){ const w = cd.offsetWidth, h = cd.offsetHeight; if (w && h) ov.style.setProperty('--rs', Math.min(innerWidth * .96 / h, innerHeight * .94 / w).toFixed(3)); }
+      ov.classList.add('art', 'locked'); held = performance.now(); return; }   // the eye: hide the effects and all the text until the next tap
+    if (ov.classList.contains('locked')){ ov.classList.remove('art', 'locked'); held = performance.now(); return; }
+    if (performance.now() - held < 400) return; closeInspect(); });
 })();
 
 // Live countdowns to the second; redraw the board when any of them runs out
@@ -2888,7 +3452,7 @@ function handleBack(){
   if ($('#widgets').classList.contains('open')) return closeWidgets();
   if ($('#settings').classList.contains('open')) return closeSettings();
   if (arranging){ arranging = false; return render(); }
-  if (S.tab !== 'quests'){ S.tab = 'quests'; save(); render(); window.scrollTo({ top:0 }); return; }
+  if (S.tab !== 'quests'){ const from = TAB_ORDER.indexOf(S.tab); S.tab = 'quests'; save(); render(); window.scrollTo({ top:0 }); pageSlide(0 - from); return; }   // the page slides back the way it came
   if (now() - lastBackPress < 2000){
     const A = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
     if (A) A.exitApp();
@@ -3023,12 +3587,14 @@ function claimPairBonus(q, rect){
 var invIdx = 0;   // var, not let: the app may draw this tab before this line runs
 $('#panel').addEventListener('click', e => {
   const el = e.target.closest('[data-act="invdot"],[data-act="goshop"]'); if (!el) return;
-  if (el.dataset.act === 'invdot'){ const k = +el.dataset.k; if (k !== invIdx) invGo(k - invIdx); return; }
+  if (el.dataset.act === 'invdot'){ const k = +el.dataset.k, d = k - invIdx; if (d && performance.now() - invSliding > 420){ if (Math.abs(d) === 1) invSlide(d); else invGo(d); } return; }
   else document.querySelector('.tab[data-tab="shop"]').click();
 });
 /* Shop banners: swipe left / right (they follow your finger), loop around, and turn by themselves every 9 s.
    Touching a banner (picking an amount, buying) holds it still for 20 s so you can finish. */
-let banDrag = null, banMoved = 0, banLast = performance.now();
+let banDrag = null, banMoved = 0, banLast = performance.now(), banJumpT = 0;
+// if a banner is still on its end copy (waiting to jump back to the real one), jump now so the next swipe starts from the right place
+function banFix(){ if (!banJumpT) return; clearTimeout(banJumpT); banJumpT = 0; const car = document.querySelector('.sh-car'); if (!car) return; banSet(shopBan + 1, false); car.querySelectorAll('.sh-slide').forEach((el, k) => el.classList.toggle('cur', k === shopBan + 1)); }
 function banSet(pos, anim){
   const tr = document.querySelector('.sh-track'); if (!tr) return;
   tr.style.transition = anim ? 'transform .45s cubic-bezier(.25,.8,.3,1)' : 'none';
@@ -3037,18 +3603,21 @@ function banSet(pos, anim){
 function banGo(d){
   const car = document.querySelector('.sh-car'); if (!car) return;
   const n = +car.dataset.n; if (n < 2) return;
+  banFix();
   const tr = car.querySelector('.sh-track'), pos = shopBan + 1 + d;
   shopBan = ((shopBan + d) % n + n) % n; banLast = performance.now();
   banSet(pos, true);
   car.querySelectorAll('.sh-slide').forEach((el, k) => el.classList.toggle('cur', k === pos));
+  const was = [...document.querySelectorAll('.sh-dots i')].findIndex(x => x.classList.contains('on'));
   document.querySelectorAll('.sh-dots i').forEach((el, k) => el.classList.toggle('on', k === shopBan));
+  dotHl(document.querySelector('.sh-dots'), true, was);
   // landed on an end copy: jump to the real one without animating
-  if (pos === 0 || pos === n + 1) setTimeout(() => { if (tr.isConnected){ banSet(shopBan + 1, false);
+  if (pos === 0 || pos === n + 1) banJumpT = setTimeout(() => { banJumpT = 0; if (tr.isConnected){ banSet(shopBan + 1, false);
     car.querySelectorAll('.sh-slide').forEach((el, k) => el.classList.toggle('cur', k === shopBan + 1)); } }, 470);
 }
 $('#panel').addEventListener('pointerdown', e => {
   const car = e.target.closest('.sh-car'); if (!car || +car.dataset.n < 2) return;
-  banLast = performance.now() + 11000;   // 9 s + 11 s = held for 20 s after a touch
+  banFix(); banLast = performance.now() + 11000;   // 9 s + 11 s = held for 20 s after a touch
   banDrag = { x:e.clientX, y:e.clientY, w:car.offsetWidth, on:false, id:e.pointerId, car };
 });
 $('#panel').addEventListener('pointermove', e => {
@@ -3056,13 +3625,15 @@ $('#panel').addEventListener('pointermove', e => {
   const dx = e.clientX - d.x, dy = e.clientY - d.y;
   if (!d.on){ if (Math.abs(dx) < 8) return; if (Math.abs(dy) > Math.abs(dx)){ banDrag = null; return; }
     d.on = true; d.car.classList.add('drag'); try { d.car.setPointerCapture(d.id); } catch(_){} }
+  const tn = performance.now(); d.v = (e.clientX - (d.lx ?? d.x)) / Math.max(1, tn - (d.lt || tn - 16)); d.lx = e.clientX; d.lt = tn;
   banSet(shopBan + 1 - dx / (d.w + 12), false);
 });
 function banEnd(e){
   const d = banDrag; banDrag = null; if (!d || !d.on) return;
   d.car.classList.remove('drag'); banMoved = performance.now();
   const dx = e.clientX - d.x;
-  if (Math.abs(dx) > d.w * .18) banGo(dx < 0 ? 1 : -1); else { banSet(shopBan + 1, true); banLast = performance.now() + 11000; }
+  if (Math.abs(dx) > d.w * .18 || (Math.abs(dx) > 16 && Math.abs(d.v || 0) > .45)) banGo(dx < 0 ? 1 : -1);   // far enough, or a quick flick
+  else { banSet(shopBan + 1, true); banLast = performance.now() + 11000; }   // otherwise it slides back
 }
 $('#panel').addEventListener('pointerup', banEnd);
 $('#panel').addEventListener('pointercancel', e => { const d = banDrag; banDrag = null; if (d && d.on){ d.car.classList.remove('drag'); banSet(shopBan + 1, true); } });
@@ -3076,12 +3647,88 @@ every(1, () => {
 /* Deck tab on a phone: swipe left / right to switch decks, swipe up to open one (taps still work) */
 let invSw = null, invSwiped = 0;
 // the new deck slides in from the side you swiped toward
-function invGo(d){ invIdx += d; render(); const st = document.querySelector('.inv-stack'); if (st) st.classList.add(d > 0 ? 'in-r' : 'in-l');
+// switching packs: only the pack itself moves (the current one slides off, the real next one glides in from where it
+// was peeking). Everything else stays in place and changes in place: the name slides sideways, the numbers count to
+// their new values, the UR bar fills or empties box by box, and every colour morphs into the new pack's colour.
+let invSliding = 0;
+const invNumTween = (el, from, to, dur) => { if (from === to) return; const t0 = performance.now();
+  let last = 0; const step = t => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); if (k >= 1 || t - last >= 45){ last = t; el.textContent = fmt(Math.round(from + (to - from) * e)); } if (k < 1) requestAnimationFrame(step); };   // about 20 updates a second is plenty for a number
+  el.textContent = fmt(from); requestAnimationFrame(step); };
+// the packs sit on a huge hidden wheel: dragging turns it, the current pack leaves along the arc and the next one arrives along the same arc (a big radius, so it comes in from the side, not from below)
+const WH_R = 1600;
+function wheelS(){ return Math.min(WH_R * .9, innerWidth * .8); }   // how far the next pack waits off to the side
+function wheelSet(dx, st){
+  const R = WH_R, S0 = wheelS(), A = Math.asin(S0 / R), stage = st.parentNode; st._wdx = dx;
+  const a = Math.asin(Math.max(-.95, Math.min(.95, dx / R))), pos = ang => `translate(${R * Math.sin(ang)}px,${R * (1 - Math.cos(ang))}px) rotate(${ang}rad)`;
+  // packs fade out before they reach the edge of the screen, so there is never a hard cut line
+  if (st._lim == null){ let e = stage, l = innerWidth; for (; e && e !== document.documentElement; e = e.parentNode){ const o = getComputedStyle(e).overflowX; if (o !== 'visible'){ const r = e.getBoundingClientRect(), c = stage.getBoundingClientRect(), m = c.left + c.width / 2; l = Math.min(l, m - r.left, r.right - m); break; } } st._lim = Math.max(120, Math.min(l, innerWidth / 2)); }
+  const fade = off => Math.max(0, Math.min(1, 1 - (Math.abs(off) - st._lim * .8) / (st._lim * .45)));
+  st.style.transform = pos(a); st.style.opacity = fade(R * Math.sin(a));
+  const sign = dx < 0 ? 1 : -1, g = stage.querySelector(sign > 0 ? '.nbw.r' : '.nbw.l'), o = stage.querySelector(sign > 0 ? '.nbw.l' : '.nbw.r');
+  if (o) o.style.visibility = 'hidden';
+  if (g){ g.style.visibility = 'visible'; g.firstElementChild.style.transform = pos(a + sign * A); g.firstElementChild.style.opacity = fade(R * Math.sin(a + sign * A)); }
+  // the pack colours (Open all, UR bar, name, glow) blend toward the next pack's colours as the wheel turns
+  const inv = st.closest('.inv'), obx = $('#openAllBtn');
+  if (inv && g){
+    const hex = v => { v = (v || '').trim(); return /^#[0-9a-f]{6}$/i.test(v) ? [1, 3, 5].map(i => parseInt(v.slice(i, i + 2), 16)) : null; };
+    const c0 = st._th0 || (st._th0 = hex(getComputedStyle(inv).getPropertyValue('--ac'))), c1 = hex(getComputedStyle(g).getPropertyValue('--ac')), p2 = Math.min(1, Math.abs(dx) / S0);
+    if (c0 && c1){ const m = c0.map((v, i) => Math.round(v + (c1[i] - v) * p2)); [inv, obx].forEach(e => { if (!e) return; e.style.setProperty('--ac', `rgb(${m})`); e.style.setProperty('--acr', m.join(',')); }); }
+  }
+  // Open all (top right) fades with the wheel when the next pack has fewer than 2 (or this one does)
+  const ob = $('#openAllBtn'); if (ob && g){ const cur = (+ob.dataset.n || 0) >= 2, nb = (+g.dataset.n || 0) >= 2, p = Math.min(1, Math.abs(dx) / S0);
+    const num = ob.querySelector('.oa-n'); if (num && !cur && nb) num.textContent = fmt(+g.dataset.n);   // fading in: show the next pack's number, never ×0 / ×1
+    ob.hidden = !(cur || nb); ob.style.opacity = cur && nb ? '' : cur ? String(1 - p) : nb ? String(p) : ''; }
+}
+function wheelRun(st, to, dur, done){
+  const from = st._wdx || 0, t0 = performance.now();
+  const step = t => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); wheelSet(from + (to - from) * e, st); if (k < 1) requestAnimationFrame(step); else if (done) done(); };
+  requestAnimationFrame(step);
+}
+function wheelOff(st){ st._wdx = 0; { const ob = $('#openAllBtn'), num = ob && ob.querySelector('.oa-n'); if (num) num.textContent = fmt(+ob.dataset.n || 0); } st._th0 = null; st._lim = null; st.style.opacity = ''; [st.closest('.inv'), $('#openAllBtn')].forEach(e => { if (e){ e.style.removeProperty('--ac'); e.style.removeProperty('--acr'); } }); const ob = $('#openAllBtn'); if (ob){ ob.style.opacity = ''; ob.hidden = (+ob.dataset.n || 0) < 2; } st.style.transform = ''; st.parentNode.querySelectorAll('.nbw').forEach(g => { g.style.visibility = 'hidden'; g.firstElementChild.style.transform = ''; g.firstElementChild.style.opacity = ''; }); }
+function invSlide(dir, st){
+  st = st || document.querySelector('.inv-stack');
+  const stage = document.querySelector('.dka-stage'), inv = st && st.closest('.inv');
+  if (!st || !stage || !stage.querySelector('.nbw') || !inv || S.reduceFx){ invGo(dir); return; }
+  invSliding = performance.now();
+  // what is on screen now, to animate from
+  const was = { cls:inv.className.replace(/\s*sliding/, ''), name:(inv.querySelector('.inv-name') || {}).textContent || '',
+    nums:[...inv.querySelectorAll('.dka-stats .nv')].map(x => +x.dataset.v), slots:[...inv.querySelectorAll('.ur-slots i:not(.ur)')].map(x => x.classList.contains('on')) };
+  const dotWas = [...inv.querySelectorAll('.inv-dots button')].findIndex(x => x.classList.contains('on'));
+  const ob = $('#openAllBtn'), obWas = { n:+ob.dataset.n || 0, hidden:(+ob.dataset.n || 0) < 2, cls:ob.className };
+  inv.classList.add('sliding');
+  st.style.animation = 'none'; st.style.transition = 'none';
+  wheelRun(st, -dir * wheelS(), 140 + 200 * (1 - Math.min(1, Math.abs(st._wdx || 0) / wheelS())), () => {
+    invIdx += dir; render();
+    const v = document.querySelector('.inv'), n = v && v.querySelector('.inv-stack'); if (!n) return;
+    // colours: draw once in the old pack's colours, then switch so every colour fades across
+    // (the colours already blended while the wheel turned)
+    v.querySelectorAll('.dka-ghost, .dka-stage').forEach(x => x.classList.add('fade-in'));
+    dotHl(v.querySelector('.inv-dots'), true, dotWas);
+    // Open all (top right) stays put: same size, the count runs to the new number, the colour fades, it fades in / out if needed
+    const on = +ob.dataset.n || 0, oc = ob.className, num = ob.querySelector('.oa-n');
+    if (!obWas.hidden && !ob.hidden){ if (num) invNumTween(num, obWas.n, on, 450); }
+    // (fading in / out is done by the wheel itself while it turns)
+    // the name slides out and the new one slides in from the swipe side
+    const nm = v.querySelector('.inv-name');
+    if (nm && was.name !== nm.textContent){ const nw = nm.textContent;
+      nm.innerHTML = `<span class="nm-box"><span class="nm-o" style="--d:${-dir}">${esc(was.name)}</span><span class="nm-n" style="--d:${dir}">${esc(nw)}</span></span>`;
+      setTimeout(() => { if (nm.isConnected) nm.textContent = nw; }, 460); }
+    // numbers count to their new value (the / stays)
+    v.querySelectorAll('.dka-stats .nv').forEach((x, i) => { if (was.nums[i] != null) invNumTween(x, was.nums[i], +x.dataset.v, 450); });
+    // UR bar: start as it was, then each box fills or empties in turn
+    const sl = [...v.querySelectorAll('.ur-slots i:not(.ur)')];
+    if (sl.length === was.slots.length){ const target = sl.map(x => x.classList.contains('on')); const box = v.querySelector('.ur-slots'); box.classList.add('nt'); sl.forEach((x, i) => x.classList.toggle('on', was.slots[i])); void box.offsetWidth; box.classList.remove('nt');   // start exactly as it was, no movement
+      const order = target.map((t, i) => i).filter(i => target[i] !== was.slots[i]); if (order.some(i => !target[i])) order.reverse();
+      const gap = Math.min(55, 300 / Math.max(1, order.length));   // the whole wave takes about as long as the pack's glide
+      order.forEach((i, m) => setTimeout(() => { if (sl[i].isConnected) sl[i].classList.toggle('on', target[i]); }, 40 + m * gap)); }
+  });
+}
+function invGo(d){ const was = invIdx; invIdx += d; render(); dotHl(document.querySelector('.inv-dots'), true, ((was % invItems().length) + invItems().length) % invItems().length); const st = document.querySelector('.inv-stack'); if (st) st.classList.add(d > 0 ? 'in-r' : 'in-l');
   const nm = document.querySelector('.inv-name'); if (nm) nm.classList.add('in'); }
 function invItems(){ return SHOP.filter(it => !it.soon); }
 // the whole Deck screen is the swipe area; the deck follows your finger
 $('#panel').addEventListener('pointerdown', e => {
-  if (S.tab !== 'inventory' || opening || !e.target.closest('.inv') || e.target.closest('.inv-dots')) return;
+  if (S.tab !== 'inventory' || opening || !e.target.closest('.inv') || e.target.closest('.inv-dots') || performance.now() - invSliding < 400) return;
   const st = document.querySelector('.inv-stack'); if (!st) return;
   invSw = { x:e.clientX, y:e.clientY, axis:null, st };
 });
@@ -3089,20 +3736,20 @@ $('#panel').addEventListener('pointermove', e => {
   const s0 = invSw; if (!s0) return;
   const dx = e.clientX - s0.x, dy = e.clientY - s0.y;
   if (!s0.axis){ if (Math.hypot(dx, dy) < 10) return; s0.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'; s0.st.style.animation = 'none'; s0.st.style.transition = 'none'; }
-  if (s0.axis === 'x') s0.st.style.transform = `translateX(${dx}px) rotate(${dx / 22}deg)`;
+  const tn = performance.now(); s0.v = (e.clientX - (s0.lx ?? s0.x)) / Math.max(1, tn - (s0.lt || tn - 16)); s0.lx = e.clientX; s0.lt = tn;   // finger speed, for a flick
+  if (s0.axis === 'x'){ if (S.reduceFx) s0.st.style.transform = `translateX(${dx}px)`; else { const S0 = wheelS(); wheelSet(Math.max(-S0, Math.min(S0, dx * 1.3)), s0.st); } }
   else s0.st.style.transform = `translateY(${Math.min(0, dy) * .7}px) scale(${1 - Math.min(0, dy) / -2000})`;
 });
 function invRelease(e, cancel){
   const s0 = invSw; invSw = null; if (!s0 || !s0.axis) return;
   invSwiped = performance.now();
   const dx = e.clientX - s0.x, dy = e.clientY - s0.y, st = s0.st, items = invItems();
-  const back = () => { st.style.transition = 'transform .28s cubic-bezier(.3,1.4,.5,1)'; st.style.transform = '';
-    setTimeout(() => { st.style.transition = ''; st.style.animation = ''; }, 300); };
+  const back = () => { if (S.reduceFx || s0.axis !== 'x'){ st.style.transition = 'transform .28s cubic-bezier(.3,1.4,.5,1)'; st.style.transform = ''; setTimeout(() => { st.style.transition = ''; st.style.animation = ''; }, 300); return; }
+    wheelRun(st, 0, 260, () => { wheelOff(st); st.style.transition = ''; st.style.animation = ''; }); };
   if (cancel) return back();
-  if (s0.axis === 'x' && Math.abs(dx) > 50 && items.length > 1){
+  if (s0.axis === 'x' && (Math.abs(dx) > 50 || (Math.abs(dx) > 18 && Math.abs(s0.v || 0) > .45)) && items.length > 1){   // far enough, or a quick flick
     const dir = dx < 0 ? 1 : -1;
-    st.style.transition = 'transform .26s cubic-bezier(.4,0,.7,1), opacity .26s ease-out'; st.style.transform = `translateX(${-dir * innerWidth * .6}px) rotate(${-dir * 10}deg)`; st.style.opacity = '0';
-    setTimeout(() => invGo(dir), 250);   // a calmer slide out, then the next deck eases in
+    invSlide(dir, st);
     return;
   }
   if (s0.axis === 'y' && dy < -60){
@@ -3260,7 +3907,7 @@ function qbSummary(){
   const done = vis.filter(isDone).length, T = S.today && S.today.day === dayKey() ? S.today : { xp:0, gold:0 };
   const sq = firstSteps(), st = sq ? stepDue(sq, dayKey()).steps : 0, due = sq ? dueTotals(sq) : { keys:[] };
   return `<div class="qb-sumw"><div class="qb-sum"${sq ? ` data-holdedit="${sq.id}"` : ''}>${qbRing(done, vis.length)}<div class="qb-st">
-    <div class="ln"><span class="ep-lab">Earned today<span class="info earn-i${earnOpen ? ' on' : ''}" data-act="earn"><span class="info-btn" aria-label="Where it came from">i</span></span></span><b><span class="xp-r">${ico('i-gem')}${fmt(T.xp)}</span><span class="gold-r">${ico('i-coin')}${fmt(T.gold)}</span></b></div>
+    <div class="ln"><span class="ep-lab">Earned today<span class="info earn-i${earnOpen ? ' on' : ''}" data-act="earn"><span class="info-btn" aria-label="Where it came from">i</span></span></span><b><span class="xp-r">${ico('i-gem')}<i class="et" data-v="${T.xp}">${fmt(T.xp)}</i></span><span class="gold-r">${ico('i-coin')}<i class="et" data-v="${T.gold}">${fmt(T.gold)}</i></span></b></div>
     ${sq ? `<div class="ln qb-stp"><span>Steps</span><b>${fmt(st)}${sq.goal ? ' / ' + fmt(sq.goal) : ''}</b></div><div class="qb-bar"><i style="width:${sq.goal ? Math.min(100, st / sq.goal * 100) : 0}%"></i></div>` : ''}
     ${sq ? `<div class="qb-sumft"><span class="qb-tm"><span class="qb-time">${ico('i-hourglass','0 0 16 16')}${cd(nextMidnight())}</span>${stepsSyncTag()}</span>
       ${due.keys.length ? `<button class="qb-sclaim" data-act="claimall" data-q="${sq.id}" title="+${fmt(due.xp)} XP, +${fmt(due.gold)} gold">Claim</button>` : ''}</div>` : ''}</div></div>${earnOpen ? earnPanel() : ''}</div>`;
@@ -3272,7 +3919,7 @@ function earnPanel(){
   const T = S.today && S.today.day === dayKey() ? S.today : { xp:0, gold:0, src:[] }, L = Array.isArray(T.src) ? T.src : [];
   const sq = firstSteps(), short = k => new Date(k + 'T00:00').toLocaleDateString(undefined, { month:'short', day:'numeric' });
   const wk = k => new Date(k + 'T00:00').toLocaleDateString(undefined, { weekday:'short' });
-  const row = (c, name, sub, xp, gold) => `<div class="ep-row"><i style="--c:${c}"></i><span class="ep-nm">${esc(name)}${sub ? `<small>${esc(sub)}</small>` : ''}</span>
+  const row = (c, name, sub, xp, gold, gem) => `<div class="ep-row"><i style="--c:${c}"></i><span class="ep-nm">${esc(name)}${sub ? `<small>${esc(sub)}${gem ? `<i class="rdot" style="--c:${gem};margin:0 0 0 6px"></i>` : ''}</small>` : ''}</span>
     <span class="ep-x${xp ? '' : ' z'}">${xp ? '+' + fmt(xp) : '–'}</span><span class="ep-g${gold ? '' : ' z'}">${gold ? '+' + fmt(gold) : '–'}</span></div>`;
   const quests = L.filter(r => r.k.startsWith('q:')).map(r => {
     const q = byId(r.k.slice(2)), kind = q ? q.kind : r.kind;
@@ -3287,7 +3934,7 @@ function earnPanel(){
   const other = [];
   const lv = L.find(r => r.k === 'lv'); if (lv) other.push(row('#f0b429', 'Level up', lv.lv ? `Lv ${lv.lv[0]} → ${lv.lv[1]}` : '', lv.xp, lv.gold));
   const dl = L.find(r => r.k === 'daily'); if (dl) other.push(row('#2ee6d6', 'Daily reward', (dl.parts || []).slice(-1)[0] || '', dl.xp, dl.gold));
-  L.filter(r => r.k.startsWith('set:')).forEach(r => other.push(row('#c792ff', 'Set complete', r.n + (r.c > 1 ? ' ×' + r.c : ''), r.xp, r.gold)));
+  L.filter(r => r.k.startsWith('set:')).forEach(r => { const c = CARDS.find(x => x.set === r.k.slice(4)), col = c ? RARITY[c.rarity].color : '#c792ff'; other.push(row(col, 'Set complete', r.n + (r.c > 1 ? ' ×' + r.c : ''), r.xp, r.gold, col)); });
   L.filter(r => r.k === 'scenes' || r.k.startsWith('scenes:')).forEach(sc => other.push(row('#9db2b0', sc.k === 'scenes' ? 'All chapters' : sc.n, '', sc.xp, sc.gold)));
   // anything not in a row: earned before this version, or from somewhere not tagged
   const ex = T.xp - L.reduce((a, r) => a + r.xp, 0), eg = T.gold - L.reduce((a, r) => a + r.gold, 0);
@@ -3404,7 +4051,7 @@ function qbTally(q){
   const pv = tallyPreview(q, ''), total = q.total || 0, ph = 'Amount';
   if (fr) requestAnimationFrame(() => { tallyCountUp(q.id, fr.total, total, fr.laps ? tallyLapsMs(fr.units) : 650); if (fr.laps) tallyLaps(q.id, fr); });
   return `<article class="card qb-t wide tally-card">
-    ${qbTR(qbBadge(`+${fmt(q.xpPer)} / ${esc(fmtU(q, q.chunk))}`, 'tl-rate'))}
+    ${qbTR(qbBadge(`+${fmt(q.xpPer)} · +${fmt(q.goldPer)} / ${esc(fmtU(q, q.chunk))}`, 'tl-rate'))}
     ${qbHead(q)}${qbNote(q)}
     <div class="tl-top"><div class="tl-totbox"><small>TOTAL</small><b class="tl-total" data-qid="${q.id}">${fr ? fmtU(q, fr.total) : fmtU(q, total)}</b></div><span class="tl-note">${tallyNote(q, pv)}</span></div>
     <div class="tl-meter tg-seg">${tallyMeterHtml(q, pv, fr && !fr.laps ? fr : null)}</div>
@@ -3449,7 +4096,7 @@ function qbGroupOf(q, noPin){
   // a pinned quest gets its own group right under Due soon (the widget and Progress ignore pins)
   if (q.pinned && !noPin && !q.parent && !(q.kind === 'bounty' && bountyUrgent(q))) return { key:'b-pin', order:-.5, title:'Pinned', time:'' };
   // Tally and Bounty never reset, so they share one "Others" group (like the widget)
-  if (q.kind === 'tally' || q.kind === 'counter') return { key:'z-other', order:9e9, title:'Others', time:'' };
+  if (q.kind === 'tally' || q.kind === 'counter' || (q.kind === 'record' && q.noReset)) return { key:'z-other', order:9e9, title:'Others', time:'' };
   if (q.kind === 'bounty') return bountyUrgent(q) ? { key:'a-due', order:-1, title:'Due soon', time:'' } : { key:'z-other', order:9e9, title:'Others', time:'' };
   const d = q.kind === 'scaling' ? periodOf(q) : isTracker(q) ? 1 : (q.days || 1);
   return { key:'d' + d, order:d, title:cycleName(d), time:d === 1 ? cd(nextMidnight()) : '' };
@@ -3652,13 +4299,16 @@ function heroCal(q, map, tc){
 // Undo on a Recent row: only for a claim that can still be reopened (same as tapping its done tile)
 const UNDO_OFF = '<button class="hx-undo" disabled>Undo</button>';
 function undoBtn(q, e, i){ return undoLive(q, e, i) || UNDO_OFF; }
+// the newest real claim: rows added afterwards for a forgotten day (back) sit above it but can't be undone here
+const topClaim = (q, e, i) => !e.back && (i === 0 || !allLogs(q).sort((a, b) => (b.at || b.t) - (a.at || a.t)).slice(0, i).some(x => !x.back && !x.slip));
 function undoLive(q, e, i){
   // an Avoid day that was claimed for you: "Slipped?" breaks the streak on that day (only while that day is still in the current streak)
   if (e.auto) return `<button class="hx-undo" data-act="autoslip" data-q="${q.id}" data-t="${e.t}">Slip?</button>`;   // always available
   if (e.slip) return slippedToday(q) && q.slipUndo && (q.slips || []).slice(-1)[0] === e.t ? `<button class="hx-undo" data-act="unslip" data-q="${q.id}">Undo</button>` : '';
-  if (i === 0 && q.kind === 'scaling' && q.week === periodStart(q) && q.weekClaims > 0 && e.t >= q.week)
+  if (e.back) return `<button class="hx-undo" data-act="undoback" data-q="${q.id}" data-t="${e.t}" data-at="${e.at || 0}" data-w="${e.bonus ? '' : esc(e.what || '')}">Undo</button>`;
+  if (topClaim(q, e, i) && q.kind === 'scaling' && q.week === periodStart(q) && q.weekClaims > 0 && e.t >= q.week)
     return `<button class="hx-undo" data-act="lastundo" data-q="${q.id}">Undo</button>`;
-  if (i === 0 && (q.kind === 'tally' || q.kind === 'counter')) return `<button class="hx-undo" data-act="lastundo" data-q="${q.id}">Undo</button>`;
+  if (topClaim(q, e, i) && (q.kind === 'tally' || q.kind === 'counter')) return `<button class="hx-undo" data-act="lastundo" data-q="${q.id}">Undo</button>`;
   if (q.kind === 'pair'){
     const last = h => { const r = itemOf(q, h); return r && r.log && r.log.length ? r.log[r.log.length - 1].t : 0; };
     let k = e.bonus ? null : listKeys(q).find(h => itemOf(q, h).name === e.what && last(h) === e.t) || null;
@@ -3667,7 +4317,7 @@ function undoLive(q, e, i){
     const r = k && itemOf(q, k);
     return r && r.undo && r.until > now() ? `<button class="hx-undo" data-act="hxundo" data-q="${q.id}" data-k="${k}">Undo</button>` : '';
   }
-  if (i !== 0 || !['standard','target','avoid','bounty'].includes(q.kind) || !q.undo || !isDone(q)) return '';
+  if (!topClaim(q, e, i) || !['standard','target','avoid','bounty'].includes(q.kind) || !q.undo || !isDone(q)) return '';
   return `<button class="hx-undo" data-act="hxundo" data-q="${q.id}">Undo</button>`;
 }
 // Streak bonus explained, each row with the flame you'd have by then
@@ -3693,11 +4343,14 @@ document.querySelectorAll('.tip-host').forEach(host => {
   host.innerHTML = `<div class="info sk-info"><span class="info-btn" aria-label="Info">i</span><template><div class="tip-t">${esc(host.dataset.tip)}</div></template></div>`;
   host.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleSkPop(host.querySelector('.sk-info')); });
 });
+{ const host = $('#fResetInfo');
+  if (host){ host.innerHTML = '<div class="info sk-info"><span class="info-btn" aria-label="Info">i</span><template><div class="tip-t">Off: Log as many attempts as you like, any time.</div></template></div>';
+    host.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleSkPop(host.querySelector('.sk-info')); }); } }
 { const host = $('#fStreakInfo');
   if (host){ host.innerHTML = streakInfo();
     host.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleSkPop(host.querySelector('.sk-info')); }); } }
 function questHero(q){
-  const map = dayMap(q), logs = allLogs(q).sort((a, b) => b.t - a.t);
+  const map = dayMap(q), logs = allLogs(q).sort((a, b) => (b.at || b.t) - (a.at || a.t));
   const xp = logs.reduce((a, e) => a + (e.xp || 0), 0), gold = logs.reduce((a, e) => a + (e.gold || 0), 0);
   let k, big, unit, sub, tier = 0, art;
   if (hasStreak(q)){
@@ -3743,7 +4396,7 @@ function renderProgPop(){
 }
 $('#progPop').addEventListener('click', e => {
   const all = e.target.closest('[data-ppall]');
-  if (all){ S.progHide ||= {}; S.quests.forEach(q => { if (all.dataset.ppall === '1') delete S.progHide[q.id]; else if (!isTracker(q)) S.progHide[q.id] = true; }); save(); ppSync(); return; }
+  if (all){ S.progHide ||= {}; S.quests.forEach(q => { if (all.dataset.ppall === '1') delete S.progHide[q.id]; else if (!isTracker(q)) S.progHide[q.id] = true; }); ppLast = 'steps'; save(); ppSync(); return; }
   if (e.target.closest('[data-ppdone]') || e.target === $('#progPop')) closeProgPop();
 });
 // toggling only updates the switches and the count in place
@@ -3867,18 +4520,19 @@ function renderInventory(){
   const prev = items[(invIdx + items.length - 1) % items.length], next = items[(invIdx + 1) % items.length];
   const pity = it.pity ? Math.min(it.pity, (S.pity && S.pity[it.id]) || 0) : 0;
   const dots = items.length > 1 ? `<div class="inv-dots">${items.map((x, k) => `<button class="${k === invIdx ? 'on' : ''}" data-act="invdot" data-k="${k}" aria-label="${esc(x.name)}"></button>`).join('')}</div>` : '';
-  const ob = $('#openAllBtn'); ob.hidden = n < 2; ob.dataset.item = it.id; ob.textContent = `Open all ×${n}`; ob.className = 'open-all th-' + it.deck;
+  const ob = $('#openAllBtn'); if (!ob.querySelector('.oa-n')) ob.innerHTML = 'Open all ×<i class="oa-n"></i>';   // fixed width; the number counts when switching packs
+  ob.hidden = n < 2; ob.style.opacity = ''; ob.style.removeProperty('--ac'); ob.style.removeProperty('--acr'); ob.dataset.item = it.id; ob.dataset.n = n; ob.querySelector('.oa-n').textContent = fmt(n); ob.className = 'open-all th-' + it.deck;
   return `<div class="inv dka th-${it.deck}${n ? '' : ' none'}">
-    ${items.length > 1 ? `<img class="dka-ghost l" src="${deckOf(prev).cover}" alt=""><img class="dka-ghost r" src="${deckOf(next).cover}" alt="">` : ''}
     <div class="dka-stage">
       <div class="inv-stack" data-act="${n ? 'useitem' : 'goshop'}" data-item="${it.id}">
         <div class="inv-layer top${n ? '' : ' dim'}"><img src="${D.cover}" alt=""><i class="dka-holo"></i></div>
         ${n ? `<span class="dka-cnt">×${fmt(n)}</span>` : ''}
       </div>
+      ${items.length > 1 ? [[prev, 'l'], [next, 'r']].map(([x, sd]) => { const nx = owned(x.id), Dx = deckOf(x); return `<div class="nbw ${sd} dka th-${x.deck}${nx ? '' : ' none'}" data-n="${nx}"><div class="inv-stack"><div class="inv-layer top${nx ? '' : ' dim'}"><img src="${Dx.cover}" alt=""><i class="dka-holo"></i></div>${nx ? `<span class="dka-cnt">×${fmt(nx)}</span>` : ''}</div></div>`; }).join('') : ''}
     </div>
-    <div class="inv-name">${esc(it.name)}</div>
+    <div class="inv-name">${esc(it.name.replace(/ Pack$/, ""))}</div>
     <div class="inv-hint dka-hint" data-act="${n ? 'useitem' : 'goshop'}" data-item="${it.id}">${n ? 'SWIPE UP TO OPEN' : 'GET MORE IN SHOP'}</div>
-    <div class="dka-stats"><div><span>Opened</span><b>${fmt(opened)}</b></div><div><span>Collected</span><b>${got}/${all.length}</b></div></div>
+    <div class="dka-stats"><div><span>Opened</span><b><i class="nv" data-v="${opened}">${fmt(opened)}</i></b></div><div><span>Collected</span><b><i class="nv" data-v="${got}">${got}</i>/<i class="nv" data-v="${all.length}">${all.length}</i></b></div></div>
     ${it.pity ? `<div class="ur-slots" title="UR guaranteed in ${it.pity - pity}">${Array.from({ length:it.pity }, (_, i) => i === it.pity - 1
       ? '<i class="ur"><b>UR</b></i>' : `<i class="${i < pity ? 'on' : ''}"></i>`).join('')}</div>` : ''}
     ${dots}
@@ -3921,20 +4575,45 @@ function showOpenAll(){
     <div class="oa-hint pk-hint">Double-tap anywhere to reveal all</div>
     <div class="oa-tray" id="oaTray"></div></div>`;
   ov.classList.add('open');
-  oaLayout();
+  oaFlick();
   ov.querySelectorAll('.oa-stage .oa-c').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); oaTap(+b.dataset.i); }));
   // swipe the front card left for the next one
   let sx = null;
   const st = ov.querySelector('.oa-stage');
+  $('#oaTray').addEventListener('click', e => { const im = e.target.closest('img[data-id]'); if (!im) return; e.stopPropagation(); inspectCard(im.dataset.id); });   // tap a card in the tray to look at it
   st.addEventListener('pointerdown', e => { sx = e.clientX; });
   st.addEventListener('pointerup', e => { if (sx != null && sx - e.clientX > 50){ const f = o.cards[o.idx]; if (f && o.flipped.has(o.idx)) oaNext(); } sx = null; });
+}
+// the pile is flicked into the big stack, back card first (a tap anywhere skips it)
+function oaFlick(){
+  const o = opening; if (!o) return;
+  if (S.reduceFx){ oaLayout(); return; }
+  const st = document.querySelector('#pack .oa-stage'), cs = [...st.querySelectorAll('.oa-c')], h = st.offsetHeight, vis = cs.slice(0, 8);
+  oaLayout();
+  const fin = vis.map(b => ({ t:b.style.transform, f:b.style.filter, o:b.style.opacity }));
+  vis.forEach((b, i) => { b.style.transition = 'none'; b.style.transform = `translateY(${h * .45}px) scale(.8)`; b.style.filter = 'none'; b.style.opacity = '1'; b.style.zIndex = i; });
+  void st.offsetWidth;
+  $('#pack').classList.add('dealing'); o.flicking = [];
+  for (let i = vis.length - 1; i >= 0; i--) o.flicking.push(setTimeout(() => {
+    const b = vis[i]; b.style.transition = 'transform 440ms cubic-bezier(.2,.8,.3,1), filter 440ms, opacity 440ms'; b.style.zIndex = 100 - i;
+    b.style.transform = fin[i].t; b.style.filter = fin[i].f; b.style.opacity = fin[i].o;
+    b.animate([{ rotate:'0deg' }, { rotate:(i % 2 ? -9 : 9) + 'deg', offset:.4 }, { rotate:'0deg' }], { duration:500, easing:'cubic-bezier(.2,.8,.3,1)' });
+  }, (vis.length - 1 - i) * 60));
+  o.flicking.push(setTimeout(() => oaFlickEnd(), vis.length * 60 + 520));
+}
+function oaFlickEnd(){
+  const o = opening; if (!o || !o.flicking) return;
+  o.flicking.forEach(clearTimeout); o.flicking = null; $('#pack').classList.remove('dealing');
+  const cs = [...document.querySelectorAll('#pack .oa-stage .oa-c')];
+  cs.forEach(b => { b.style.transition = 'none'; b.getAnimations().forEach(a => a.cancel()); });
+  oaLayout(); void document.body.offsetWidth; cs.forEach(b => { b.style.transition = ''; });
 }
 function oaLayout(){
   const o = opening; if (!o || !o.all) return;
   document.querySelectorAll('#pack .oa-stage .oa-c').forEach(b => {
     const k = +b.dataset.i - o.idx;
     b.classList.toggle('front', k === 0);
-    if (k < 0){ b.style.transform = 'translateX(-130%) rotate(-12deg)'; b.style.opacity = '0'; b.style.pointerEvents = 'none'; return; }
+    if (k < 0){ if (b.dataset.gone) return; b.style.transform = 'translateX(-130%) rotate(-12deg)'; b.style.opacity = '0'; b.style.pointerEvents = 'none'; return; }
     b.style.transform = `translateX(${k * 20}px) translateY(${k * 2}px) scale(${Math.max(.6, 1 - k * .06)})`;
     b.style.zIndex = 100 - k; b.style.opacity = k > 6 ? '0' : '1'; b.style.filter = k ? `brightness(${Math.max(.35, 1 - k * .12)})` : '';
     b.style.pointerEvents = k === 0 ? '' : 'none';
@@ -3953,10 +4632,24 @@ function oaTap(i){
 function oaNext(){
   const o = opening; if (!o) return;
   const c = o.cards[o.idx];
-  $('#oaTray').insertAdjacentHTML('afterbegin', `<img class="r-${c.rarity}" style="--rc:${RARITY[c.rarity].glow}" src="${cardImg(c.id)}" alt="">`);
+  const tray = $('#oaTray'); tray.insertAdjacentHTML('beforeend', `<img class="r-${c.rarity}" data-id="${c.id}" style="--rc:${RARITY[c.rarity].glow}" src="${cardImg(c.id)}" alt="">`);   // best stay on the left, newer ones follow (one line; the line never moves by itself, drag it to see the newer ones)
+  if (!S.reduceFx && o.idx < o.cards.length - 1) oaMinimize($(`#pack .oa-stage .oa-c[data-i="${o.idx}"]`), tray.lastElementChild, tray);
   o.idx++;
   if (o.idx >= o.cards.length) return oaSummary();
   oaLayout();
+}
+// the front card shrinks down into its place in the drawer (instead of sliding off to the left)
+function oaMinimize(b, im, tray){
+  if (!b || !im) return;
+  b.dataset.gone = '1'; b.style.pointerEvents = 'none';
+  const cr = b.getBoundingClientRect(), tr = im.getBoundingClientRect(), box = tray.getBoundingClientRect();
+  const tx = Math.min(tr.left, box.right - tr.width) + tr.width / 2, ty = tr.top + tr.height / 2;
+  im.style.animation = 'none'; im.style.opacity = '0';
+  b.style.transformOrigin = 'center'; b.style.zIndex = 200;
+  b.style.transition = 'transform .45s cubic-bezier(.5,0,.2,1), opacity .15s ease-in .32s, filter .3s';
+  b.style.transform = `translate(${tx - (cr.left + cr.width / 2)}px, ${ty - (cr.top + cr.height / 2)}px) scale(${tr.width / cr.width})`;
+  b.style.opacity = '0';
+  setTimeout(() => { im.style.transition = 'opacity .12s'; im.style.opacity = '1'; setTimeout(() => { im.style.transition = ''; im.style.opacity = ''; im.style.animation = ''; }, 160); }, 340);
 }
 // the same card pulled twice or more shows once, with ×N in its corner
 function oaGroups(o){ const m = new Map(); o.cards.forEach((c, i) => { const g = m.get(c.id); if (g) g.n++; else m.set(c.id, { c, i, n:1 }); }); return [...m.values()]; }
@@ -3964,7 +4657,7 @@ function oaSummary(){
   const o = opening; if (!o) return;
   o.cards.forEach((_, i) => o.flipped.add(i)); o.summary = true;
   const ov = $('#pack');
-  ov.innerHTML = `<div class="oa"><div class="oa-h"><b>${fmt(o.cards.length / o.item.cards)} ${esc(o.item.name)}s</b><span>${o.cards.length} cards${oaGroups(o).length < o.cards.length ? ' · ' + oaGroups(o).length + ' different' : ''}</span></div>
+  ov.innerHTML = `<div class="oa"><div class="oa-h"><b>${fmt(o.cards.length / o.item.cards)} ${esc(o.item.name)}s</b><span>${o.cards.length} cards${oaGroups(o).length < o.cards.length ? ' · ' + oaGroups(o).length + ' unique · ' + (o.cards.length - oaGroups(o).length) + ' duplicates' : ' · all unique'}</span></div>
     <div class="oa-grid">${oaGroups(o).map(g => oaCardHTML(g.c, g.i).replace('class="oa-c', 'class="oa-c flipped').replace('</button>', g.n > 1 ? `<span class="oa-q">×${g.n}</span></button>` : '</button>')).join('')}</div>  
     <div class="oa-foot"><div class="pk-hint">Tap to continue</div></div></div>`;
   ov.querySelectorAll('.oa-c').forEach(b => { const c = o.cards[+b.dataset.i]; b.querySelector('.oa-tag').innerHTML = o.fresh[c.id] ? 'NEW' : ''; b.addEventListener('click', e => { e.stopPropagation(); inspectCard(c.id); }); });
@@ -3977,8 +4670,9 @@ function oaRevealAll(){ const o = opening; if (o && o.all && !o.done && !o.summa
   let last = 0;
   $('#pack').addEventListener('click', e => {
     const o = opening; if (!o || !o.all || o.done) return;
+    if (o.flicking){ e.stopPropagation(); e.preventDefault(); oaFlickEnd(); return; }   // a tap skips the flick
     if (o.summary){ e.stopPropagation(); return; }   // the list of all cards: taps wait for the short pause
-    if (e.target.closest('.oa-c')){ last = 0; return; }   // the card handles its own tap
+    if (e.target.closest('.oa-c') || e.target.closest('#oaTray img')){ last = 0; return; }   // the card handles its own tap
     e.stopPropagation();
     const t = performance.now(); if (t - last < 350){ last = 0; oaRevealAll(); } else last = t;
   }, true);
@@ -4059,6 +4753,63 @@ function openCover(k){
   });
   draw(); document.body.appendChild(el);
 }
+// switching pack tab: the name slides in from the swipe side, the bars grow / shrink and the numbers count (off with Reduce effects)
+// the category chips: the old row slides out to one side, the new one slides in from the other with a little stagger
+function colChipsSwap(old, dir){
+  const row = document.querySelector('#panel .cc-chips'); if (!row || !old || S.reduceFx) return;
+  // like folder tabs: the old row is simply gone and the new tabs rise up into place one after another
+  [...row.children].forEach((c, j) => c.animate([{ transform:'translateY(130%)' }, { transform:'none' }], { duration:340, delay:j * 45, easing:'cubic-bezier(.2,.8,.3,1.1)', fill:'backwards' }));
+}
+// the old set boxes fold shut while the new ones unfold in the same place, so the height eases instead of jumping
+function colSetsSwap(olds){
+  if (!olds || !olds.length || S.reduceFx) return;
+  const secs = [...document.querySelectorAll('#panel #ccMain .cc-fold')].slice(0, 4); if (!secs.length) return;
+  // no height animation (that re-lays-out the whole page every frame): the old rows lift off as an overlay, the new ones fold open with transform / opacity only
+  const host = secs[0].parentNode, g = document.createElement('div'); g.style.cssText = `position:absolute;left:0;right:0;top:${secs[0].offsetTop}px;z-index:2;pointer-events:none;transform-origin:50% 0`;
+  olds.forEach(o => g.appendChild(o)); host.appendChild(g);
+  g.animate([{ opacity:1, transform:'scaleY(1)' }, { opacity:0, transform:'scaleY(.55)' }], { duration:300, easing:'cubic-bezier(.4,0,.2,1)', fill:'forwards' }); setTimeout(() => g.remove(), 340);
+  secs.forEach((e, j) => { e.style.transformOrigin = '50% 0'; e.animate([{ opacity:0, transform:'scaleY(.6) translateY(-10px)' }, { opacity:1, transform:'none' }], { duration:360, delay:60 + j * 35, easing:'cubic-bezier(.2,.7,.2,1)', fill:'backwards' }); });
+}
+// picking / dropping a category: the overview card and the sets that are not picked fold shut, and come back unfolding
+function colItems(){ const m = document.querySelector('#panel #ccMain'); if (!m) return []; return [...m.children].filter(e => e.classList.contains('cc-over') || e.classList.contains('cc-fold')).map(e => ({ key:e.classList.contains('cc-over') ? '#over' : ((e.querySelector('[data-set]') || {}).dataset || {}).set, el:e })); }
+function colSnap(){ return S.reduceFx ? null : colItems().map(x => { const c = x.el.cloneNode(true); c.querySelectorAll('.cc-bd,img').forEach(n => n.remove()); return { key:x.key, h:x.el.offsetHeight, top:x.el.offsetTop, clone:c }; }); }
+function colMorph(was){
+  if (!was) return; const now = colItems(), host = document.querySelector('#panel #ccMain'); if (!host) return;
+  const has = new Set(now.map(x => x.key)), had = new Set(was.map(x => x.key)); let n = 0;
+  // transform / opacity only: kept rows slide to their new place, dropped rows fade off where they were, new rows fold open
+  was.forEach(o => { if (has.has(o.key) || n >= 6) return; n++;
+    const g = document.createElement('div'); g.style.cssText = `position:absolute;left:0;right:0;top:${o.top}px;z-index:2;pointer-events:none;transform-origin:50% 0`; g.appendChild(o.clone); host.appendChild(g);
+    g.animate([{ opacity:1, transform:'scaleY(1)' }, { opacity:0, transform:'scaleY(.5)' }], { duration:300, easing:'cubic-bezier(.4,0,.2,1)', fill:'forwards' }); setTimeout(() => g.remove(), 340); });
+  now.forEach(x => { const o = was.find(w => w.key === x.key);
+    if (o){ const dy = o.top - x.el.offsetTop; if (Math.abs(dy) > 1) x.el.animate([{ transform:`translateY(${dy}px)` }, { transform:'none' }], { duration:340, easing:'cubic-bezier(.25,.9,.3,1)' }); }
+    else { x.el.style.transformOrigin = '50% 0'; x.el.animate([{ opacity:0, transform:'scaleY(.6)' }, { opacity:1, transform:'none' }], { duration:340, delay:60, easing:'cubic-bezier(.25,.9,.3,1)', fill:'backwards' }); } });
+}
+// swipe (or mouse-drag) the overview card sideways to change pack (All, Lord of Mysteries, Land of Dawn, Hand of Destiny); vertical drags still scroll
+(function(){ let x0 = 0, y0 = 0, on = false;
+  document.addEventListener('pointerdown', e => { if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return; on = !!e.target.closest('#panel .cc-over'); x0 = e.clientX; y0 = e.clientY; });
+  document.addEventListener('pointercancel', () => { on = false; });
+  document.addEventListener('pointerup', e => { if (!on) return; on = false; const dx = e.clientX - x0, dy = e.clientY - y0;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const ids = ['all', ...COLLECTIONS.map(g => g.id)], i = (ids.indexOf(colGroup) + (dx < 0 ? -1 : 1) + ids.length) % ids.length; colSwitch(ids[i], dx < 0 ? -1 : 1); });   // it loops: past the last pack you land on the first
+})();
+function colSwitch(to, fdir){
+  const ov = document.querySelector('#panel .cc-over'), ids = ['all', ...COLLECTIONS.map(g => g.id)], dir = fdir || (ids.indexOf(to) > ids.indexOf(colGroup) ? 1 : -1);
+  const was = ov && !S.reduceFx ? { name:ov.querySelector('.cc-tt b').textContent, nums:[...ov.querySelectorAll('.cc-tt .nv')].map(x => +x.dataset.v),
+    strips:[...ov.querySelectorAll('.ov-strip span')].map(x => ({ k:x.dataset.k, w:x.firstElementChild.style.width, fl:x.style.flex })),
+    cols:[...ov.querySelectorAll('.ov-cols div')].map(d => ({ k:d.dataset.k, v:[...d.querySelectorAll('.nv, .pc')].map(x => +x.dataset.v) })) } : null;
+  const oldSets = S.reduceFx ? [] : [...document.querySelectorAll('#panel #ccMain .cc-fold')].slice(0, 4).map(x => { const c = x.cloneNode(true); c.querySelectorAll('.cc-bd,img').forEach(n => n.remove()); return c; });   // text and bars only: pictures made the lift-off heavy
+  const oldChips = !S.reduceFx && document.querySelector('#panel .cc-chips') ? document.querySelector('#panel .cc-chips').cloneNode(true) : null;
+  const had = colSets.length, snap = had ? colSnap() : null;   // picked categories are dropped when the pack changes
+  colSets = []; colGroup = to; render();
+  colChipsSwap(oldChips, dir); if (had) colMorph(snap); else colSetsSwap(oldSets);
+  const nv = document.querySelector('#panel .cc-over'); if (!was || !nv) return;
+  const nb = nv.querySelector('.cc-tt b'), nw = nb.textContent;
+  if (was.name !== nw){ nb.innerHTML = `<span class="nm-box"><span class="nm-o" style="--d:${-dir}">${esc(was.name)}</span><span class="nm-n" style="--d:${dir}">${esc(nw)}</span></span>`; setTimeout(() => { if (nb.isConnected) nb.textContent = nw; }, 460); }
+  nv.querySelectorAll('.cc-tt .nv').forEach((x, i) => { if (was.nums[i] != null) invNumTween(x, was.nums[i], +x.dataset.v, 450); });
+  nv.querySelectorAll('.ov-strip span').forEach(sp => { const f = sp.firstElementChild, old = was.strips.find(o => o.k === sp.dataset.k), fl = sp.style.flex, w = f.style.width;   // the block grows / shrinks and its fill runs from the old level to the new
+    sp.style.transition = f.style.transition = 'none'; if (old){ sp.style.flex = old.fl; f.style.width = old.w; } else f.style.width = '0%'; void sp.offsetWidth; sp.style.transition = f.style.transition = ''; sp.style.flex = fl; f.style.width = w; });
+  nv.querySelectorAll('.ov-cols div').forEach(d => { const old = was.cols.find(o => o.k === d.dataset.k); if (old) d.querySelectorAll('.nv, .pc').forEach((x, i) => { if (old.v[i] != null) invNumTween(x, old.v[i], +x.dataset.v, 450); }); });
+}
 function renderCollection(){
   const packs = COLLECTIONS.filter(g => colGroup === 'all' || colGroup === g.id);
   const keys = [];
@@ -4076,7 +4827,7 @@ function renderCollection(){
     const art = id === 'all' ? COLLECTIONS.map(g => `<img src="${cardImg(DECKS[g.id].back)}" alt="">`).join('') : `<img class="v-ur" src="${cardImg(DECKS[id].backUR)}" alt=""><img class="v-n" src="${cardImg(DECKS[id].back)}" alt="">`;   // V: UR back behind, normal back in front
     return `<button class="pk-tile${colGroup === id ? ' on' : ''}" style="--r:${pkCol[id] || '200,220,218'}" data-act="colg" data-g="${id}">${art}<b>${esc(name)}</b><small>${L.filter(c => ownedCard(c.id)).length}/${L.length}</small></button>`;
   };
-  let html = `<div class="pk-tiles">${pkTile('all', 'All')}${COLLECTIONS.map(g => pkTile(g.id, g.id === "mlbb" ? "Land of Dawn" : g.id === "hod" ? "H.O.D." : g.name)).join('')}</div>`;
+  let html = `<div class="pk-tiles">${pkTile('all', 'All')}${COLLECTIONS.map(g => pkTile(g.id, g.id === "mlbb" ? "Land of Dawn" : g.id === "hod" ? "Hand of Destiny" : g.name)).join('')}</div>`;
   // search bar (magnifying glass in the title row): results replace the sets while something is typed
   if (colSearch) html += `<div id="ccRes">${colQ ? colSearchHTML(colQ) : ''}</div>`;
   html += `<div id="ccMain"${colSearch && colQ ? ' hidden' : ''}>`;
@@ -4087,10 +4838,8 @@ function renderCollection(){
   if (!colSets.length){
     const pool = CARDS.filter(c => packs.some(g => g.sets.includes(c.set)));
     const title = colGroup === 'all' ? 'All packs' : colGroup === 'mlbb' ? 'Land of Dawn' : colGroup === 'hod' ? 'Hand of Destiny' : packs[0].name;
-    html += `<div class="cc-over"><div class="cc-tt"><b>${esc(title)}</b><span>${pool.filter(c => ownedCard(c.id)).length}/${pool.length}</span></div>${RARITY_ORDER.map(r => {
-      const L = pool.filter(c => c.rarity === r); if (!L.length) return '';
-      const g = L.filter(c => ownedCard(c.id)).length;
-      return `<div class="cc-row"><span style="color:${RARITY[r].color}">${RARITY[r].name}</span><span class="cc-bar"><i style="width:${g / L.length * 100}%;background:${RARITY[r].color}"></i></span><span>${g}/${L.length}</span></div>`; }).join('')}</div>`;
+    html += `<div class="cc-over"><div class="cc-tt"><b>${esc(title)}</b><span><i class="nv" data-v="${pool.filter(c => ownedCard(c.id)).length}">${pool.filter(c => ownedCard(c.id)).length}</i>/<i class="nv" data-v="${pool.length}">${pool.length}</i></span></div>${(() => { const rs = RARITY_ORDER.map(r => { const L = pool.filter(c => c.rarity === r); return L.length ? { r, n:L.length, g:L.filter(c => ownedCard(c.id)).length } : null; }).filter(Boolean);
+      return `<div class="ov-strip">${rs.map(o => `<span data-k="${o.r}" style="flex:${o.n};--c:${RARITY[o.r].color}"><i style="width:${o.g / o.n * 100}%"></i></span>`).join('')}</div><div class="ov-cols" style="grid-template-columns:repeat(${rs.length},1fr)">${rs.map(o => `<div data-k="${o.r}" style="--c:${RARITY[o.r].color}"><b>${RARITY[o.r].name}</b><em><i class="pc" data-v="${Math.round(o.g / o.n * 100)}">${Math.round(o.g / o.n * 100)}</i><small>%</small></em><span><i class="nv" data-v="${o.g}">${o.g}</i>/<i class="nv" data-v="${o.n}">${o.n}</i></span></div>`).join('')}</div>`; })()}</div>`;
   }
   if (!keys.length) html += `<div class="empty">No cards yet.<br>This pack is coming soon.</div>`;
   (colSets.length ? keys.filter(k => colSets.includes(k)) : keys).forEach(k => {
@@ -4102,11 +4851,11 @@ function renderCollection(){
     const poker = k === 'Poker';
     const claim = poker ? '' : scene ? claimBtn(k, I.got === I.n, pay) : claimBtn(k, I.ready, pay, true);
     const payHtml = poker ? '' : claimPay2(pay, !I.ready);
-    const cnt = !scene && !poker && setTimes(k) ? `${I.got}/${I.n} <span class="nx" title="Progress to the next claim (2 of each card)">${I.two}/${I.n}</span> (${setTimes(k)}x)` : `${I.got}/${I.n}`;   // after a claim: what you own, then (gold) how many cards already have the 2 copies the next claim needs
+    const times = setTimes(k), g2 = !scene && !poker;   // the gold bar (2 of each card) shows on every set, dimmed until it has been claimed once; numbers sit at the end of their own bar
     html += `<section class="cc-fold${open ? ' open' : ''}${I.ready ? ' ready' : ''}" style="--c:${I.col};--rows:${open ? (k === 'Puzzle' ? (pzGrid ? 3 : 1) : duo ? Math.ceil(I.n / 2) * 1.5 : FAN_SET[k] ? 1.5 : k === 'Poker' ? 4 : Math.ceil(I.n / 3) + 0) : 0}">
       <div class="cc-hd">
         <div class="cc-pv${wide && !noneOwned ? ' land' : ''} n${noneOwned ? 3 : prev.length}"${noneOwned ? '' : ` data-act="cover" data-set="${esc(k)}"`}>${noneOwned ? [0, 1, 2].map(() => `<img class="bk" src="${cardImg(DECKS[bkDeck][bkUR ? 'backUR' : 'back'])}" alt="">`).join('') : prev.map((id, i) => `<img${/^HD_DUO\d/.test(id) ? ' class="dj"' : ''} src="${cardImg(id)}" style="z-index:${prev.length - i}" alt="">`).join('')}</div>
-        <div class="cc-mid" data-act="colfold" data-set="${esc(k)}"><b>${esc(I.name)}<small>${cnt}</small></b><div class="cc-bar"><i style="width:${I.f1 * 100}%"></i>${I.f1 >= 1 && I.f2 ? `<i class="gold" style="width:${I.f2 * 100}%"></i>` : ''}</div></div>
+        <div class="cc-mid" data-act="colfold" data-set="${esc(k)}"><div class="cc-nm"><b>${esc(I.name)}${g2 && times ? `<small>(${times}x)</small>` : ''}</b></div><div class="cc-br"><div class="cc-bars"><div class="cc-bar"><i style="width:${I.f1 * 100}%"></i></div>${g2 ? `<div class="cc-bar cc-bar2${times ? '' : ' dim'}"><i class="gold" style="width:${I.f2 * 100}%"></i></div>` : ''}</div>${g2 && times ? `<span class="cc-n nx" title="Progress to the next claim (2 of each card)">${I.two}/${I.n}</span>` : `<span class="cc-n">${I.got}/${I.n}</span>`}</div></div>
         ${poker ? '' : `<div class="cc-act">${claim}${payHtml}</div>`}
       </div>
       ${open ? `<div class="cc-bd">${scene
@@ -4160,7 +4909,7 @@ function emblem(L){
   if (t >= 14){   // circuit wings
     const w = 6 + (t - 14) * 1.6;
     const wing = s => { const x0 = 40 + s * 27; return [[-8, w], [-1, w * 1.3], [6, w]].map(([dy, len], i) => { const d = `M${x0} ${46 + dy}h${s * len * .45}l${s * 4} ${dy * .35}h${s * len * .55}`;
-      return `<path d="${d}" fill="none" stroke="${c2}" stroke-width="1" opacity=".35"/><path class="em-trace" style="animation-delay:${-i * .4}s" d="${d}" fill="none" stroke="${c2}" stroke-width="1.8" stroke-linecap="round"/>`; }).join(''); };
+      return `<path d="${d}" fill="none" stroke="${c2}" stroke-width="1" opacity=".35"/>`; }).join(''); };
     back += `<g class="em-flap">${wing(-1)}${wing(1)}</g>`;
   }
   if (t >= 16) back += `<polygon class="em-shock" points="${hexPts(40, 46, 20)}" fill="none" stroke="${c2}" stroke-width="2"/>`;
@@ -4171,12 +4920,12 @@ function emblem(L){
       return `<path d="M${(40 + r1 * Math.cos(a) - 2).toFixed(1)} ${(46 + r1 * Math.sin(a)).toFixed(1)}L${(40 + r2 * Math.cos(a)).toFixed(1)} ${(46 + r2 * Math.sin(a)).toFixed(1)}L${(40 + r1 * Math.cos(a) + 2).toFixed(1)} ${(46 + r1 * Math.sin(a)).toFixed(1)}Z" fill="${c2}66" stroke="${c2}" stroke-width="1"/>`; }).join('');
     front = `<g filter="url(#${id}g)">${front}</g>`;
   }
-  return `<svg viewBox="0 0 80 92" aria-hidden="true"${t >= 19 ? ' class="em-prism"' : ''}><defs>
+  return `<svg viewBox="0 0 80 92" aria-hidden="true"><defs>
       <filter id="${id}g" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       <linearGradient id="${id}y" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${c}" stop-opacity=".9"/><stop offset="1" stop-color="${c2}" stop-opacity="0"/></linearGradient>
       <linearGradient id="${id}d" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
     <g class="em-spin" style="opacity:.5">${rays}</g>${back}
-    ${lines.map((d, i) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="3.6" opacity=".15"/><path class="em-trace" d="${d}" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" style="animation-delay:${-i * .35}s"/>`).join('')}
+    ${lines.map((d, i) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="3.6" opacity=".15"/>`).join('')}
     ${lines.map((d, i) => ride(d, '#fff', 1.6 + (i % 3) * .4, -i * .37, 1.3)).join('')}
     ${lines.map(d => { const [x, y] = embEnd(d); return `<rect x="${x - 2}" y="${y - 2}" width="4" height="4" fill="#071114" stroke="${c}" stroke-width="1.2"/>`; }).join('')}
     <path d="${track}" fill="none" stroke="${c}" stroke-width=".8" opacity=".35"/>
@@ -4279,7 +5028,20 @@ function colSearchHTML(q){
 }
 function colSearchUpdate(){
   const res = $('#ccRes'), main = $('#ccMain'); if (!res) return;
+  // cards that still match stay put (and slide to their new spot), cards that stop matching fade out, new matches fade in
+  const hid = h => { const t = h.querySelector('[data-id],[data-cid]'); return t ? t.dataset.id || t.dataset.cid : ''; };
+  const before = new Map(), rr = res.getBoundingClientRect();
+  if (!S.reduceFx) res.querySelectorAll('.cc-hit').forEach(h => before.set(hid(h), { el:h, r:h.getBoundingClientRect() }));
   res.innerHTML = colQ ? colSearchHTML(colQ) : '';
+  if (!S.reduceFx && colQ){
+    const now = new Set();
+    res.querySelectorAll('.cc-hit').forEach((h, i) => { const id = hid(h), b = before.get(id); now.add(id);
+      if (b){ const r = h.getBoundingClientRect(), dx = b.r.left - r.left, dy = b.r.top - r.top; if (dx || dy) h.animate([{ transform:`translate(${dx}px,${dy}px)` }, { transform:'none' }], { duration:MO.norm, easing:MO.arrive }); }
+      else h.animate([{ opacity:0, transform:'scale(.85)' }, { opacity:1, transform:'none' }], { duration:260, delay:before.size ? 120 : Math.min(i, 12) * 18, easing:'ease-out', fill:'backwards' }); });
+    const rr2 = res.getBoundingClientRect();
+    before.forEach((b, id) => { if (now.has(id) || b.r.bottom < 0 || b.r.top > innerHeight) return; const g = b.el;   // only the ones you can see fade out g.style.cssText = `position:absolute;left:${b.r.left - rr2.left}px;top:${b.r.top - rr2.top}px;width:${b.r.width}px;margin:0;pointer-events:none`;
+      res.appendChild(g); g.animate([{ opacity:1, transform:'none' }, { opacity:0, transform:'scale(.85)' }], { duration:220, easing:'ease-in', fill:'forwards' }).onfinish = () => g.remove(); });
+  }
   if (main) main.hidden = !!colQ;
   $('#ccClear').hidden = !colQ;
 }
@@ -4586,7 +5348,7 @@ $('#vacation').addEventListener('change', e => {
    Newer than this version: Settings > App shows it with its notes and a Download button (opens the APK in the browser),
    the gear gets a dot, and a small banner sits on top of Quests until it's closed (× hides it for that version).
    No notifications. APP_VERSION is kept in step with package.json by scripts/android-version.js (npm run sync). */
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 const UPDATE_REPO = 'Meih125/psych';
 let appVersion = APP_VERSION, upChecking = false;
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);

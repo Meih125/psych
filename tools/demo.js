@@ -67,6 +67,7 @@
       x.style.cssText = 'background:#7c43b0;color:#fff;border:1px solid #a77fd0;border-radius:4px;padding:2px 6px;font:inherit;flex:none;cursor:pointer';
       x.onclick = fn; bar.appendChild(x); };
     const tag = document.createElement('span'); tag.textContent = 'TEST' + (off ? ` ${off > 0 ? '+' : ''}${off}d` : ''); bar.appendChild(tag);
+    b('Hide bar', () => { bar.style.display = 'none'; document.body.style.paddingTop = ''; });   // until reload: to see the page without the test bar on top
     b('Reset', () => { write(STORE_KEY, null); write(OFF_KEY, null); location.reload(); });
     b('+1000G', () => { S.gold += 1000; save(); render(); });
     b('+Packs', () => { S.inv.tarot = (S.inv.tarot || 0) + 1; S.inv.mlbb = (S.inv.mlbb || 0) + 1; S.inv.hod = (S.inv.hod || 0) + 1; save(); render(); });

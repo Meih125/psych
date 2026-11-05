@@ -29,7 +29,8 @@
 
 | Update | Released | What changed |
 |:---:|:---:|:---:|
-| **[v1.3.0](https://github.com/Meih125/psych/releases/tag/v1.3.0)** (latest) | Nov 2, 2026 | **[Patch notes](docs/patch-notes/v1.3.0.md)** |
+| **[v1.3.1](https://github.com/Meih125/psych/releases/tag/v1.3.1)** (latest) | Nov 5, 2026 | **[Patch notes](docs/patch-notes/v1.3.1.md)** |
+| [v1.3.0](https://github.com/Meih125/psych/releases/tag/v1.3.0) | Nov 2, 2026 | [Patch notes](docs/patch-notes/v1.3.0.md) |
 | [v1.2.1](https://github.com/Meih125/psych/releases/tag/v1.2.1) | Nov 1, 2026 | [Patch notes](docs/patch-notes/v1.2.1.md) |
 | [v1.2.0](https://github.com/Meih125/psych/releases/tag/v1.2.0) | Oct 29, 2026 | [Patch notes](docs/patch-notes/v1.2.0.md) |
 | [v1.1.2](https://github.com/Meih125/psych/releases/tag/v1.1.2) | Oct 28, 2026 | [Patch notes](docs/patch-notes/v1.1.2.md) |
@@ -38,21 +39,21 @@
 
 </div>
 
-<p align="center">
-  <img src="docs/screenshots/quests.jpg" width="200" alt="Quests">
-  <img src="docs/screenshots/streaks.jpg" width="200" alt="Streaks">
-  <img src="docs/screenshots/pack.jpg" width="200" alt="Opening a pack">
-  <img src="docs/screenshots/collection.jpg" width="200" alt="Collection">
-</p>
-
 ## What it does
 
-- **Quests** of many types.
-- **Streaks.**
-- **XP and gold.** Level up and spend gold on card packs.
-- **Widgets** in different sizes. Claim quests without opening the app.
-- **Daily login reward.**
-- **Steps** sync from Health Connect.
+- **Quests** of many types.<br>
+  <img src="docs/screenshots/notes/readme-quest-types.jpg" width="290" alt="Quest types">
+- **Streaks.**<br>
+  <img src="docs/screenshots/notes/readme-streak.jpg" width="280" alt="A streak">
+- **XP and gold.** Level up and spend gold on card packs.<br>
+  <img src="docs/screenshots/notes/readme-level.jpg" width="290" alt="Level and gold"><br>
+  <img src="docs/screenshots/notes/v131-details.jpg" width="250" alt="Pack details">
+- **Widgets** in different sizes. Claim quests without opening the app.<br>
+  <img src="docs/screenshots/notes/v120-widgets.jpg" width="220" alt="Widgets">
+- **Daily login reward.**<br>
+  <img src="docs/screenshots/notes/v120-daily.jpg" width="220" alt="Daily login reward">
+- **Steps** sync from Health Connect.<br>
+  <img src="docs/screenshots/notes/readme-steps.jpg" width="280" alt="Steps">
 
 No account, no server, no ads. Everything stays on your phone.
 
