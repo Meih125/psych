@@ -4,7 +4,7 @@ load();
 S.tab = 'quests';   // the app always opens on Quests
 
 initNative();   // the phone bridge first: start-up jobs below (backup check, step sync) use it
-autoSync();
+autoSync(true);
 // core
 initClock();
 initState();

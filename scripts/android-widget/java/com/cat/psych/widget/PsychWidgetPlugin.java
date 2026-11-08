@@ -5,8 +5,10 @@ import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Build;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
@@ -15,6 +17,8 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
+
+import org.json.JSONObject;
 
 /** The app's side of the widgets: send the snapshot, collect taps, ask the launcher to place a widget,
  *  and switch the background step sync on or off (PsychStepsJob). */
@@ -31,6 +35,38 @@ public class PsychWidgetPlugin extends Plugin {
         PsychWidgetProvider.refreshAll(c);
         PsychStepsJob.schedule(c);   // keeps the background step sync running if it's on
         call.resolve();
+    }
+
+    // ---------- exact step totals ----------
+    /** Each day's steps (and distance in metres) straight from Health Connect, one exact range per day (Android 14+).
+     *  In: days = [{ k:'YYYY-MM-DD', a:startMs, b:endMs }]. Out: { days:{k:steps}, dist:{k:metres} } (days that failed are left out). */
+    @PluginMethod
+    public void stepsByDay(PluginCall call) {
+        Context c = getContext();
+        if (!PsychStepsJob.supported() || c.checkSelfPermission(PsychStepsJob.READ_STEPS) != PackageManager.PERMISSION_GRANTED) { call.reject("unsupported"); return; }
+        JSArray list = call.getArray("days");
+        if (list == null) { call.reject("no days"); return; }
+        nextDay(c, list, 0, new JSObject(), new JSObject(), call);
+    }
+
+    private void nextDay(Context c, JSArray list, int i, JSObject days, JSObject dist, PluginCall call) {
+        if (i >= list.length()) {
+            JSObject o = new JSObject();
+            o.put("days", days);
+            o.put("dist", dist);
+            call.resolve(o);
+            return;
+        }
+        String k; long a, b;
+        try {
+            JSONObject d = list.getJSONObject(i);
+            k = d.getString("k"); a = d.getLong("a"); b = d.getLong("b");
+        } catch (Exception e) { nextDay(c, list, i + 1, days, dist, call); return; }
+        final String key = k;
+        PsychStepsJob.Ranges.range(c, a, b, (steps, m) -> {
+            try { days.put(key, steps); dist.put(key, m); } catch (Exception e) { /* skip this day */ }
+            nextDay(c, list, i + 1, days, dist, call);
+        }, () -> nextDay(c, list, i + 1, days, dist, call));
     }
 
     // ---------- background step sync (Settings > Step sync) ----------

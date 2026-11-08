@@ -13,7 +13,9 @@ import android.health.connect.AggregateRecordsResponse;
 import android.health.connect.HealthConnectException;
 import android.health.connect.HealthConnectManager;
 import android.health.connect.TimeInstantRangeFilter;
+import android.health.connect.datatypes.DistanceRecord;
 import android.health.connect.datatypes.StepsRecord;
+import android.health.connect.datatypes.units.Length;
 import android.os.Build;
 import android.os.OutcomeReceiver;
 
@@ -25,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * Background step sync for the widgets (Settings > Step sync > Sync in the background).
@@ -65,6 +68,7 @@ public class PsychStepsJob extends JobService {
     @Override
     public boolean onStartJob(JobParameters params) {
         if (!allowed(this) || !on(this)) return false;
+        TimeZone.setDefault(null);   // forget a cached time zone (after travelling), so "today" is the phone's current day
         try {
             Reader.today(this, steps -> { apply(this, steps); jobFinished(params, false); },
                 () -> jobFinished(params, false));
@@ -89,6 +93,37 @@ public class PsychStepsJob extends JobService {
                 @Override public void onResult(AggregateRecordsResponse<Long> r) {
                     Long n = r.get(StepsRecord.STEPS_COUNT_TOTAL);
                     done.steps(n == null ? 0 : n);
+                }
+                @Override public void onError(HealthConnectException e) { fail.run(); }
+            });
+        }
+    }
+
+    /** One exact range straight from Health Connect (the same totals Samsung Health shows): steps, and distance in metres (0 if not allowed). */
+    static class Ranges {
+        interface Got { void got(long steps, double meters); }
+        static void range(Context c, long a, long b, Got done, Runnable fail) {
+            HealthConnectManager hc = c.getSystemService(HealthConnectManager.class);
+            if (hc == null || b <= a) { fail.run(); return; }
+            TimeInstantRangeFilter f = new TimeInstantRangeFilter.Builder()
+                .setStartTime(Instant.ofEpochMilli(a)).setEndTime(Instant.ofEpochMilli(b)).build();
+            AggregateRecordsRequest<Long> req = new AggregateRecordsRequest.Builder<Long>(f)
+                .addAggregationType(StepsRecord.STEPS_COUNT_TOTAL).build();
+            hc.aggregate(req, c.getMainExecutor(), new OutcomeReceiver<AggregateRecordsResponse<Long>, HealthConnectException>() {
+                @Override public void onResult(AggregateRecordsResponse<Long> r) {
+                    Long n = r.get(StepsRecord.STEPS_COUNT_TOTAL);
+                    final long steps = n == null ? 0 : n;
+                    try {
+                        AggregateRecordsRequest<Length> dq = new AggregateRecordsRequest.Builder<Length>(f)
+                            .addAggregationType(DistanceRecord.DISTANCE_TOTAL).build();
+                        hc.aggregate(dq, c.getMainExecutor(), new OutcomeReceiver<AggregateRecordsResponse<Length>, HealthConnectException>() {
+                            @Override public void onResult(AggregateRecordsResponse<Length> d) {
+                                Length l = d.get(DistanceRecord.DISTANCE_TOTAL);
+                                done.got(steps, l == null ? 0 : l.getInMeters());
+                            }
+                            @Override public void onError(HealthConnectException e) { done.got(steps, 0); }   // distance is optional
+                        });
+                    } catch (Throwable e) { done.got(steps, 0); }
                 }
                 @Override public void onError(HealthConnectException e) { fail.run(); }
             });

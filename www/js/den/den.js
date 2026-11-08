@@ -57,19 +57,19 @@ const gIcon = g => `<svg class="den-gi" viewBox="0 0 48 48" fill="none" stroke="
 const hdR = document.querySelector('.hd-right');
 const tkBtn = document.createElement('button'); tkBtn.className = 'den-tkt'; tkBtn.id = 'lTkt'; tkBtn.type = 'button'; tkBtn.setAttribute('aria-label', 'Gambling Den tickets');
 hdR.insertBefore(tkBtn, document.getElementById('purse'));
-/* the header count: shows tickets minus the ones still flying in (tkHold), and rolls up / down to the new number */
-let tkShown = null, tkHold = 0, tkSafe = 0;
-const tkDigits = txt => [...txt].map(ch => `<span class="od"><i style="transform:translateY(${-ch}em)">0<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9</i></span>`).join('');
+/* the header count: shows tickets minus the ones still flying in (tkHold), and ticks up / down to the new number (like Earned today) */
+let tkShown = null, tkHold = 0, tkSafe = 0, tkStop = null;
 function tkSync(){
-  const t = Math.max(0, tickets() - tkHold), txt = String(t);
+  const t = Math.max(0, tickets() - tkHold);
   tkBtn.classList.toggle('zero', tickets() <= 0);
   let n = tkBtn.querySelector('.den-tkn');
-  if (!n){ tkBtn.innerHTML = `${chip()}<span class="den-tkn"></span>`; n = tkBtn.querySelector('.den-tkn'); n.innerHTML = tkDigits(txt); tkShown = t; return; }
+  if (!n){ tkBtn.innerHTML = `${chip()}<span class="den-tkn">${fmt(t)}</span>`; tkShown = t; return; }
   if (tkShown === t) return;
-  const up = tkShown === null || t >= tkShown; tkShown = t;
-  if (reduced() || n.children.length !== txt.length){ n.innerHTML = tkDigits(txt); }
-  else [...txt].forEach((ch, i) => { n.children[i].firstChild.style.transform = `translateY(${-ch}em)`; });   // the digits roll like the gold
-  if (!reduced()) replay(n, 'tk-pop');
+  const from = tkShown === null ? t : tkShown; tkShown = t;
+  if (tkStop){ tkStop(); tkStop = null; }
+  if (reduced()){ n.textContent = fmt(t); return; }
+  tkStop = countTo(n, from, t, 600, { every: 45 });
+  replay(n, 'tk-pop');
 }
 tkSync();
 tkBtn.addEventListener('click', () => openDen());

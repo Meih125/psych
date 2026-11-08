@@ -289,12 +289,9 @@ svg.den-ic{width:1em;height:1em;vertical-align:-.15em}
 .den-cap{display:flex;align-items:center;gap:5px;margin-top:6px;font:700 12px var(--f-num);color:rgb(var(--den-gold))}
 .den-cap b{font-weight:700}
 .den-cap b.o{color:rgb(200,30,55)}
-/* header ticket count rolls like the gold */
+/* header ticket count ticks up like Earned today */
 .den-tkn{display:inline-block;line-height:1em}
-.den-tkn .od{display:inline-block;height:1em;vertical-align:top;overflow:visible;clip-path:inset(0 -6px)}
-.den-tkn .od i{display:block;font-style:normal;line-height:1em;transition:transform .6s cubic-bezier(.3,.8,.3,1)}
 .den-tkn.tk-pop{animation:tkPop .9s cubic-bezier(.2,1.4,.4,1)}
-.reduce-fx .den-tkn .od i{transition:none}
 .den-ptk{width:34px;height:34px;left:0;top:0}
 .den-ptk svg{filter:drop-shadow(0 0 1px #021012) drop-shadow(0 0 1px #021012) drop-shadow(0 0 3px #021012) drop-shadow(0 0 8px rgba(var(--den-teal),.8))}
 /* daily limit reached: games dimmed, the day's number plastered over them */

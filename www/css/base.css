@@ -309,24 +309,19 @@ html.idle *,html.idle *::before,html.idle *::after{animation-play-state:paused !
 .rv-t-joker svg{height:46px !important;width:auto}
 /* UR boxes: a solid tint (not a gradient) so the colour can fade between packs */
 .ur-slots i:not(.ur){position:relative;overflow:hidden;transition:border-color .3s ease,box-shadow .3s ease}
-/* gold: each digit is a column of 0-9 that slides to its number */
 #gold{line-height:1;white-space:nowrap}
-#gold .od{display:inline-block;height:1em;vertical-align:top}
-#gold .od i{display:block;font-style:normal;line-height:1em;transition:transform .6s cubic-bezier(.3,.8,.3,1)}
-#gold .os{display:inline-block;vertical-align:top}
 /* no sideways scroll bar while a page slides in */
 html,body{overflow-x:clip}
-/* gold digits: clip only top / bottom (clipping the sides cut the glow into little boxes) */
-#gold .od{overflow:visible;clip-path:inset(0 -6px)}
 .od.rl{overflow:hidden;padding:0 3px;margin:0 -3px}
 /* a plain clip (no clip-path), so the roll can run on the GPU */
 .od.rl{display:inline-block;height:1.15em;line-height:1.15em;vertical-align:top}
 .od.rl i{display:block;font-style:normal;line-height:1.15em;transition:transform .6s cubic-bezier(.3,.8,.3,1)}
-/* gold: no glow box while it rolls / flashes */
+/* gold: no glow box while it pops / flashes */
 #gold,#gold *{text-shadow:none !important}
 /* one motion language: the same speeds and curves everywhere (matches MO in app.js) */
 :root{--t-fast:.2s;--t-norm:.32s;--t-slow:.5s;--e-arrive:cubic-bezier(.2,.8,.3,1);--e-leave:cubic-bezier(.4,0,.3,1);--e-move:cubic-bezier(.5,0,.3,1);--e-spring:cubic-bezier(.3,1.4,.5,1)}
-#gold .od i,.od.rl i{transition:transform .6s var(--e-arrive)}
+/* streak number roll (rollNum) */
+.od.rl i{transition:transform .6s var(--e-arrive)}
 .od.rl i{will-change:transform}
 @keyframes grow{from{transform:scaleY(0)}}
 @keyframes rim{0%{opacity:0}9%{opacity:.9}35%,100%{opacity:0}}

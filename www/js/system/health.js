@@ -13,10 +13,11 @@ window.psychReceiveSteps = (days, dist) => {
   save(); render();
 };
 let syncing = false;
-async function syncNow(quiet){
+// quiet = a background / timer sync (no toast on failure); full = read all 30 days again (opening the app, Sync now, connecting)
+async function syncNow(quiet, full){
   const n = native(); if (!n || !n.syncSteps || syncing) return;
   syncing = true;
-  try { await n.syncSteps(); }
+  try { await n.syncSteps(!quiet || full); }
   catch(e){ if (!quiet) showToast('Couldn’t read steps from Health Connect', false); }
   finally { syncing = false; }
 }
@@ -28,9 +29,9 @@ function stepsSync(){
   return { text: t ? 'Synced ' + timeAgo(t) : 'Not synced yet', warn:late, cls: late ? 'late' : '' };
 }
 function stepsSyncTag(){ const s = stepsSync(); return `<small class="sync-tag${s.cls ? ' ' + s.cls : ''}">${s.text}</small>`; }
-function autoSync(){ if (S.sync && S.sync.connected && now() - (S.sync.last || 0) > 60000) syncNow(true); }
+function autoSync(full){ if (S.sync && S.sync.connected && now() - (S.sync.last || 0) > 60000) syncNow(true, full === true); }
 
 function initHealth(){
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) autoSync(); });
-  every(300, autoSync);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) autoSync(true); });
+  every(300, () => autoSync());   // the 5-minute timer only re-reads the last 3 days
 }

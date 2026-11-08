@@ -3,7 +3,7 @@
    Newer than this version: Settings > App shows it with its notes and a Download button (opens the APK in the browser),
    the gear gets a dot, and a small banner sits on top of Quests until it's closed (× hides it for that version).
    No notifications. APP_VERSION is kept in step with package.json by scripts/android-version.js (npm run sync). */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 const UPDATE_REPO = 'Meih125/psych';
 let appVersion = APP_VERSION, upChecking = false;
 const verNum = v => String(v || '').replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);

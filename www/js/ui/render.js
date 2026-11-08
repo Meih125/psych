@@ -58,15 +58,9 @@ function dotHl(c, anim, from){
 const TAB_TITLES = { quests:'Quests', progress:'Progress', inventory:'Pack', collection:'Collection', shop:'Shop' };
 let freshTile = { id:null, row:null };
 let arranging = false;
-let goldShown = 0, countTimer = null;
-function countUp(el, from, to, delay, dur){
-  if (countTimer) countTimer(); el.textContent = fmt(from);
-  if (from === to) return;
-  setTimeout(() => replay(el, 'num-pop'), delay);
-  countTimer = countTo(el, from, to, dur, { delay: delay || 1e-6 });
-}
+let goldShown = 0;
 let xpShown = null;
-// roll one number's digits (like the gold) from an old value to the new one, in place
+// roll one number's digits (the streak) from an old value to the new one, in place
 function rollNum(el, from, to){
   const a = String(from), b = String(to); if (a === b) return;
   const pad = Math.max(a.length, b.length), A = a.padStart(pad, ' '), B = b.padStart(pad, ' ');
@@ -77,20 +71,22 @@ function rollNum(el, from, to){
   const seq = el._rn = (el._rn || 0) + 1;   // a newer roll on the same number wins
   setTimeout(() => { if (el.isConnected && el._rn === seq) el.textContent = b; }, 650);
 }
-// header gold: each digit rolls like an odometer; commas and k stay still
+// header gold: ticks up (or down) to the new amount like Earned today does, after `delay` ms (instant = just draw it)
 function goldRoll(v, delay, instant){
-  const el = $('#gold'), txt = fmt(v); el.setAttribute('aria-label', txt);
-  if (S.reduceFx){ if (instant){ if (countTimer) countTimer(); el.textContent = txt; } else countUp(el, goldShown == null ? v : goldShown, v, delay || 0, 650); return; }   // Reduce effects: the old counting number
-  const build = () => { el.innerHTML = [...txt].map(ch => /\d/.test(ch) ? `<span class="od"><i style="transform:translateY(${-+ch}em)">0<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9</i></span>` : `<span class="os">${ch}</span>`).join(''); };
-  const same = el.children.length === txt.length && [...txt].every((ch, i) => /\d/.test(ch) === el.children[i].classList.contains('od') && (/\d/.test(ch) || el.children[i].textContent === ch));
-  if (instant || S.reduceFx || !same){ goldRoll.seq = (goldRoll.seq || 0) + 1; build(); if (!instant && !S.reduceFx){ const up = goldShown == null || v >= goldShown; replay(el, ['num-pop', up ? 'g-up' : 'g-dn'], ['num-pop', 'g-up', 'g-dn']); } return; }
-  const up = goldShown == null || v >= goldShown, seq = goldRoll.seq = (goldRoll.seq || 0) + 1;
+  const el = $('#gold'); el.setAttribute('aria-label', fmt(v));
+  const seq = goldRoll.seq = (goldRoll.seq || 0) + 1;   // a newer amount cancels the one still counting
+  if (goldRoll.stop){ goldRoll.stop(); goldRoll.stop = null; }
+  const from = goldRoll.cur == null ? v : goldRoll.cur;
+  if (instant || S.reduceFx || from === v){ goldRoll.cur = v; el.textContent = fmt(v); return; }
+  const up = v >= from;
   setTimeout(() => {
-    if (seq !== goldRoll.seq) return;   // a newer amount came in meanwhile: it does its own roll
-    if (el.children.length !== txt.length){ build(); return; }   // the digits changed under us (e.g. a quick Undo): just draw it
-    [...txt].forEach((ch, i) => { const r = el.children[i].querySelector('i'); if (r) r.style.transform = `translateY(${-+ch}em)`; });
-    replay(el, ['num-pop', up ? 'g-up' : 'g-dn'], ['num-pop', 'g-up', 'g-dn']); }, delay || 0);
+    if (seq !== goldRoll.seq) return;
+    goldRoll.stop = countTo(el, from, v, 600, { every: 45, show: x => { goldRoll.cur = x; return fmt(Math.round(x)); } });
+    replay(el, ['num-pop', up ? 'g-up' : 'g-dn'], ['num-pop', 'g-up', 'g-dn']);
+  }, delay || 0);
 }
+// back from the background: show the real amount, whatever a paused count left behind
+function goldSettle(){ if (renderHeader.hold || renderHeader.holdAll || renderHeader.luLock) return; const g = S.gold - (renderHeader.lvHold || 0); goldRoll(g, 0, true); goldShown = g; }
 function renderHeader(){
   if (renderHeader.holdAll) return;   // a reward is waiting for its animation (grant with wait): show nothing new yet
   if (renderHeader.hold){   // a claim is in flight: only refresh gold now, XP comes with the gems
@@ -270,7 +266,7 @@ function render(){
 }
 
 function initRender(){
-  document.addEventListener('visibilitychange', () => document.documentElement.classList.toggle('bg', document.hidden));
+  document.addEventListener('visibilitychange', () => { document.documentElement.classList.toggle('bg', document.hidden); if (!document.hidden) goldSettle(); });
   ['load','error'].forEach(t => document.addEventListener(t, e => { const i = e.target; if (i && i.tagName === 'IMG' && i.classList.contains('fi')) i.classList.add('ld'); }, true));
   addEventListener('resize', () => tabHl(false));
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => tabHl(false));
