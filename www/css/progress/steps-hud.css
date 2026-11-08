@@ -1,0 +1,28 @@
+/* steps hud styles. */
+.st-sync{display:flex;align-items:center;gap:7px;width:100%;padding:0;background:none;border:0;text-align:left;font-style:italic;color:var(--bone-dim)}
+/* steps */
+.st-sync{font-size:13px}
+/* steps / tally */
+.st-sync{font-family:var(--f-body)}
+.hud{border:1px solid rgba(46,230,214,.35);border-radius:6px;background:rgba(6,14,16,.85);padding-bottom:12px;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+.hud-bar{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid rgba(46,230,214,.2);font-size:10.5px;color:#2ee6d6;letter-spacing:1px}
+.hud-wk{display:inline-flex;align-items:center;gap:6px}
+.hud-wk button{width:22px;height:20px;padding:0;border:1px solid rgba(46,230,214,.35);border-radius:3px;background:none;color:#2ee6d6;font:14px/1 var(--f-num)}
+.hud-wk button:disabled{opacity:.25}
+.hud-num{padding:12px 14px 4px;font-size:44px;font-weight:700;color:#e9fffb;letter-spacing:2px;text-shadow:0 0 14px rgba(46,230,214,.5)}
+.hud-num small{font-size:13px;color:#5f7472;letter-spacing:0;margin-left:6px;text-shadow:none}
+.hud-seg{display:flex;gap:3px;padding:0 14px}
+.hud-seg i.h{background:linear-gradient(90deg,#2ee6d6 var(--p),rgba(255,255,255,.07) var(--p))}
+.hud-lab{display:flex;justify-content:space-between;padding:6px 14px 0;font-size:11px;color:#7f9593}
+.hud-lab span:first-child{cursor:pointer}
+.hud-note{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 12px 0;font-size:10px;color:#7f9593}
+.hud-note i.g{background:#ffc94a}
+.hud-note i.gr{background:#3fd47a;margin-left:6px}
+.hud-note i.rd{background:#ff3b30;margin-left:6px}
+.sync-tag{font:500 10.5px var(--f-num);color:#b6e85a;white-space:nowrap}
+.sync-tag.late,.sync-tag.off{color:#ffb44a}
+.hud-wk button.s{color:#ffd877;border-color:rgba(232,185,74,.7);background:rgba(232,185,74,.08);text-shadow:0 0 8px rgba(232,185,74,.5);animation:sgPulse 2.4s ease-in-out infinite}
+.reduce-fx .hud-wk button.s{animation:none}
+/* Steps // RECORD header: what each step block pays, with the gem / coin icons like every other reward */
+.hud-rate{display:inline-flex;align-items:center;gap:8px}
+.hud-rate svg{width:12px;height:12px;margin-right:2px;vertical-align:-1px}

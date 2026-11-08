@@ -1,0 +1,47 @@
+/* inspect styles. */
+.inspect{position:fixed;inset:0;z-index:34;display:none;align-items:center;justify-content:center;padding:20px}
+.inspect.open{display:flex;animation:fadeIn .2s ease-out}
+.in-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;animation:scIn .35s cubic-bezier(.2,1.3,.4,1)}
+.in-wrap.land img{width:min(94vw,620px)}
+.in-name{font-family:var(--f-title);font-size:20px;color:var(--bone);text-align:center}
+.in-flavor{max-width:min(78vw,380px);margin:2px 0 0;text-align:center;font-family:var(--f-italic);font-style:italic;font-size:14.5px;line-height:1.35;color:var(--bone-faint)}
+.in-meta{font-size:14px;color:var(--bone-dim)}
+.inspect{background:rgba(5,11,12,.94)}
+.in-flavor,.in-meta{font-family:var(--f-body)}
+/* Card view: UR glare, and hold = art only */
+.in-card{position:relative;line-height:0;transition:transform .25s ease;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.in-card img{-webkit-user-drag:none;pointer-events:none}
+.in-glare{border-radius:8px;z-index:1}
+.in-wrap .in-name,.in-wrap .in-flavor,.in-wrap .in-meta{transition:opacity .2s}
+#inspect.art .in-name,#inspect.art .in-flavor,#inspect.art .in-meta,#inspect.art .in-glare{opacity:0}
+#inspect.art .in-card{transform:scale(1.14)}
+/* holo inspect (UR, SSR, J) */
+.in-card.holo.hot{transition:transform .08s}
+.in-foil{position:absolute;inset:0;border-radius:8px;pointer-events:none;z-index:2;mix-blend-mode:soft-light;opacity:.9;transition:opacity .2s;
+  background:linear-gradient(115deg,transparent 30%,rgba(255,248,232,.55) 46%,rgba(255,255,255,.35) 52%,transparent 66%);background-size:260% 260%;background-position:var(--px,50%) var(--py,50%)}
+.in-card.holo.hot .in-foil{opacity:1}
+#inspect.art .in-foil{opacity:0}
+#inspect.art .in-card.holo{transform:scale(1.14) !important}
+/* card view open: the page behind doesn't scroll (dragging on a holo card used to scroll the collection and lag) */
+html:has(#inspect.open),html:has(#inspect.open) body{overflow:hidden;overscroll-behavior:none}
+.inspect{touch-action:none;overscroll-behavior:contain}
+/* card view grows out of the tapped tile: no pop-in, the words fade in after it */
+.inspect.zoom .in-wrap{animation:none}
+.inspect.zoom :is(.in-name,.in-flavor,.in-meta){animation:invFade .3s ease-out .18s both}
+.inspect.closing :is(.in-name,.in-flavor,.in-meta){opacity:0 !important;transition:opacity .12s}
+.inspect.closing{pointer-events:none}
+/* card view under Reduce effects: UR / SSR keep the sweeping glare */
+.reduce-fx .in-glare::after{animation:goldGlare 7s ease-in-out .7s infinite !important}
+/* card view: the eye hides the effects and all the text until you tap again */
+.in-eye{margin-top:4px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.22);border-radius:50%;background:rgba(255,255,255,.05);color:var(--bone-dim);transition:opacity .2s}
+.in-eye svg{width:20px;height:20px}
+#inspect.art .in-eye{opacity:0;pointer-events:none}
+#inspect.art :is(.in-name,.in-flavor,.in-meta,.in-eye,.in-glare,.in-foil){animation:none !important;opacity:0 !important}
+/* beats the card's fade-in animation (it kept the text visible when the card had grown out of a tile) */
+/* SR and R glare in the card view: same sweep, 2 seconds longer pause (9s cycle) */
+.in-glare.in-slow::after{animation:inGlareSlow 9s ease-in-out .7s infinite}
+.reduce-fx .in-glare.in-slow::after{animation:inGlareSlow 9s ease-in-out .7s infinite !important}
+/* Chapter / Realm card view: the eye turns the wide picture 90 degrees (only the picture; the app stays upright) */
+#inspect.locked .in-wrap.land .in-card{transform:rotate(90deg) scale(var(--rs,1)) !important}
+.reduce-fx #inspect .in-wrap.land .in-card{transition:none}
+@keyframes inGlareSlow{0%{transform:translateX(-160%) skewX(-18deg)}17.1%,100%{transform:translateX(280%) skewX(-18deg)}}

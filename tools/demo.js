@@ -9,9 +9,9 @@
   const read = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
   const write = (k, v) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch(e){} };
 
-  // the pretend clock: shifts Date.now() by whole days (now() in app.js reads Date.now)
+  // the pretend clock: shifts Date.now() by whole days (now() reads Date.now)
   const off = +read(OFF_KEY) || 0;
-  // decided before app.js runs (app.js may save its starter quests straight away); keep in step with STORE_KEY in app.js
+  // decided before the app scripts run (they may save starter quests at once); keep in step with STORE_KEY (js/core/config.js)
   window.PSYCH_DEMO_FIRST = !read('psych.v1');
   if (off){ const real = Date.now.bind(Date); Date.now = () => real() + off * 86400000; }
 
@@ -71,7 +71,7 @@
     b('Reset', () => { write(STORE_KEY, null); write(OFF_KEY, null); location.reload(); });
     b('+1000G', () => { S.gold += 1000; save(); render(); });
     b('+Packs', () => { S.inv.tarot = (S.inv.tarot || 0) + 1; S.inv.mlbb = (S.inv.mlbb || 0) + 1; S.inv.hod = (S.inv.hod || 0) + 1; save(); render(); });
-    // scene test: every deck that has scenes gives a new one each time (wraps rollDeck from app.js), and a way to lose them again
+    // scene test: every deck that has scenes gives a new one each time (wraps rollDeck from js/cards/cards.js), and a way to lose them again
     const SC_KEY = 'psych.demo.scenes100', sc100 = read(SC_KEY) === '1';
     if (sc100 && typeof rollDeck === 'function'){
       const orig = rollDeck;
@@ -101,6 +101,9 @@
     b('Gold steps: this wk', () => { const w = weekStart(); setSteps(w, startOfDay(), (g, t) => g * (1 + ((t / 864e5) | 0) % 3) + 800); });
     b('Gold steps: last wk only', () => { const w = weekStart(); setSteps(addDays(w, -7), addDays(w, -1), (g, t) => g * (1 + ((t / 864e5) | 0) % 3) + 800); setSteps(w, startOfDay(), g => Math.round(g * .6)); });
     b('No gold steps', () => { const q = stepQ(); if (!q) return; const g = q.goal || 10000; Object.keys(S.steps).forEach(k => { if (S.steps[k] >= g) S.steps[k] = Math.round(g * .7); }); save(); render(); });
+    // step sync tag: pretend Health Connect shared steps just now / 4 h ago / is off (the real app only has it on the phone)
+    const setSync = ago => { S.sync = ago == null ? { connected:false } : { connected:true, last:Date.now() - ago }; save(); render(); };
+    b('Sync just now', () => setSync(0)); b('Sync 4h ago', () => setSync(4 * 3600e3)); b('Sync off', () => setSync(null));
     b('Birthday', () => { if (typeof bdOpen === 'function') bdOpen(); });
     b('+5 Tarot', () => { S.inv.tarot = (S.inv.tarot || 0) + 5; save(); render(); });
     b('−1 day', () => { write(OFF_KEY, String(off - 1)); location.reload(); });

@@ -1,0 +1,75 @@
+/* hero styles. */
+.hx{display:flex;flex-direction:column;gap:12px;padding:6px 14px 4px}
+.hx-hero{display:grid;grid-template-columns:1fr auto;align-items:center;padding:16px;border:1px solid rgba(var(--tcr),.5);box-shadow:0 0 22px rgba(var(--tcr),.12)}
+.hx-k{font:700 10.5px var(--f-title);color:var(--tc);text-transform:uppercase}
+.hx-big{font:800 44px var(--f-num);color:#fff;line-height:1.05;margin-top:2px}
+.hx-big small{font:600 15px var(--f-num);color:#9db2b0;margin-left:6px}
+.hx-sub{font:600 12px var(--f-num);color:#9db2b0;margin-top:4px}
+.hx-art{position:relative}
+.hx-art:has(.flame)::before{content:'';position:absolute;inset:-16px;border-radius:50%;background:radial-gradient(circle,rgba(var(--tcr),.4),transparent 66%);pointer-events:none}
+.hx-art .flame{position:relative}
+.hx-kp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hx-kp div{padding:10px;border:1px solid var(--line);min-width:0}
+.hx-kp b.x{color:var(--teal)}
+.hx-kp b.g{color:var(--gold)}
+.hx-kp b.t{color:#2ee6d6}
+.hx-card{padding:13px;border:1px solid var(--line)}
+.hx-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.hx-h small{font:600 11px var(--f-num);color:#5f7472}
+.hx-nav{margin-left:auto;display:flex;gap:4px}
+.hx-nav button{width:30px;height:28px;border:1px solid var(--line);background:none;color:#cfdedc;font:18px/1 var(--f-num)}
+.hx-nav button:disabled{opacity:.3}
+.hx-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.hx-dow{text-align:center;font:600 9.5px var(--f-num);color:#5f7472}
+.hx-c.blank{visibility:hidden}
+/* done days: a soft tint of the flame colour with a bright rim, not a solid blob */
+.hx-c.on{background:rgba(var(--tcr),.2);box-shadow:inset 0 0 0 1.5px var(--tc);color:#f2f7f6}
+.hx-c.on.bonus{background:rgba(var(--tcr),.32);box-shadow:inset 0 0 0 2px #2ee6d6,inset 0 0 0 3.5px #0e1b1d,inset 0 0 0 5px var(--tc);color:#fff}
+.hx-c.split{background:linear-gradient(135deg,rgba(var(--tcr),.38) 50%,rgba(255,255,255,.04) 50%);box-shadow:inset 0 0 0 1.5px rgba(var(--tcr),.55);color:#e9f2f0}
+.hx-c.fut{opacity:.45}
+.hx-c.td::after,.hx-c.sel::after{content:'';position:absolute;inset:-3px;border-radius:50%;pointer-events:none;border:1.5px solid #f2f7f6}
+.hx-c.sel::after{inset:-4px;border:2px solid #2ee6d6;box-shadow:0 0 8px rgba(46,230,214,.45)}
+/* the picked day: always cyan, so it never looks like today's white ring */
+.hx-c{position:relative}
+.hx-leg{display:flex;gap:14px;margin-top:10px;font:600 11px var(--f-title);color:#7f9593}
+.hx-leg .hx-c{width:12px;height:12px;aspect-ratio:auto}
+.hx-leg .hx-c.bonus{box-shadow:inset 0 0 0 1.5px #2ee6d6}
+.hx-log{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid rgba(210,240,236,.06)}
+.hx-log small{font:500 11px var(--f-num);color:#7f9593}
+.flame .fbody{transform-origin:32px 60px;animation:flk 1.4s ease-in-out infinite}
+.flame.t0 .fbody{animation:none}
+.flame .fsp{animation:fsp 1.8s ease-out infinite;opacity:0}
+.hx,.shx{touch-action:pan-y}
+/* Progress hero, stat boxes, calendar, recent */
+.hx-hero{border-radius:4px;background:linear-gradient(120deg,rgba(var(--tcr),.16),rgba(6,14,16,.9) 60%);clip-path:var(--cut14)}
+.hx-k{font-family:var(--f-num);font-weight:600;letter-spacing:1px}
+.hx-k::before{content:'// '}
+.hx-kp div{border-radius:3px;background:rgba(6,14,16,.85);border-color:rgba(var(--tcr),.3);clip-path:var(--cut10)}
+.hx-kp span::before{content:'// '}
+.hx-card{border-radius:4px;background:rgba(6,14,16,.85);border-color:rgba(var(--tcr),.3);clip-path:var(--cut14)}
+.hx-h span::before{content:'// '}
+.hx-nav button{border-radius:3px}
+/* Undo on the latest Recent claim (pink, so it never looks like Claim) */
+.hx-log{align-items:center}
+.hx-undo{margin-left:10px;padding:3px 9px;vertical-align:1px;border:1.5px solid rgba(255,143,177,.65);background:rgba(255,143,177,.07);color:#ff8fb1;font:700 11px var(--f-num);letter-spacing:.06em;text-transform:uppercase;clip-path:var(--cut5)}
+/* Streak bonus (i) next to "Current streak" */
+.hx-k{display:flex;align-items:center;gap:8px}
+.sk-row{display:grid;grid-template-columns:62px 1fr 26px;align-items:center;gap:8px;padding:5px 0}
+.sk-row span{font:500 12.5px var(--f-body);color:#cfdedc;text-transform:none}
+.sk-fl{display:grid;place-items:center;width:26px;height:26px}
+/* Undo column on Recent and on step days (rewards stay lined up; empty slot when there's nothing to undo) */
+.hx-log .hx-lt{flex:1;min-width:0}
+.hx-log .hx-undo{margin-left:12px}
+.hx-undo.ph{visibility:hidden}
+.hx-undo.ph::before{content:'Undo'}
+.sh-row3 .hx-undo{margin:0}
+.hx-undo:disabled{opacity:.28;border-color:rgba(255,143,177,.35);background:none;cursor:default}
+.log-row .hx-undo{margin-left:10px}
+/* Pair halves: the check orb is cyan like the Target orbs (ring when open, filled + glow when done) */
+/* slipped days: red ring in the Progress calendar; Recent row text; tappable SLIPPED badge */
+.hx-c.slip{box-shadow:inset 0 0 0 1.5px #ff3b30;background:rgba(255,59,48,.14);color:#ff8a7f}
+.hx-log .hx-slipt{font:600 11.5px var(--f-num);color:#ff8a7f}
+.hx-big{overflow-wrap:anywhere}
+.hx-log .hx-undo.w{min-width:64px;text-align:center}
+@keyframes flk{0%,100%{transform:scale(1,1) skewX(0)}30%{transform:scale(1.03,.96) skewX(-2deg)}60%{transform:scale(.97,1.05) skewX(2deg)}}
+@keyframes fsp{0%{opacity:0;transform:translateY(4px)}30%{opacity:1}100%{opacity:0;transform:translateY(-10px)}}

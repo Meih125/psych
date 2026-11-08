@@ -1,0 +1,11 @@
+/* cards styles. */
+.rdot{display:inline-block;width:8px;height:12px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--c);margin-right:6px;vertical-align:0}
+.rtag{font-style:normal;color:var(--c);white-space:nowrap}
+.rtag .rdot{width:6px;height:9px;margin-right:3px}
+.rtag{font-family:var(--f-title);font-weight:700}
+.oa-tray img.r-common{box-shadow:0 2px 6px rgba(0,0,0,.6)}
+
+.jr{background:linear-gradient(90deg,#b04bff,#ff2a4a);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.jr{font-weight:700;-webkit-text-stroke:.7px #d63a78;font-family:inherit}
+.ep-nm small .rdot{width:7px;height:10px;margin:0 0 0 6px;vertical-align:-1px}
+.ur1 .rtag { font: 700 11px var(--f-title); flex: 0 0 auto; }

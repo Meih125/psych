@@ -1,0 +1,112 @@
+/* inventory styles. */
+/* bonus tag: neon teal word + matching border, full-strength rewards */
+/* once the bonus is claimed the whole pair settles to grey, like any finished quest */
+.inv{display:flex;flex-direction:column;align-items:center;margin:8px 14px 0;padding-bottom:10px;min-height:calc(100dvh - 300px);touch-action:none}
+/* fills the screen down to the tab bar: swipe anywhere */
+.inv-name.in{animation:invName .42s ease-out}
+/* swipes here belong to the deck, not the page */
+.inv-dots{display:flex;justify-content:center;margin:14px 0 0}
+.inv-dots button{width:7px;height:7px;padding:0;border:0;border-radius:4px;background:rgba(210,240,236,.22);transition:width .2s,background .2s}
+.inv.th-mlbb .inv-dots button.on{--dot:#7c5cff}
+.inv-stack.in-r{animation:invInR .46s cubic-bezier(.22,.8,.3,1),deckFloat 4.5s ease-in-out .46s infinite}
+.inv-stack.in-l{animation:invInL .46s cubic-bezier(.22,.8,.3,1),deckFloat 4.5s ease-in-out .46s infinite}
+/* deck arrows: tall thin teal chevrons, the whole side strip is the tap area */
+.inv-stack{cursor:pointer}
+.inv-stack .inv-layer:not(.top){pointer-events:none}
+/* only the front card opens a pack; the cards fanned behind it don't */
+.inv-stack{position:relative;width:min(56vw,215px);aspect-ratio:480/672;margin:22px 0 10px calc((var(--n) - 1) * -20px);animation:deckFloat 4.5s ease-in-out infinite}
+.inv-layer{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:10px;transform:translateX(calc(var(--i) * 18px)) rotate(calc(var(--i) * 3deg));transform-origin:50% 100%;opacity:calc(1 - var(--i) * .22);filter:brightness(calc(1 - var(--i) * .18));box-shadow:0 12px 28px rgba(0,0,0,.55)}
+.inv-name{margin-top:8px;font-family:var(--f-title);font-weight:600;font-size:20px;color:#f2f7f6}
+.inv-hint{margin-top:3px;font-family:var(--f-title);font-weight:500;font-size:13px;letter-spacing:.4px;color:#ff8a45;cursor:pointer}
+.inv.none .inv-stack{filter:grayscale(1) brightness(.45);animation:none}
+.inv.none .inv-name{color:#8aa09e}
+.inv.none .inv-hint{color:#9db2b0}
+.dka{position:relative;overflow:visible;margin:0 !important;padding:6px 14px 10px !important}
+.dka.th-tarot{--ac:#ff6b1a;--acr:255,107,26;--g1:#ffd2b0;--g3:#b8430f}
+.dka.th-mlbb{--ac:#7c5cff;--acr:124,92,255;--g1:#ddd3ff;--g3:#3b4bd8}
+.dka-ghost{position:absolute;top:70px;width:150px;aspect-ratio:480/672;object-fit:cover;border-radius:9px;opacity:0;filter:blur(1px) grayscale(.4);pointer-events:none}
+.dka-ghost.l{left:-110px;transform:perspective(600px) rotateY(30deg)}
+.dka-ghost.r{right:-110px;transform:perspective(600px) rotateY(-30deg)}
+.dka-stage{position:relative;width:min(58vw,232px);aspect-ratio:480/672;margin:16px auto 0}
+.dka-stage::before{content:'';position:absolute;inset:-46px;background:radial-gradient(circle,rgba(var(--acr),.45),transparent 62%);filter:blur(6px);pointer-events:none}
+.dka .inv-stack{position:absolute !important;inset:0;width:auto !important;margin:0 !important;aspect-ratio:auto !important}
+.dka .inv-layer.top{position:absolute;inset:0;padding:3px;border-radius:12px;background:linear-gradient(135deg,var(--g1),var(--ac) 50%,var(--g3)) !important;transform:perspective(700px) rotateY(-12deg) rotateX(6deg) !important;box-shadow:0 30px 40px rgba(0,0,0,.6),0 0 18px rgba(var(--acr),.35) !important;opacity:1 !important;filter:none !important}
+.dka .inv-layer.top img{width:100%;height:100%;object-fit:cover;border-radius:9px;display:block}
+.dka-holo{position:absolute;inset:3px;border-radius:9px;mix-blend-mode:screen}
+.dka-cnt{position:absolute;top:-10px;right:-16px;z-index:10;transform:translateZ(80px);padding:4px 10px;border-radius:20px;background:var(--ac);color:#fff;font:800 15px var(--f-num);box-shadow:0 0 14px var(--ac)}
+.dka .inv-name{margin-top:22px}
+.dka-hint{margin-top:6px !important;font:700 12px var(--f-title) !important;letter-spacing:1.2px !important;color:rgba(var(--acr),1) !important;filter:brightness(1.35)}
+.dka-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(100%,330px);margin-top:14px}
+.ur-slots{display:flex;align-items:flex-end;gap:4px;width:min(100%,330px);margin-top:12px}
+.ur-slots i.ur{flex:1.5;position:relative;display:grid;place-items:center;background:linear-gradient(135deg,#c2261d,#7a0f0a 60%,#3d0503);border-color:#ff8a80}
+.ur-slots i.ur b{font:900 13px var(--f-title);letter-spacing:1px;color:#fff;text-shadow:0 0 6px #ff3b30}
+.open-all{position:absolute;right:16px;top:20px;padding:8px 13px;border:1px solid rgba(var(--acr,255,107,26),.7);background:rgba(var(--acr,255,107,26),.12);color:#fff;font:700 12.5px var(--f-title)}
+.open-all[hidden]{display:none}
+.open-all.th-tarot{--acr:255,107,26}
+.open-all.th-mlbb{--acr:124,92,255}
+.dka-stats span{font:600 10.5px var(--f-num);letter-spacing:1px;color:var(--ac)}
+.dka-stats span::before{content:'// '}
+/* pack cover shine: a wide band slides across (transform) */
+.dka-holo{overflow:hidden;background:none;animation:none}
+.dka-holo::before{content:'';position:absolute;top:0;bottom:0;left:-100%;width:300%;background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.35) 47%,rgba(124,200,255,.25) 50%,transparent 58%);animation:dkaHolo 5s ease-in-out infinite;will-change:transform}
+/* Land of Dawn deck: purple-blue instead of orange */
+.inv.th-mlbb .inv-layer.top:not(.dim){background:linear-gradient(135deg,#ddd3ff,#7c5cff 50%,#3b4bd8);box-shadow:0 0 12px 3px rgba(124,92,255,.4),0 14px 30px rgba(0,0,0,.6) !important}
+.inv.th-mlbb:not(.none) .inv-hint{color:#b3a6ff}
+/* top card: a solid orange frame like the Shop deck (no wide halo) */
+.inv.none .inv-layer.top{box-shadow:0 12px 28px rgba(0,0,0,.55) !important}
+/* top card frame = the Shop deck's frame: light gold-peach at the top-left corner fading through orange to deep rust */
+.inv-layer.top{padding:3px;background:linear-gradient(135deg,#ffd2b0,#ff6b1a 50%,#b8430f);box-shadow:0 0 10px 2px rgba(var(--acc-rgb),.3),0 14px 30px rgba(0,0,0,.6) !important}
+.inv-layer.top img{display:block;width:100%;height:100%;object-fit:cover;border-radius:7px}
+.inv-layer.top.dim{padding:0;background:none;box-shadow:0 12px 28px rgba(0,0,0,.55) !important}
+.inv-layer.top.dim img{border-radius:10px}
+/* Shop: the Hand of Destiny teaser */
+/* Hand of Destiny (gold) */
+.inv.th-hod .inv-dots button.on{--dot:#ffb83a}
+.dka.th-hod{--ac:#ffb83a;--acr:255,184,58;--g1:#ffe2a0;--g3:#b8741a}
+.open-all.th-hod{--acr:255,184,58}
+.inv.th-hod .inv-layer.top:not(.dim){background:linear-gradient(135deg,#ffe2a0,#ffb83a 50%,#b8741a);box-shadow:0 0 12px 3px rgba(255,184,58,.4),0 14px 30px rgba(0,0,0,.6) !important}
+.inv.th-hod:not(.none) .inv-hint{color:#ffd27a}
+/* pack switch: what the redraw brings in fades in softly (the pack itself already glided into place) */
+.inv .fade-in{animation:invFade .3s ease-out both}
+.inv .dka-ghost.fade-in{animation:none}
+.inv.sliding .dka-stage::before{opacity:0;transition:opacity .3s ease-out}
+.inv .dka-stage.fade-in::before{animation:invFade .4s ease-out both}
+.inv .dka-stage.fade-in{animation:none}
+.dka-stats .nv{font-style:normal}
+/* the fill rises from the bottom of each box (and drains back down), so gaining / losing reads as one smooth wave */
+.ur-slots i:not(.ur)::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(var(--acr),.38),rgba(var(--acr),.12));transform:scaleY(0);transform-origin:50% 100%}
+.ur-slots i.on:not(.ur)::before{transform:scaleY(1)}
+.ur-slots.nt i::before,.ur-slots.nt i{transition:none !important}
+/* Open all: one fixed size so the count can run without the button changing width */
+.open-all{min-width:126px;text-align:center;font-variant-numeric:tabular-nums}
+.reduce-fx .ur-slots i::before{transition:none}
+.reduce-fx .open-all{min-width:0}
+.ur-slots i:not(.ur)::before{transition:transform .34s var(--e-arrive)}
+.inv .fade-in{animation-duration:var(--t-norm)}
+/* while a claim plays, the background loops rest for a moment (so the phone spends everything on the claim) */
+html.busy :is(.inv-stack,.dka-holo,.em-spin,.em-flap,.em-shock,.sh-latest,.cc-chip.ready,.set-claim.ready,.hud-wk button.s,.hud-chips .chip.s,.top .xpbar.seg .xpfill,.chip.s),html.busy :is(.dka-holo,.top .xpbar.seg .xpfill)::before{animation-play-state:paused !important}
+.inv-dots{gap:11px}
+/* Pack tab wheel: the neighbours are real packs waiting off to the side (hidden at rest); the wheel turns as you drag */
+.dka-stage .nbw{position:absolute;inset:0;visibility:hidden;pointer-events:none;margin:0;padding:0}
+.nbw .inv-stack{animation:none !important;will-change:transform}
+.nbw .dka-holo{animation:none}
+.nbw.th-mlbb .inv-layer.top:not(.dim){background:linear-gradient(135deg,#ddd3ff,#7c5cff 50%,#3b4bd8);box-shadow:0 0 12px 3px rgba(124,92,255,.4),0 14px 30px rgba(0,0,0,.6) !important}
+.nbw.th-hod .inv-layer.top:not(.dim){background:linear-gradient(135deg,#ffe2a0,#ffb83a 50%,#b8741a);box-shadow:0 0 12px 3px rgba(255,184,58,.4),0 14px 30px rgba(0,0,0,.6) !important}
+.nbw.none .inv-stack{filter:grayscale(1) brightness(.225)}
+.nbw.none .inv-layer.top{box-shadow:0 12px 28px rgba(0,0,0,.55) !important}
+/* a pack you have none of is greyed on its own (not the whole stage), so it greys while it travels instead of snapping at the end */
+.dka.none .dka-stage{filter:none}
+.dka.none .dka-stage::before{filter:blur(6px) grayscale(1) brightness(.5)}
+.dka.none .dka-stage > .inv-stack{filter:grayscale(1) brightness(.225)}
+/* a pack you do own keeps its colour even when the pack in front is the grey "none" one */
+.inv.none .nbw:not(.none) .inv-stack{filter:none}
+.inv.none .nbw:not(.none) .inv-layer.top:not(.dim){box-shadow:0 0 12px 3px rgba(var(--acr),.4),0 14px 30px rgba(0,0,0,.6) !important}
+/* Open all and the UR bar take the app's button styling: mono type, small radius, cut corners */
+.open-all{border-radius:3px;font-family:var(--f-num);letter-spacing:.5px;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);box-shadow:none}
+.ur-slots i.ur{border-radius:2px;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px);box-shadow:none}
+@keyframes deckFloat{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-3px) rotate(.6deg)}50%{transform:translateY(-6px) rotate(0)}75%{transform:translateY(-3px) rotate(-.6deg)}}
+@keyframes invName{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes invInR{from{transform:translateX(90px) rotate(6deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes invInL{from{transform:translateX(-90px) rotate(-6deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes dkaHolo{0%,100%{transform:translateX(22%)}50%{transform:translateX(-22%)}}
+@keyframes invFade{from{opacity:0}to{opacity:1}}

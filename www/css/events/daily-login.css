@@ -1,0 +1,42 @@
+/* daily login styles. */
+.dl-fl{position:relative;display:block;width:32px;height:40px}
+.dl-fw{position:absolute;left:50%;top:1px;line-height:0}
+.dl-num{position:absolute;left:50%;bottom:2px;transform:translateX(-50%);filter:drop-shadow(0 1px 1px #000)}
+.dl-fl.pop{animation:dlIn .6s cubic-bezier(.2,1.6,.4,1)}
+.dl-pop{position:relative;z-index:1;width:min(88vw,360px);min-height:380px;padding:18px 16px 16px;display:flex;flex-direction:column;align-items:center;background:linear-gradient(#0f1c1e,#0a1416);border:1px solid rgba(46,230,214,.35);clip-path:var(--cut10);cursor:pointer}
+.dl-head{display:flex;flex-direction:column;align-items:center;gap:2px}
+.dl-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px 0 8px}
+.dl-amt{display:flex;align-items:center;gap:14px;animation:dlAmt .5s cubic-bezier(.2,1.6,.4,1) .3s both}
+.dl-amt.xp svg{filter:drop-shadow(0 0 16px rgba(143,217,207,.35))}
+.dl-two{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.dl-two .dl-amt svg{width:60px;height:60px}
+.dl-two .dl-amt + .dl-amt{animation-delay:.42s}
+.dl-hint{font:600 12px var(--f-num);letter-spacing:.3px;color:#8fa6a3;animation:dlBlink 1.6s ease-in-out infinite}
+.dl-card.pk-card{position:relative;left:auto;top:auto;--cw:min(40vw,150px);--ch:calc(var(--cw) * 1.4);width:var(--cw);height:var(--ch);margin:6px 0 22px;animation:dlAmt .55s cubic-bezier(.2,1.5,.4,1) .3s both}
+.dl-glass{display:grid;place-items:center;background:linear-gradient(150deg,rgba(255,255,255,.16),rgba(255,255,255,.04) 45%,rgba(255,255,255,.1));border:1.5px solid rgba(255,255,255,.35);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:inset 0 0 22px rgba(255,255,255,.08),0 8px 18px rgba(0,0,0,.8)}
+.dl-glass::before{content:'';position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.22) 42%,transparent 55%);animation:dlSheen 3.2s ease-in-out infinite}
+.dl-card.r-common .dl-glass{box-shadow:0 0 14px 3px rgba(var(--rc),.55),inset 0 0 22px rgba(255,255,255,.08)}
+.bd-pop .dl-amt{margin:4px 0 8px;animation:none}
+.bd-pop .dl-amt svg{width:44px;height:44px}
+.bd-pop .dl-head{margin:2px 0 26px;text-align:center}
+.bd-pop .dl-head b{font:italic 700 42px/1 Georgia,'Times New Roman',serif;letter-spacing:1px;background:linear-gradient(100deg,#8a5a10 10%,#ffe9a0 30%,#fff 40%,#ffc94a 50%,#9a6a14 70%,#ffe9a0);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:bdShine 3.5s linear infinite;filter:drop-shadow(0 2px 0 #2a1a00) drop-shadow(0 0 12px rgba(255,201,74,.4))}
+.bd-pop .dl-head small{margin-top:8px;color:#ffc94a;letter-spacing:6px}
+.bd-pop .dl-head small:before,.bd-pop .dl-head small:after{content:"✦";margin:0 8px}
+.reduce-fx .bd-pop .dl-head b,.reduce-fx .bd-pop .bd-cf i{animation:none}
+.dl-h{margin-bottom:4px}
+.dl-row{display:flex;align-items:center;gap:10px;width:100%;padding:9px 0;border:0;border-top:1px solid rgba(255,255,255,.08);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.dl-row em{font-style:normal;color:#7f9593;font:500 11px var(--f-num)}
+.dl-row.done span{opacity:.5}
+.dl-ck{flex:none;width:18px;height:18px;border:1.5px solid rgba(46,230,214,.4);border-radius:3px;display:grid;place-items:center;position:relative}
+.dl-ck.sel{background:#3fd47a;border-color:#3fd47a}
+.dl-ck.on{background:#2ee6d6;border-color:#2ee6d6}
+.dl-f{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;font-size:12px}
+.dl-f .mut{color:#7f9593;font:500 11px var(--f-num)}
+.dl-f .mut{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.dl-tk{position:absolute;right:16px;top:36px;transform:translateY(-50%);display:flex;align-items:center;gap:7px;color:#2ee6d6;font:800 22px var(--f-num)}
+@keyframes dlIn{from{transform:scale(.2);opacity:0}}
+@keyframes dlAmt{from{transform:scale(.3);opacity:0}}
+@keyframes dlBlink{50%{opacity:.45}}
+@keyframes dlSheen{0%,40%{transform:translateX(-60%)}80%,100%{transform:translateX(60%)}}
+@keyframes bdShine{to{background-position:-250% 0}}

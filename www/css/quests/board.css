@@ -1,0 +1,454 @@
+/* board styles. */
+.list{display:flex;flex-direction:column}
+.item{display:flex;flex-direction:column}
+.card{position:relative;padding:14px 14px 13px 12px;color:var(--bone)}
+.cn{position:absolute;width:24px;height:24px;pointer-events:none;z-index:1}
+.cn.tl{top:-4px;left:-4px}
+.cn.tr{top:-4px;right:-4px;transform:scaleX(-1)}
+.cn.bl{bottom:-4px;left:-4px;transform:scaleY(-1)}
+.cn.br{bottom:-4px;right:-4px;transform:scale(-1)}
+.card.done h3{text-decoration:line-through}
+.note{margin:2px 0 0;font-style:italic;overflow-wrap:anywhere}
+.rewards{display:flex;flex-wrap:wrap}
+.cd{font-variant-numeric:tabular-nums}
+.claim{font-family:var(--f-title);color:var(--bronze-hi);border-radius:2px;border:1.5px solid var(--bronze);background:linear-gradient(#1c3032,#132224);text-shadow:0 1px 0 #000;box-shadow:inset 0 1px 0 rgba(230,245,240,.25),inset 0 0 0 1px #000,0 2px 0 #000}
+.claim:active{transform:translateY(1px);background:linear-gradient(#142426,#0e1b1d)}
+/* pair */
+.bonus{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.bonus .bl{color:var(--bone-dim)}
+.bonus .rewards{margin:0}
+/* record */
+.rec-input{grid-column:1/-1;display:flex;align-items:center}
+.rec-input input{flex:1;min-width:0}
+/* arrange mode */
+.item.dragging .card{transform:scale(1.02)}
+.dayinfo .rewards{margin-top:4px}
+.log-row .rewards{margin:0;font-size:12px;gap:8px;flex-wrap:nowrap}
+.badge{position:absolute;top:1px;left:calc(50% + 7px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:10.5px;display:grid;place-items:center}
+.badge[hidden]{display:none}
+.group{margin-top:16px;padding:12px}
+/* a quest you just claimed stays bright while a band of light sweeps across, then settles to grey */
+.card.shine::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:2;animation:sheen .85s cubic-bezier(.3,.6,.4,1) forwards}
+.card.shine{animation:cardGlow 1.1s ease-out}
+.card.done.just{filter:none}
+.list{gap:10px;padding:10px 12px}
+.item{gap:10px}
+.card h3{font-size:16px;line-height:1.15}
+.note{margin-top:1px}
+.rewards{margin-top:3px;gap:10px;font-size:12px}
+.claim{font-size:14.5px;padding:7px 11px;letter-spacing:1px}
+/* pair */
+/* record */
+.rec-input{margin-top:7px;gap:6px}
+.rec-input input{padding:7px 10px;font-size:15.5px}
+.rec-input .claim{padding:6px 10px}
+/* denser layout */
+.list .card{padding:8px 10px 7px 9px}
+.bonus > .rewards{margin:0;width:46px;flex:none;flex-direction:column;align-items:flex-start;font-size:11.5px;flex-wrap:nowrap}
+.bonus .bl{flex:1}
+.bonus{margin-top:5px;padding:4px 8px}
+/* every stacked reward: XP right above gold */
+.bonus > .rewards{gap:1px !important;justify-content:center}
+/* uniform right column: every reward stack has the same width and every action button the same size,
+   so buttons line up down the whole board no matter how big the numbers get */
+.rec-input .claim{width:76px !important;flex:none;justify-self:end;padding-left:0 !important;padding-right:0 !important;text-align:center;white-space:nowrap}
+.bonus > .rewards,.tl-rew .rewards{width:50px;flex:none;margin:0;flex-direction:column;align-items:flex-end;gap:4px !important;flex-wrap:nowrap;white-space:nowrap}
+/* Claim waits greyed out until an amount is typed */
+.claim.off{filter:grayscale(1) brightness(.6);box-shadow:none !important;text-shadow:none !important}
+.bonus{padding-right:88px}
+.card{border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(160deg,rgba(170,215,212,.10),rgba(120,170,170,.05));box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 10px 26px rgba(0,0,0,.28)}
+.cn{display:none}
+.card.done h3{text-decoration-color:rgba(230,240,238,.35)}
+.card h3{font-family:var(--f-title);font-weight:600;letter-spacing:.1px}
+.note{font-family:var(--f-body);font-size:12.5px;color:var(--bone-dim)}
+.rewards{font-family:var(--f-num);font-weight:500}
+.xp-r{color:var(--teal)}
+.gold-r{color:var(--gold)}
+/* main action: solid orange with bloom */
+.claim,.set-claim.ready{font-family:var(--f-title);font-weight:600;letter-spacing:.3px;font-size:12.5px !important;color:#ff8a45;border:1px solid rgba(var(--acc-rgb),.65);border-radius:4px;background:rgba(255,255,255,.05);box-shadow:0 0 10px rgba(var(--acc-rgb),.14),inset 0 1px 0 rgba(255,255,255,.06);text-shadow:0 0 8px rgba(var(--acc-rgb),.35)}
+.claim:active,.set-claim.ready:active{transform:scale(.97);background:rgba(var(--acc-rgb),.14)}
+.bonus{border-radius:4px;background:rgba(255,255,255,.035);border:1px solid var(--line);box-shadow:none}
+.bonus .bl{font-family:var(--f-title);font-weight:600;font-size:12px}
+.bonus.earned{border-color:rgba(var(--acc-rgb),.45);background:rgba(var(--acc-rgb),.08)}
+.bonus.earned .bl{color:var(--acc-hi)}
+.item.dragging .card{box-shadow:0 0 0 1px var(--acc),0 18px 36px rgba(0,0,0,.6)}
+.badge{background:var(--red);border:0;color:#fff;font-family:var(--f-num);font-weight:700;box-shadow:0 0 10px rgba(var(--red-rgb),.7)}
+.sheet .meta-line{text-align:left}
+.group{border:1px solid var(--line)}
+.card.shine::before{border-radius:var(--r);background:linear-gradient(105deg,transparent 30%,rgba(255,160,90,.08) 42%,rgba(255,240,225,.26) 50%,rgba(255,160,90,.08) 58%,transparent 70%) no-repeat;background-size:260% 100%;background-position:130% 0}
+.qboard{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 12px}
+.qboard > .item,.qboard > .empty{grid-column:1 / -1}
+.qboard > .item.half{grid-column:auto}
+.item.half{display:flex;flex-direction:column}
+.item.half > .card{flex:1}
+.cy-count{flex:none;font-family:var(--f-num);font-size:10.5px;color:#7f9593;white-space:nowrap}
+/* tile */
+/* pair: two tiles joined by a live link */
+/* wires run from each half into the bonus; the side you've done lights up */
+/* recurring: a stack that grows by one card per claim this week (max 3 deep) */
+/* each claim: a fresh card drops onto the top of the stack */
+/* wide quest (has follow-ups, or no tile partner): one row, info left, claim right */
+/* no badge on the Quests tab */
+.tab[data-tab="quests"] .badge{display:none !important}
+.qb{display:flex;flex-direction:column;gap:12px;padding:6px 14px 4px}
+.qb-sum{display:grid;grid-template-columns:86px 1fr;gap:14px;align-items:center;padding:14px;border:1px solid var(--line)}
+.qb-ring{position:relative;width:86px;height:86px}
+.qb-ring circle+circle{filter:drop-shadow(0 0 4px #ff6b1a);transition:stroke-dasharray .6s}
+.qb-rc{position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1}
+.qb-rc small{font:600 9px var(--f-title);letter-spacing:1px;color:#7f9593;line-height:1}
+.qb-st{display:flex;flex-direction:column;gap:7px;min-width:0}
+.qb-st .ln{display:flex;justify-content:space-between;align-items:center;gap:8px;font:600 12px var(--f-title);color:#9db2b0}
+.qb-st .ln b{display:flex;gap:8px;font:700 12.5px var(--f-num);color:#f2f7f6}
+.qb-st .ln b span{display:inline-flex;align-items:center;gap:3px}
+.qb-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
+.qb-g{display:flex;flex-direction:column;gap:8px}
+.qb-gh{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 0}
+.qb-gh b span{margin-left:8px;font:600 11px var(--f-num);letter-spacing:0;color:#5f7472}
+.qb-time{display:inline-flex;align-items:center;gap:5px;font:600 11.5px var(--f-num);color:#ff8a45}
+.qb-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qb-item{min-width:0}
+.qb-item.wide{grid-column:1/3}
+.card.qb-t{-webkit-touch-callout:none;position:relative;height:100%;display:flex;flex-direction:column;gap:7px;margin:0;padding:12px;border:1px solid var(--line);cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;transition:transform .12s}
+.card.qb-t:active{transform:scale(.98)}
+.card.qb-t h4{margin:0;padding-right:44px;font:700 14.5px var(--f-title);color:#f2f7f6;line-height:1.25;overflow-wrap:anywhere}
+.card.qb-t.done{filter:none}
+.card.qb-t.done > *:not(.qb-badge):not(.qb-foot):not(.qb-top):not(.qb-tr):not(.qb-strk):not(.qb-hf){opacity:.5}
+/* a finished quest's streak stays bright: keeping it going is the point */
+.card.qb-t.done .qb-top .qb-ic{opacity:.5}
+.card.qb-t.done .cy-streak,.card.qb-t.done .cy-streak *{opacity:1 !important;filter:none !important}
+.card.qb-t.done h4{text-decoration:line-through;text-decoration-color:rgba(230,240,238,.35)}
+.qb-ic{width:30px;height:30px;padding:0;border:0;display:grid;place-items:center;background:rgba(var(--acc-rgb),.12);color:#ff8a45;cursor:pointer}
+.qb-ic.k-steps{background:rgba(46,230,214,.12);color:#2ee6d6}
+.qb-ic.k-scaling{background:rgba(255,90,90,.12);color:#ff7a7a}
+.qb-ic.k-tally{background:rgba(255,201,74,.12);color:#ffc94a}
+.qb-ic.k-record{background:rgba(169,139,255,.14);color:#a98bff}
+.qb-ic.k-pair{background:rgba(77,163,255,.14);color:#5cabff}
+.qb-badge{position:absolute;right:10px;top:10px;padding:3px 7px;border:1px solid rgba(var(--acc-rgb),.5);font:700 10px var(--f-title);letter-spacing:.8px;color:#ff8a45}
+.qb-note{margin:0;font:12px/1.35 var(--f-body);color:#8fa5a3}
+.qb-sub{font:500 11px var(--f-num);color:#7f9593}
+.qb-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;flex-wrap:wrap}
+.qb-foot:empty{display:none}
+.qb-rew{display:flex;flex-wrap:wrap;gap:2px 9px;font:700 12.5px var(--f-num)}
+.qb-rew.dim{opacity:.5}
+.qb-foot .cy-count{position:static;transform:none}
+.qb-pips{display:flex}
+.qb-pips em{font:700 10px var(--f-num);color:#ff8f8f;font-style:normal}
+.qb-next{font:600 11px var(--f-num);color:#8fa6a3}
+.qb-tot{display:flex;justify-content:space-between;gap:8px;font:600 11px var(--f-num);color:#7f9593}
+.qb-in{display:flex;align-items:center;gap:6px;margin:0 !important}
+.qb-in input{flex:1;min-width:0;padding:8px 10px !important;border-radius:7px !important;border:1px solid var(--line) !important;background:rgba(0,0,0,.3) !important;color:#e9f2f0;font:600 13px var(--f-num) !important}
+.qb-in .claim{padding:8px 13px !important;min-width:0 !important}
+.qb-item.fol > .card.qb-t{margin-left:calc(22px * var(--fd, 1))}
+.qb-item.fol > .card.qb-t::before{content:'';position:absolute;left:-15px;top:-12px;height:40px;width:11px;border-left:1.5px solid rgba(255,143,177,.5);border-bottom:1.5px solid rgba(255,143,177,.5);border-bottom-left-radius:6px}
+.qb-after{font:700 10px var(--f-title);letter-spacing:.6px;color:#ff8fb1;text-transform:uppercase}
+.card.qb-t.locked{opacity:.5;cursor:default}
+.qb-sumft{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:28px}
+.qb-sumft .qb-time{white-space:nowrap}
+.qb-sclaim{display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;border:1px solid rgba(46,230,214,.6);color:#7fe3d8;font:700 11.5px var(--f-title);letter-spacing:.6px;text-transform:uppercase;box-shadow:0 0 10px rgba(46,230,214,.25)}
+.qb-sclaim .qb-rew{font-size:11.5px;gap:6px;text-transform:none}
+.qb-stp{cursor:pointer}
+/* half tiles: title always takes two lines, reward right under it, streak on its own line at the bottom */
+.qb-strk{margin-top:auto;display:flex;align-items:center;justify-content:flex-end}
+.qb-strk .qb-badge{position:static}
+.qb-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.qb-top .cy-count{position:static;transform:none;font-size:11.5px}
+.qb-top .cy-count b{font-size:15px}
+.card.qb-t h4.qb-h2{padding-right:0}
+.qb-strk .cy-count{position:static;transform:none}
+.qb-hd{display:flex;align-items:center;gap:11px;padding-right:90px;min-height:30px}
+.qb-hd .qb-ic{flex:none}
+.qb-hdt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.qb-hdt h4{padding-right:0 !important}
+.qb-tr{position:absolute;right:10px;top:10px;display:flex;align-items:center;gap:8px}
+.qb-tr .qb-badge{position:static}
+.qb-sum .qb-time{align-self:flex-start}
+.card.qb-t.done > *{filter:none !important}
+.card.qb-t.done .qb-badge.ok{background:rgba(63,212,122,.1)}
+.qb-foot .tl-rew .rewards{display:flex;flex-direction:row;gap:9px}
+.hx-ic .qb-ic{width:56px;height:56px;border-radius:14px}
+.hx-ic .qb-ic svg{width:30px;height:30px}
+/* Quests */
+.qb-sum{border-radius:4px;background:rgba(6,14,16,.85);border-color:rgba(46,230,214,.3);clip-path:var(--cut14)}
+.qb-st .ln{font-family:var(--f-num);font-weight:600;font-size:11.5px;letter-spacing:.3px}
+.qb-rc small{font-family:var(--f-num)}
+.qb-gh b::before{content:'// ';color:#5f7472}
+.card.qb-t{border-radius:4px;clip-path:var(--cut10)}
+.card.qb-t h4{font-family:var(--f-num);font-weight:700;font-size:13.5px;letter-spacing:-.1px}
+.qb-sub,.qb-note{font-family:var(--f-num)}
+.qb-badge{border-radius:2px;font-family:var(--f-num)}
+.qb-ic{border-radius:4px}
+/* quest tiles: open ones are lit panels, done ones sink into the background */
+.card.qb-t{background:linear-gradient(160deg,rgba(26,46,49,.95),rgba(12,24,26,.95));border-color:rgba(210,240,236,.14)}
+.card.qb-t.done{background:rgba(4,9,10,.6);border-color:rgba(210,240,236,.05)}
+.qb-badge.cy,.qb-badge:not(.ok){border-width:1.5px}
+.group{border-radius:3px;background:rgba(10,20,22,.85);border-color:rgba(210,240,236,.12);clip-path:var(--cut10)}
+.qb-badge,.cy-streak em,.qb-sclaim,button.claim,.set-claim{clip-path:var(--cut5);border-radius:2px !important}
+.qb-badge,.cy-streak em{border-width:1.5px !important}
+.qb-sclaim,button.claim,.set-claim{border-width:1.5px !important;box-shadow:inset 0 0 8px rgba(255,255,255,.04)}
+.qb-sclaim{background:rgba(46,230,214,.07) !important}
+/* streak (top right of a tile): the number in near-white, the reward bonus (+%) under it in the streak's colour.
+   No box, no glow. Colours follow the rarity tiers: 3+ green, 10+ blue, 30+ purple, 100+ orange, 200+ red. */
+.cy-streak{display:inline-flex;flex-direction:column;align-items:flex-end;gap:1px;line-height:1.15;color:#b9cac8;text-shadow:none}
+.cy-streak .nn{display:inline-flex;align-items:baseline;font-size:11px}
+.cy-streak .nn b{font-size:14px;font-weight:600;color:#e6efed !important;margin-right:1px}
+.cy-streak u{text-decoration:none;font:600 10.5px var(--f-num);color:rgba(var(--tc),.85)}
+.cy-streak.t0{--tc:111,133,129;color:#6f8583}
+.cy-streak.t0 .nn b{color:#8aa09e !important}
+.cy-streak.t1{--tc:63,212,122}
+.cy-streak.t2{--tc:30,164,230}
+.cy-streak.t3{--tc:180,106,224}
+.cy-streak.t4{--tc:240,138,36}
+.cy-streak.t5{--tc:255,59,59}
+/* pair groups: two side-by-side cards */
+#form .group{border-radius:10px}
+/* record card */
+/* subtle quest info button */
+/* head row: name + type tag + (i) on one line, streak / total on the right */
+/* steps / tally (built by the shared code): same idea */
+/* finished cards grey out, but the streak and its +% stay lit as a trophy */
+.card.done{filter:none !important}
+/* icons inside tips */
+.cy-tip .xp-r,.cy-tip .gold-r{display:inline-flex;align-items:center;gap:3px;font-family:var(--f-num);font-weight:700}
+.qb-tm{display:flex;flex-direction:column;gap:3px;min-width:0}
+.qb-ic.k-target,.kh-ic.k-target{background:rgba(46,230,214,.12);color:#2ee6d6}
+.qb-ic.k-bounty,.kh-ic.k-bounty{background:rgba(182,232,90,.12);color:#b6e85a}
+.qb-ic.k-avoid,.kh-ic.k-avoid{background:rgba(255,143,177,.12);color:#ff8fb1}
+.tg-orbs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 2px}
+.tg-seg{display:flex;gap:3px}
+.tg-add{display:flex;gap:6px;flex-wrap:wrap}
+.tg-add button,.av-slip{padding:4px 9px;border:1.5px solid rgba(46,230,214,.6);background:rgba(46,230,214,.06);color:#2ee6d6;font:700 11px var(--f-num);clip-path:var(--cut5)}
+.tg-in{width:70px;height:28px;padding:0 8px;border:1.5px solid #2ee6d6;background:#071114;color:#fff;font:700 12px var(--f-num)}
+.bt-due{font:600 11px var(--f-num);color:#9db2b0}
+.card.qb-t.urgent{border-color:rgba(255,59,48,.75) !important;background:linear-gradient(160deg,rgba(80,14,14,.92),rgba(26,8,8,.95)) !important;box-shadow:inset 0 0 18px rgba(255,59,48,.25)}
+.card.qb-t.urgent .bt-due{color:#ff8a7f}
+.qb-g.due .qb-gh b{color:#ff6b5e}
+.av-n{font:700 13.5px var(--f-num);color:#f2f7f6;line-height:1.25}
+.av-slip{border-color:rgba(255,107,94,.55);background:rgba(255,59,48,.06);color:#ff8a7f;margin-right:6px}
+.card.qb-t.slipped .av-n{color:#ff8a7f}
+.qb-tr .av-slip{margin-right:0}
+.vac-note{margin:10px 12px 0;padding:8px 12px;border:1px solid rgba(46,230,214,.35);background:rgba(46,230,214,.06);color:#2ee6d6;font:700 11px var(--f-num);letter-spacing:1px;text-transform:uppercase;clip-path:var(--cut7)}
+.vac-note::before{content:'// '}
+.av-foot{display:flex;align-items:center;justify-content:space-between}
+.av-foot .av-slip{margin:0}
+.sh-row3 .qb-rew.dim{opacity:.55}
+/* half-size Target: the orbs sit in the button row, so the tile is as tall as a normal quest */
+.tg-strk{justify-content:space-between;gap:8px}
+.tg-strk .tg-orbs{flex:1;min-width:0;flex-wrap:nowrap;gap:4px;margin:0}
+.tg-add .tg-minus{border-color:rgba(255,143,177,.6);color:#ff8fb1;background:rgba(255,143,177,.06)}
+.qb-badge[data-act="unslip"]{cursor:pointer}
+.card.qb-t.slipped{opacity:1}
+.card.qb-t.slipped > *:not(.qb-strk):not(.qb-tr):not(.qb-foot):not(.qb-hf){opacity:.7}
+.tg-add .tg-minus:disabled{opacity:.3}
+.qb.ar .qb-gh{margin-top:14px}
+.tg-orbs[data-act]{position:relative;cursor:pointer}
+.tg-orbs[data-act]::after{content:'';position:absolute;inset:-8px -4px}
+/* names no longer reserve two lines: a tile is as tall as it needs; side-by-side tiles still match each other's height */
+.card.qb-t h4.qb-h2{min-height:0}
+/* side-by-side tiles line up: rewards (and buttons) sit at the bottom, so a short name leaves its space above the
+   rewards and both tiles' rewards are at the same height. A tile on its own has no extra space, so nothing moves. */
+.qb-item:not(.wide) .card.qb-t > .qb-rew{margin-top:auto}
+.qb-item:not(.wide) .card.qb-t > .qb-rew + .qb-strk{margin-top:0}
+/* free placement: empty spots */
+.qb-gap{min-height:1px}
+.w-prev .wv .qb-item{display:block}
+/* every spot the same height, so the screen doesn't jump between modes */
+/* target orbs always fit next to the button (they shrink instead of overlapping) */
+.tg-strk .tg-orbs{overflow:hidden}
+.tg-strk .tg-orbs i{flex:1 1 0;min-width:0;max-width:15px}
+.wv-spot .qb-item{pointer-events:none}
+/* wide tiles: the name never runs under the streak / +% / CLAIM corner */
+.card.qb-t .qb-hd{padding-right:64px}
+.card.qb-t:has(.tl-rate) .qb-hd{padding-right:120px}
+/* bounty: due date, then clock + time left in orange */
+.bt-due{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt-left{display:inline-flex;align-items:center;gap:4px;color:#ff8a45;font-weight:700}
+.bt-clk{width:12px;height:12px;flex:none}
+.card.qb-t.urgent .bt-left{color:#ff6b5e}
+.card.qb-t.wide:has(.bt-due) .qb-hd{padding-right:72px}
+.av-slip{padding:3px 7px;font-size:10px;letter-spacing:.8px;line-height:normal}
+.qb-strk .av-slip{min-width:50px;text-align:center}
+/* bounty half: time left as a chip where other tiles show their streak */
+.bt-chip{display:inline-flex;align-items:center;gap:4px;color:#ff8a45;font:700 10.5px var(--f-num);white-space:nowrap}
+.bt-chip .bt-clk{width:12px;height:12px}
+.card.qb-t.urgent .bt-chip{color:#ff6b5e;border-color:rgba(255,59,48,.65);background:rgba(255,59,48,.1)}
+.bt-date{display:block;margin:2px 0 8px;font:600 11px var(--f-num);color:#7f9593;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qb-ring.full circle+circle{filter:drop-shadow(0 0 4px #3fd47a)}
+.qb-ring.full .qb-rc small{color:#3fd47a}
+/* ring: the count sits on the exact centre, DONE hangs underneath */
+.qb-rc{display:block}
+.qb-rc small{position:absolute;left:0;right:0;top:calc(50% + var(--rfs,20px) / 2 + 3px);text-align:center}
+.qb-fold{position:absolute;right:0;bottom:0;width:30px;height:30px;padding:0;border:0;background:none;color:rgba(210,240,236,.38);z-index:2;cursor:pointer}
+.qb-fold::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 50%,rgba(210,240,236,.07) 50%)}
+.qb-fold.open svg{transform:rotate(180deg)}
+.qb-fold:active{color:rgba(210,240,236,.7)}
+.qb-item.qb-stacked{position:relative;padding-bottom:7px;isolation:isolate}
+.qb-item.qb-stacked2{padding-bottom:14px}
+.qb-item.qb-stacked > .card{z-index:1}
+.qb-item.qb-stacked::before,.qb-item.qb-stacked::after{content:'';position:absolute;left:8px;right:8px;bottom:0;height:8px;background:#0f1d1f;border:1px solid rgba(210,240,236,.16);border-top:0;clip-path:polygon(0 0,100% 0,100% 100%,5px 100%,0 calc(100% - 5px));z-index:0}
+.qb-item.qb-stacked::after{display:none}
+.qb-item.qb-stacked2::before{bottom:7px}
+.qb-item.qb-stacked2::after{display:block;left:16px;right:16px;background:#0b1618;border-color:rgba(210,240,236,.10);z-index:-1}
+.qb-item.fol.qb-stacked::before{left:calc(22px * var(--fd, 1) + 8px)}
+.qb-item.fol.qb-stacked2::after{left:calc(22px * var(--fd, 1) + 16px)}
+.wb-top .gold-r{display:inline-flex;align-items:center;gap:3px;font:700 12px var(--f-num)}
+.wb-top .gold-r svg{width:13px;height:13px}
+/* the clock and countdown next to a bounty's due date sat a little high */
+.bt-due .bt-left{vertical-align:top}
+.bt-due .bt-clk{transform:none}
+.wt-due .bt-clk{width:12px;height:12px}
+.tally-card .tl-rew .rewards{width:auto;min-width:48px;flex-direction:column;align-items:flex-start;gap:3px !important}
+/* Recurring: same slanted segments as the other bars, thickness and colour unchanged */
+.qb-pips{gap:3px}
+.qb-pips i{border-radius:0;clip-path:polygon(1.4px 0,100% 0,calc(100% - 1.4px) 100%,0 100%)}
+.qb-pips i.on{box-shadow:none}
+.av-ms{display:flex;gap:4px;margin:8px 0 4px}
+.av-ms i{width:9px;height:9px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:rgba(255,255,255,.12)}
+.av-ms span.on i{background:#ff8fb1}
+.av-ms span.next{color:#f2f7f6;border:1px dashed rgba(255,143,177,.7)}
+.av-ms span.next i{background:none;box-shadow:inset 0 0 0 1.5px #ff8fb1}
+.av-ms.x span{opacity:.55}
+.av-next{margin-bottom:4px;font:600 11px var(--f-num);color:#9db2b0}
+.card.qb-t .qb-note{margin:3px 0 2px;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.card.qb-t:not(.wide) .qb-note{-webkit-line-clamp:2;font-size:11px}
+.card.qb-t{isolation:isolate}
+.card.qb-t > .kt{position:absolute;inset:0;pointer-events:none;z-index:-1;
+  background:linear-gradient(180deg,rgba(var(--kc),.09) 0,rgba(var(--kc),.04) 28px,rgba(var(--kc),0) 62px)}
+.qb-sumw{position:relative;z-index:3}
+.ep-lab{display:inline-flex;align-items:center}
+.ep-pop{position:absolute;left:0;right:0;top:calc(100% + 9px);z-index:8;padding:11px 12px 10px;background:linear-gradient(#112022,#0a1517);border:1px solid rgba(46,230,214,.35);border-radius:4px;
+  box-shadow:0 14px 30px rgba(0,0,0,.85),inset 0 0 0 1px #000;animation:epIn .16s ease-out;cursor:default}
+.ep-pop::before{content:'';position:absolute;top:-6px;left:calc(var(--ax,120px) - 5px);width:10px;height:10px;transform:rotate(45deg);background:#112022;border-left:1px solid rgba(46,230,214,.35);border-top:1px solid rgba(46,230,214,.35)}
+.ep-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;font:700 10.5px var(--f-num);letter-spacing:1.3px;color:#2ee6d6}
+.ep-grp{margin:9px 0 3px;font:700 9.5px var(--f-num);letter-spacing:1.4px;color:#7f9593}
+.ep-row{display:grid;grid-template-columns:10px minmax(0,1fr) 46px 46px;gap:7px;align-items:center;padding:3px 0;font:500 12px var(--f-num);color:#e9f2f0}
+.ep-row > i{width:7px;height:9px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--c)}
+.ep-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ep-x{text-align:right;font-weight:700;color:#2ee6d6}
+.ep-g{text-align:right;font-weight:700;color:#ffc94a}
+.ep-row .z{color:#4e6260}
+.ep-hd{margin-bottom:2px}
+.ep-hd .ep-ttl{font:700 10.5px var(--f-num);letter-spacing:1.3px;color:#2ee6d6}
+.ep-tot{margin-top:6px;padding-top:7px;border-top:1px solid rgba(210,240,236,.12);font-weight:700}
+.ep-empty{padding:5px 0 2px;font:500 12px var(--f-num);color:#7f9593}
+.qb-badge:not(.tl-rate){display:inline-flex;align-items:center;gap:5px;padding:3px 0 !important;border:0 !important;clip-path:none !important;
+  background:none !important;box-shadow:none !important;color:rgb(var(--kc,255,138,69));white-space:nowrap}
+/* CLAIM in the quest's own colour */
+.qb-badge:not(.tl-rate)::before{content:'';flex:none;width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 5px currentColor}
+.qb-badge.ok{color:#6f8583}
+.qb-badge.ok::before{background:#3fd47a;box-shadow:none}
+.qb-badge.cy{color:#2ee6d6}
+.qb-badge.cy::before{background:#2ee6d6;box-shadow:0 0 5px #2ee6d6}
+.qb-badge.dim{color:#5f7472}
+.qb-badge.dim::before{background:#4e6260;box-shadow:none}
+.qb-badge.red{color:#ff6b5e}
+.qb-badge.red::before{background:#ff3b30;box-shadow:0 0 5px #ff3b30}
+.qb-badge.cnt{color:rgb(var(--kc,46,230,214))}
+.qb-badge.cnt::before{background:rgb(var(--kc,46,230,214));box-shadow:0 0 5px rgba(var(--kc,46,230,214),.8)}
+.ql{display:flex;flex-direction:column;margin-top:6px}
+.ql-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid rgba(210,240,236,.08);cursor:pointer}
+.ql-ck{flex:none;width:15px;height:15px;border:1.5px solid rgba(var(--kc),.8);border-radius:3px}
+.ql-row.done .ql-ck{background:rgba(var(--kc),.42);border-color:rgba(var(--kc),.55)}
+/* filled, soft (no tick, no glow) */
+.ql-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 12.5px var(--f-num);color:#f2f7f6}
+.ql-row.done .ql-n{color:#6f8583;text-decoration:line-through;text-decoration-color:rgba(111,133,131,.6)}
+.ql-row .rewards{flex:none}
+.ql-bonus{display:flex;align-items:center;gap:9px;padding-top:9px;border-top:1px solid rgba(210,240,236,.08);font:700 11.5px var(--f-num);color:#7f9593}
+.ql-bn{flex:1;display:inline-flex;align-items:center;gap:8px}
+.ql-bn::before{content:'';width:6px;height:6px;border-radius:50%;background:#3b4b4d}
+.ql-bonus.ready{color:rgb(var(--kc));cursor:pointer}
+.ql-bonus.ready .ql-bn::before{background:rgb(var(--kc));box-shadow:0 0 7px rgb(var(--kc))}
+.ql-bonus.got{color:#6f8583}
+.ql-bonus.got .ql-bn::before{background:#3fd47a}
+/* Tally's "+5 / $10" rate stays on one line (a long note squeezed it into three) */
+.qb-tr{white-space:nowrap}
+.qb-badge.tl-rate{white-space:nowrap;flex:none}
+/* Record's button in Record purple (like Tally's ADD in Tally yellow) */
+.rec-input .rec-btn{flex:none;padding:8px 12px !important;font:700 12.5px var(--f-title) !important;letter-spacing:.8px;color:#a98bff !important;border:1px solid rgba(169,139,255,.75) !important;border-radius:4px;background:rgba(169,139,255,.09) !important;box-shadow:none !important;text-shadow:none !important}
+.rec-input .rec-btn:active{background:rgba(169,139,255,.22) !important}
+/* Typing in a tile's box (Tally's amount, Record's value): the focus outline is the quest's own colour
+   (was white on Tally, the app's orange on Record) */
+.card.qb-t .qb-in input:focus{outline:none !important;border-color:rgba(var(--kc,255,138,69),.85) !important;box-shadow:0 0 0 3px rgba(var(--kc,255,138,69),.15) !important}
+.card.qb-t > .qb-tr:not(:has(.tl-rate)){position:static}
+.card.qb-t > .qb-tr > .cy-streak{position:absolute;right:12px}
+.card.qb-t > .qb-tr > .qb-badge:not(.tl-rate){position:absolute;right:12px;bottom:12px;top:auto}
+.card.qb-t:has(> .qb-tr > .qb-badge:not(.tl-rate)) > .qb-foot{padding-right:78px;min-height:20px}
+/* List: the count (n/total) is the bottom line, its rewards on the right */
+.ql-bn{color:rgb(var(--kc));font-weight:700;letter-spacing:.8px}
+.ql-bonus.got .ql-bn{color:#6f8583}
+.ql-bonus .qb-rew{margin-left:auto}
+.av-r{display:flex;align-items:center;gap:12px;margin-left:auto}
+.av-r .qb-badge{position:static}
+.qb-hf{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:auto;flex-wrap:wrap}
+.qb-hf .qb-strk{margin:0;flex:none;gap:6px}
+.qb-hf.av-hf .qb-strk{margin-left:auto}
+.qb-item:not(.wide) .card.qb-t > .qb-hf{margin-top:auto}
+.qb-item:not(.wide) .card.qb-t > .qb-next{margin-top:auto;margin-bottom:6px}
+.qb-item:not(.wide) .card.qb-t > .qb-next + .qb-hf{margin-top:0}
+/* Recurring (red) and Counter (mint) corners */
+.cy-streak.rc{--tc:255,122,122}
+.cy-streak.rc .nn b{color:#e6efed}
+.cy-streak.cn u{font-weight:600}
+.cy-streak.cn .nn b{font-size:15px}
+.qb-next.cn-today{color:#8fa6a3}
+.qb-ic.k-counter,.kh-ic.k-counter{background:rgba(77,208,160,.13);color:#4dd0a0}
+.qb-item:not(.wide) .card.qb-t > .qb-hf + .tg-row{margin-top:8px;justify-content:flex-start}
+.cn-ms{display:flex;align-items:center;gap:8px;margin-top:2px}
+.cn-ms .tg-seg{flex:1}
+.cn-ms .tg-seg i.on{background:#4dd0a0}
+.qb-foot .qb-next.cn-today{margin-left:auto}
+.cy-streak.cn u{font-size:11px;color:#8fa6a3}
+.cy-streak.cn u b{font:700 13.5px/1.25 var(--f-num);color:#f2f7f6;margin-right:2px}
+/* no boxes: Tally's rate, a Bounty's timer */
+.qb-badge.tl-rate{border:0 !important;background:none !important;clip-path:none !important}
+.bt-chip{border:0 !important;background:none !important;clip-path:none;padding:3px 0}
+/* a bounty that is due soon: a red warning sign in the corner */
+.card.qb-t > .qb-tr > .bt-warn{position:absolute;right:12px;display:grid;place-items:center;color:#ff6b5e}
+/* Full tiles: the corner count sits on the name's line, and the empty top-right box adds no gap above the icon (same 13px as Tally) */
+.card.qb-t > .qb-tr:not(:has(.tl-rate)){margin-bottom:-7px}
+.card.qb-t > .qb-tr > .cy-streak{top:13px;height:40px;justify-content:center}
+/* the corner count lines up with the name / icon centre */
+.card.qb-t > .qb-tr > .cy-streak,.card.qb-t > .qb-tr > .bt-warn{top:12px;height:32px}
+.cy-streak.cn{justify-content:center;line-height:1}
+.cy-streak.cn u{display:block;line-height:1}
+.cy-streak.cn u b{line-height:1;vertical-align:baseline}
+.tg-ms .tg-seg i.on{background:#2ee6d6}
+.tg-seg.full i.on{background:#ffd27a;box-shadow:0 0 7px rgba(255,210,122,.6)}
+.tg-ms[data-act]{cursor:pointer}
+/* due-soon sign: smaller, on the name's line (gone once the bounty is overdue) */
+.card.qb-t > .qb-tr > .bt-warn{top:13px;height:20px}
+/* bar thickness: Recurring, Counter and Target share the thin one (4px); Tally keeps the thicker 6px */
+.cn-ms .tg-seg i,.tg-ms .tg-seg i{height:4px}
+/* Tally's rate: on the name's line, in Tally's colour */
+.card.qb-t > .qb-tr:has(.tl-rate){right:12px}
+.qb-badge.tl-rate{padding:0 !important}
+/* Tally's rate: on the name's line, in Tally's colour */
+.card.qb-t > .qb-tr:has(.tl-rate){top:12px;height:32px;align-items:center}
+.qb-badge.tl-rate{color:#ffc94a !important;display:inline-flex;align-items:center;gap:7px}
+.qb-badge.tl-rate svg{width:13px;height:13px;margin-right:2px;vertical-align:-2px}
+.qb-badge.tl-rate .xp-r{color:#2ee6d6}
+.cc-pay .rewards{display:flex;gap:10px;align-items:center;margin:0;padding:0;flex-direction:row}
+/* tiles and buttons dip a little under your finger */
+:is(.card.qb-t,.sh-row,.sh-buy,.btn-main,.btn-plain,.post,.cc-chip,.pk-tile,.set-claim,.hx-undo,.chip,.open-all,.qb-badge,.av-slip,.rec-btn,.tl-add){transition:transform .12s ease-out,filter .12s}
+:is(.card.qb-t,.sh-row):active{transform:scale(.985)}
+/* Reduce effects: the motion pass is off (old look) */
+.reduce-fx :is(.card.qb-t,.sh-row,.sh-buy,.btn-main,.btn-plain,.post,.cc-chip,.pk-tile,.set-claim,.hx-undo,.chip,.open-all,.av-slip,.rec-btn,.tl-add):active{transform:none;filter:none}
+.qb-sumw .et{font-style:normal}
+:is(.card.qb-t,.sh-row,.sh-buy,.btn-main,.btn-plain,.post,.cc-chip,.pk-tile,.set-claim,.hx-undo,.chip,.open-all,.av-slip,.rec-btn,.tl-add){transition:transform var(--t-fast) var(--e-arrive),filter var(--t-fast)}
+.dl-f .rewards,.dl-row .rewards{display:inline-flex;margin:0 !important;gap:8px}
+.hud-rate .xp-r{color:#2ee6d6}
+.hud-rate .gold-r{color:#ffc94a}
+.mkt .mkt-stub .qb-time{flex-direction:column;gap:2px}
+.mkt .mkt-stub .qb-time { margin: 0px; font-size: 12px; justify-content: center; }
+/* merged reward chip (XP = gold): gem + coin + one number */
+.rw-both{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.rw-both svg:first-child{color:var(--teal)}
+.rw-both svg:nth-child(2){color:var(--gold)}
+.rw-both b{margin-left:0;font-weight:inherit;background:linear-gradient(90deg,#4fe6d8,#f5c542);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.rewards .rw-both{gap:3px}
+.tl-rew .rewards.same,.bonus > .rewards.same{justify-content:center;align-items:flex-start}
+.hud-rate .rw-both svg{width:12px;height:12px}
+.qb-foot .qb-sub{margin-left:auto;text-align:right}
+.ep-lab{gap:4px}
+@keyframes sheen{to{background-position:-40% 0}}
+@keyframes cardGlow{0%{box-shadow:0 0 0 1px #ffc49a,0 0 34px 6px rgba(var(--acc-rgb),.45)}100%{}}
+@keyframes epIn{from{opacity:0;transform:translateY(-4px)}}

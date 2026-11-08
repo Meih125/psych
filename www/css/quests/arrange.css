@@ -1,0 +1,23 @@
+/* arrange styles. */
+.ar-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.ar-t,.ar-ph{position:relative;min-height:66px;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.ar-t{display:flex;flex-direction:column;justify-content:space-between;gap:8px;padding:10px 11px 9px;background:rgba(20,36,38,.85);border:1.5px dashed rgba(46,230,214,.32);touch-action:pan-y}
+.ar-t.w,.ar-ph.w{grid-column:span 2}
+.ar-n{font:700 13.5px var(--f-num);color:#f2f7f6;padding-right:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ar-grip{position:absolute;right:4px;top:4px;width:30px;height:30px;touch-action:none;cursor:grab}
+.ar-grip::before{content:'';position:absolute;right:8px;top:7px;width:9px;height:14px;background:radial-gradient(circle,#ff6b1a 1.4px,transparent 1.7px) 0 0/4.5px 4.7px}
+.ar-ft{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.ar-k{font:700 10px var(--f-num);letter-spacing:.08em;color:var(--kc);opacity:.9;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ar-sz{display:flex;flex:none;border:1px solid rgba(255,255,255,.14)}
+.ar-sz button{padding:3px 6px;border:0;background:none;color:#5f7472;font:700 9.5px var(--f-num);letter-spacing:.04em}
+.ar-al{flex:none;font:700 9px var(--f-num);letter-spacing:.06em;color:#5f7472}
+.ar-t.drag{border-style:solid;border-color:#ff6b1a;background:#16282a;box-shadow:0 12px 26px rgba(0,0,0,.6);transform:scale(1.03) rotate(-1deg)}
+.ar-ph{border:1.5px dashed rgba(255,107,26,.6);background:rgba(255,107,26,.06)}
+.ar-t.pin{border:1.5px solid rgba(255,59,48,.75);background:linear-gradient(120deg,rgba(255,59,48,.16),rgba(20,36,38,.85) 70%)}
+.ar-slot{min-height:66px;border:1.5px dashed rgba(255,255,255,.1);display:grid;place-items:center;font:600 11px var(--f-num);color:#4e6260;letter-spacing:.06em;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.ar-slot.w{grid-column:span 2;min-height:44px}
+.ar-slot.hov,.ar-t.hov{border:1.5px dashed #ff6b1a;background:rgba(255,107,26,.08);color:#ff8a45}
+.ar-ph{opacity:.4}
+.ar-slot.add{font-size:22px;font-weight:400;color:#5f7472}
+.ar-t{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab}
+.ar-t.fol{margin-left:calc(22px * var(--fd, 1))}

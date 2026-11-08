@@ -29,7 +29,8 @@
 
 | Update | Released | What changed |
 |:---:|:---:|:---:|
-| **[v1.3.1](https://github.com/Meih125/psych/releases/tag/v1.3.1)** (latest) | Nov 5, 2026 | **[Patch notes](docs/patch-notes/v1.3.1.md)** |
+| **[v1.4.0](https://github.com/Meih125/psych/releases/tag/v1.4.0)** (latest) | Nov 8, 2026 | **[Patch notes](docs/patch-notes/v1.4.0.md)** |
+| [v1.3.1](https://github.com/Meih125/psych/releases/tag/v1.3.1) | Nov 5, 2026 | [Patch notes](docs/patch-notes/v1.3.1.md) |
 | [v1.3.0](https://github.com/Meih125/psych/releases/tag/v1.3.0) | Nov 2, 2026 | [Patch notes](docs/patch-notes/v1.3.0.md) |
 | [v1.2.1](https://github.com/Meih125/psych/releases/tag/v1.2.1) | Nov 1, 2026 | [Patch notes](docs/patch-notes/v1.2.1.md) |
 | [v1.2.0](https://github.com/Meih125/psych/releases/tag/v1.2.0) | Oct 29, 2026 | [Patch notes](docs/patch-notes/v1.2.0.md) |
@@ -76,7 +77,7 @@ npm run open
 ## Project layout
 
 ```
-www/            the app itself (index.html, app.css, app.js, fonts, images)
+www/            the app itself (index.html, css/, js/, fonts, images)
 assets/         app icon sources
 scripts/        build helpers (minimum Android version, widgets, app icon, version number)
 tools/          preview builder and test data (not part of the app)

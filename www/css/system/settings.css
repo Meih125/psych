@@ -1,0 +1,29 @@
+/* settings styles. */
+.sync-status{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:15px}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px}
+.field > label.toggle{display:flex;margin:0;color:inherit;font-size:inherit}
+.toggle input{position:absolute;opacity:0;pointer-events:none}
+.toggle i::after{content:'';position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;transition:.2s}
+.toggle input:checked + i::after{left:21px}
+.danger-block{margin-top:16px;padding:12px}
+.toggle i::after{background:#7f9593}
+.danger-block{border-radius:var(--r);border:1px solid rgba(var(--red-rgb),.25);background:rgba(var(--red-rgb),.05)}
+/* options toggles as a soft panel */
+#form .toggle{padding:12px 14px;border-radius:8px}
+/* toggles in the HUD look, normal case */
+.toggle{border-radius:3px !important;background:rgba(6,14,16,.85) !important;border:1px solid rgba(46,230,214,.25) !important;clip-path:var(--cut7)}
+.field > label.toggle,.toggle > span{text-transform:none !important;letter-spacing:.2px !important}
+.toggle > span{font:600 13.5px var(--f-num) !important;color:#e9f2f0 !important}
+.toggle input:checked + i{background:rgba(46,230,214,.25);border-color:rgba(46,230,214,.7);box-shadow:0 0 12px rgba(46,230,214,.45)}
+/* glow matches the cyan switch, not orange */
+.toggle input:checked + i::after{background:#2ee6d6}
+#resetProgress{text-transform:uppercase;letter-spacing:1.2px}
+.toggle > span:has(#fStreakInfo){display:inline-flex;align-items:center}
+.up-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.up-v{font:600 13.5px var(--f-body);color:#e9f2f0}
+.up-v small.up-new{color:#2ee6d6}
+.up-notes{margin:10px 0 0;padding:10px 12px 10px 28px;border:1px solid rgba(46,230,214,.18);background:rgba(46,230,214,.04);font:500 12.5px/1.5 var(--f-body);color:#b9cbc9}
+.up-notes[hidden]{display:none}
+.up-banner{margin:0 0 10px;padding:10px 12px;display:flex;align-items:center;gap:10px;border:1px solid rgba(46,230,214,.35);background:rgba(46,230,214,.07);clip-path:var(--cut7)}
+.up-banner span{flex:1;min-width:0;font:500 12.5px var(--f-body);color:#cfdedc}
+.up-x{flex:none;padding:0 4px;border:0;background:none;color:#7f9593;font-size:20px;line-height:1}

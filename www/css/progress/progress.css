@@ -1,0 +1,90 @@
+/* progress styles. */
+.stat{color:var(--bone-dim)}
+.tally-card .stat{margin-top:10px}
+/* progress tab */
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.sum div{padding:8px 4px;text-align:center;border-radius:2px;background:rgba(0,0,0,.42);box-shadow:inset 0 1px 3px #000,0 1px 0 rgba(210,240,236,.12)}
+.chart{display:block;width:100%;height:auto;margin-top:14px}
+/* progress: quest selector + history */
+.chips{display:flex;gap:6px;overflow-x:auto;padding:12px 14px 0;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:7px 12px;white-space:nowrap}
+.sum.four{grid-template-columns:repeat(4,1fr)}
+.sum.four b{font-size:14px}
+.dayinfo{margin-top:10px;padding:9px 11px;border-radius:2px;background:rgba(0,0,0,.45);box-shadow:inset 0 1px 3px #000,0 1px 0 rgba(210,240,236,.12);font-size:14.5px;color:var(--bone-dim)}
+.log-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 2px}
+.log-row:last-child{border:0;box-shadow:none}
+.log-l{min-width:0}
+.log-l div{font-size:15px}
+.log-l small{font-size:13px;color:var(--bone-dim)}
+.stat{margin-top:2px}
+.prog-menu{position:absolute;width:40px;height:40px;display:grid;place-items:center}
+.prog-menu[hidden]{display:none}
+.prog-pop{position:absolute;right:14px;z-index:8;width:min(290px,calc(100vw - 28px));max-height:60vh;overflow:auto;padding:12px 13px 8px;text-align:left;display:none}
+/* tags always sit on their own small line above the quest name, on every screen width */
+.q-top{display:flex !important;flex-wrap:wrap;align-items:center;gap:3px 5px;margin-bottom:1px}
+.q-top h3{order:2;flex-basis:100%;display:block !important}
+.q-top .tag{order:1;margin-left:0 !important;vertical-align:0}
+.q-top > :not(h3):not(.tag){order:3}
+.tag.rose{color:#f08aa8;border-color:rgba(240,138,168,.38);background:rgba(240,138,168,.07)}
+.stat{font-family:var(--f-body);font-size:12.5px}
+.log-row{border-bottom:1px solid var(--line);box-shadow:none}
+.log-row:last-child{border-bottom:0}
+.sum div,.dayinfo{border-radius:4px;background:rgba(255,255,255,.04);border:1px solid var(--line);box-shadow:none}
+.chart text{font-family:'JetBrains Mono',monospace}
+.chip{border-radius:4px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:#a9bcba;font-family:var(--f-title);font-weight:600;font-size:12.5px}
+.chip.on{color:#ff8a45;border-color:rgba(var(--acc-rgb),.6);background:rgba(255,255,255,.07);box-shadow:none}
+/* shop info button: soft teal glass */
+/* Progress list button + popup */
+.prog-menu{top:16px;right:16px;border-radius:5px;border:1px solid var(--line-hi);background:rgba(150,195,195,.08);color:#cfdedc}
+.prog-menu:active{color:#ff8a45;border-color:rgba(var(--acc-rgb),.6)}
+.prog-pop{top:62px;border-radius:var(--r);background:rgba(14,26,28,.97);border:1px solid var(--line-hi);box-shadow:0 18px 40px rgba(0,0,0,.6)}
+.hx .dayinfo{margin-top:10px}
+/* show/hide dialog, centred like quest edit */
+.prog-pop.open{position:fixed !important;inset:0 !important;top:0 !important;right:0 !important;width:auto !important;max-height:none !important;z-index:40;display:grid !important;place-items:center;padding:16px;background:rgba(2,6,7,.6) !important;border:0 !important;box-shadow:none !important;border-radius:0 !important;overflow:auto}
+.pp-dlg{width:min(352px,100%);max-height:84vh;overflow:auto;padding:16px;border-radius:14px;border:1px solid var(--line-hi);background:rgba(13,24,26,.98);box-shadow:0 24px 60px rgba(0,0,0,.6);animation:pop .2s ease-out}
+.pp-tt{display:flex;justify-content:space-between;align-items:center}
+.pp-tt span{font:600 12px var(--f-num);color:#7f9593}
+.pp-qa{display:flex;gap:8px;margin:12px 0 2px}
+.pp-qa button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);font:600 12px var(--f-title);color:#cfdedc}
+.pp-gl{margin:12px 0 2px;font:700 11px var(--f-title);letter-spacing:1.3px;color:#7f9593;}
+.pp-sw{display:grid;grid-template-columns:8px 1fr auto;gap:11px;align-items:center;padding:9px 2px;border-bottom:1px solid rgba(210,240,236,.06);cursor:pointer}
+.pp-sw .d{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.pp-sw span{font:600 14px var(--f-title);color:#e9f2f0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-sw.off span{color:#5f7472}
+.pp-sw input{position:absolute;opacity:0;pointer-events:none}
+.pp-sw .sw{width:40px;height:23px;border-radius:12px;background:rgba(255,255,255,.1);position:relative;transition:background .2s}
+.pp-sw .sw::after{content:'';position:absolute;left:3px;top:3px;width:17px;height:17px;border-radius:50%;background:#7f9593;transition:.2s}
+.pp-sw input:checked + .sw{background:rgba(46,230,214,.35)}
+.pp-sw input:checked + .sw::after{left:20px;background:#2ee6d6;box-shadow:0 0 8px #2ee6d6}
+.pp-done{display:block;width:100%;margin-top:14px;padding:11px;border-radius:9px;border:1px solid rgba(var(--acc-rgb),.7);background:rgba(var(--acc-rgb),.08);color:#ff8a45;font:700 14px var(--f-title)}
+.shx{display:flex;flex-direction:column;gap:12px;padding:6px 14px 4px;font-family:var(--f-num)}
+.sh-cols{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;padding:10px 12px 0;touch-action:pan-y}
+.pv-in-r{animation:pvR .28s cubic-bezier(.2,.9,.3,1)}
+.pv-in-l{animation:pvL .28s cubic-bezier(.2,.9,.3,1)}
+.sh-col{display:flex;flex-direction:column;align-items:stretch;gap:5px;min-width:0}
+.sh-col.tap{cursor:pointer}
+.sh-col.tap:active{transform:scale(.96)}
+.hud-chips .chip{border-radius:3px;font:600 11.5px var(--f-num);letter-spacing:.6px;text-transform:uppercase;background:rgba(6,14,16,.85);border:1px solid rgba(46,230,214,.22);color:#8fa8a5;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))}
+.hud-chips .chip.on{color:#2ee6d6;border-color:rgba(46,230,214,.75);background:rgba(46,230,214,.1);box-shadow:inset 0 0 10px rgba(46,230,214,.18);text-shadow:0 0 8px rgba(46,230,214,.5)}
+.hud-chips .chip.s{color:#ffd877;border-color:rgba(232,185,74,.7);background:rgba(232,185,74,.08);text-shadow:0 0 8px rgba(232,185,74,.5);animation:sgPulse 2.4s ease-in-out infinite}
+.hud-chips .chip.s.on{background:rgba(232,185,74,.16)}
+.reduce-fx .hud-chips .chip.s{animation:none}
+.cc-pv img.bk{filter:none}
+/* gold border only when Reduce effects is on; default has a transform-only shine (::after) */
+.hud-chips .chip.s,.hud-wk button.s{animation:none !important;position:relative;box-shadow:inset 0 0 8px rgba(232,185,74,.3),inset 0 0 0 1px rgba(232,185,74,.6)}
+.hud-chips .chip.s::after,.hud-wk button.s::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 16px rgba(232,185,74,.5),inset 0 0 0 1.5px rgba(247,224,138,.95);opacity:0;animation:sgFade 2.4s ease-in-out infinite}
+.reduce-fx .hud-chips .chip.s::after,.reduce-fx .hud-wk button.s::after{animation:none;display:none}
+/* "Claimed?" on a day with nothing claimed */
+.dayinfo.di-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.di-claim{flex:none;padding:6px 12px;border:1px solid rgba(63,212,122,.75);background:rgba(63,212,122,.14);color:#6ff0a0;font:700 12px var(--f-num);letter-spacing:.5px;border-radius:3px;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);cursor:pointer}
+.di-claim:active{filter:brightness(1.25);transform:scale(.96)}
+.pvl{touch-action:pan-y}
+/* Record's Progress page: sideways swipes reach the quest swipe instead of the browser */
+/* List quest, forgotten day: tick what you did */
+.dayinfo.di-list{display:block}
+.di-claim:disabled{opacity:.4;pointer-events:none}
+@keyframes pvR{from{transform:translateX(60px);opacity:0}to{transform:none;opacity:1}}
+@keyframes pvL{from{transform:translateX(-60px);opacity:0}to{transform:none;opacity:1}}
+@keyframes sgPulse{0%,100%{box-shadow:inset 0 0 6px rgba(232,185,74,.25),inset 0 0 0 1px rgba(232,185,74,.55)}50%{box-shadow:inset 0 0 16px rgba(232,185,74,.5),inset 0 0 0 1.5px rgba(247,224,138,.95)}}
+@keyframes sgFade{50%{opacity:1}}

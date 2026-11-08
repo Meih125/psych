@@ -1,0 +1,180 @@
+/* market styles. */
+.mkt-grid { align-items: start; gap: 12px !important; }
+.mkt-cell { display: flex; flex-direction: column; gap: 8px; min-width: 0px; }
+.mkt-art { position: relative; }
+.mkt-price { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-width: 0px; padding: 7px 6px; border: 1.5px solid rgba(255, 201, 74, 0.78); background: rgba(255, 201, 74, 0.08); box-shadow: rgba(255, 201, 74, 0.13) 0px 0px 10px inset; clip-path: var(--cut7); color: rgb(242, 247, 246); font: 700 14px var(--f-num); cursor: pointer; }
+.mkt-price svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.mkt-price.short { opacity: 0.5; border-color: rgba(255, 201, 74, 0.4); box-shadow: none; background: none; }
+.mkt-row { display: flex; gap: 6px; align-items: stretch; }
+.mkt-row .mkt-price { flex: 1 1 0%; }
+.mkt-fz { flex: 0 0 auto; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(143, 217, 207, 0.4); background: rgba(6, 18, 22, 0.82); color: rgb(143, 217, 207); cursor: pointer; padding: 0px; }
+.mkt-fz svg { width: 15px; height: 15px; }
+.mkt-fz.on { border-color: rgb(127, 240, 255); color: rgb(127, 240, 255); background: rgba(46, 230, 214, 0.16); box-shadow: rgba(46, 230, 214, 0.5) 0px 0px 8px; }
+.mkt-rim{position:absolute;inset:-5px;border:1.5px solid rgb(127, 240, 255);border-radius:8px;opacity:0;pointer-events:none;z-index:3}
+.ice .mkt-rim { opacity: 1; }
+.mkt-bd { padding: 2px 12px 14px; transform-origin: 50% 0px; }
+.mkt-fz.pop { animation: 0.32s cubic-bezier(0.3, 1.4, 0.5, 1) 0s 1 normal none running fzPop; }
+.mkt-rim { border-width: 1px; box-shadow: rgba(46, 230, 214, 0.4) 0px 0px 8px; transition: opacity 0.3s; }
+.go .mkt-rim { animation: 0.45s cubic-bezier(0.3, 1.4, 0.5, 1) 0s 1 normal none running zPop; }
+.reduce-fx .mkt-rim, .reduce-fx .mkt-fz { transition: none; animation: auto ease 0s 1 normal none running none !important; }
+.sh .mkt-cell .mkt-row { transition: opacity 0.25s; }
+.sh .mkt-cell.sold .mkt-row { opacity: 1; }
+.sh .mkt-art.lift { transform: translateY(-5px) scale(1.07); transition: transform 0.14s ease-out; }
+.sh .mkt-art { transition: transform 0.2s ease-in; }
+.sh .mkt-cell[data-r] .mkt-art { --g: 0; }
+.sh .mkt-cell { --rc: #3fd47a; --lc: #6cf2a4; }
+.sh .mkt-cell[data-r="rare"] { --rc: #1ea4e6; --lc: #6fd0ff; }
+.sh .mkt-cell[data-r="legendary"] { --rc: #f08a24; --lc: #ffb15a; }
+.sh .mkt-cell[data-r="ultimate"] { --rc: #e0323d; --lc: #ff6a62; }
+.sh .mkt-row { margin-top: 22px; }
+.sh .mkt-art.ice .lt { filter: none; }
+.sh .mkt-cell { position: relative; isolation: isolate; }
+.mkt-ent { position: relative; display: flex; align-items: center; gap: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mkt-t { min-width: 0px; }
+.mkt-t b { display: block; font: 800 13px var(--f-title); letter-spacing: .4px; color: #f2f7f6; }
+.mkt .mkt-bd { position: relative; }
+.mkt .mkt-grid { margin: 0px; }
+.mkt .mkt-grid { grid-template-columns: minmax(0,1fr) minmax(0,1.25fr) minmax(0,1fr); gap: 0px 10px; align-items: start; padding: 0px 10px; }
+.mkt .mkt-cell { position: relative; }
+.mkt .mkt-grid.n3 .mkt-cell:nth-child(2) { z-index: 3; }
+.mkt .mkt-grid.n3 .mkt-cell:nth-child(2)::before { content: ""; position: absolute; inset: -26px -26px 10px; z-index: -1; background: radial-gradient(closest-side,color-mix(in srgb,var(--rc) 34%,transparent),transparent); pointer-events: none; }
+.mkt .mkt-grid.n3 .mkt-cell:nth-child(1) { margin-top: 40px; z-index: 1; }
+.mkt .mkt-grid.n3 .mkt-cell:nth-child(3) { margin-top: 40px; z-index: 1; }
+.mkt .mkt-grid.n3 .mkt-cell:nth-child(1) .mkt-art { transform: rotate(-8deg); transform-origin: 50% 115%; }
+.mkt .mkt-grid.n3 .mkt-cell:nth-child(3) .mkt-art { transform: rotate(8deg); transform-origin: 50% 115%; }
+.mkt .mkt-grid.n3 .mkt-cell:nth-child(1) .mkt-row, .mkt .mkt-grid.n3 .mkt-cell:nth-child(3) .mkt-row{margin-top:30px}
+.mkt .mkt-grid.n3 .mkt-cell:nth-child(2) .mkt-row { margin-top: 26px; }
+.mkt-row .mkt-fz { flex: 0 0 auto; align-self: stretch; width: 38px; height: auto; min-height: 32px; border-radius: 0px; clip-path: var(--cut7); border: 1.5px solid rgba(46, 230, 214, 0.6); background: rgba(46, 230, 214, 0.07); box-shadow: rgba(46, 230, 214, 0.12) 0px 0px 10px inset; color: rgb(127, 240, 255); }
+.mkt-row .mkt-fz svg { width: 16px; height: 16px; }
+.mkt-row .mkt-fz.on { border-color: rgb(127, 240, 255); background: rgba(46, 230, 214, 0.26); box-shadow: rgba(46, 230, 214, 0.5) 0px 0px 12px inset; color: rgb(217, 255, 251); }
+.mkt .mkt-ent { --n: 9px; --st: 96px; display: grid; grid-template-columns: 146px 1fr var(--st); align-items: center; min-height: 112px; padding: 0px; gap: 0px; background: none; mask: none; border-radius: 0px; isolation: isolate; }
+.mkt .mkt-t { padding-left: 6px; }
+.mkt .mkt-t b { font-size: 20px; letter-spacing: .6px; }
+.mkt .mkt-stub { width: auto; align-self: stretch; border: 0px; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+.mkt .mkt-stub small { font: 700 9px var(--f-num); letter-spacing: 1.8px; color: rgb(127, 240, 255); }
+.mkt .mkt-bd{margin-top:8px;padding:24px 10px 12px;border:0px;border-radius:6px}
+.mkt .mkt-stk { display: flex; align-items: center; margin: 0px 0px 0px 8px; position: relative; z-index: 2; }
+.mkt-bd[hidden]{display:none}
+.mkt .mkt-bd{background:radial-gradient(70% 55% at 50% 36%,rgba(var(--hr,46,230,214),.22),transparent 72%),radial-gradient(65% 60% at 0% 0%,rgba(46,230,214,.20),transparent 70%),radial-gradient(60% 60% at 100% 100%,rgba(255,184,58,.11),transparent 70%),linear-gradient(180deg,rgba(46,230,214,.07),transparent 60%),rgba(10,19,21,.96)!important}
+.mkt-say{display:block;margin-top:5px;font:600 11.5px var(--f-title);color:#9db2b0;letter-spacing:.2px}
+.mkt-fly{position:fixed;z-index:300;pointer-events:none;border-radius:4px;overflow:hidden;will-change:transform,opacity}
+.mkt-fly img{width:100%;height:100%;object-fit:cover;display:block}
+.mkt-up{position:absolute;left:50%;top:-6px;margin-left:6px;font:800 14px var(--f-num);letter-spacing:.3px;color:var(--c);text-shadow:0 0 6px var(--c),0 1px 2px #000,0 0 2px #000;pointer-events:none;white-space:nowrap;animation:plusUp .95s ease-out forwards}
+.mkt-up[data-k="common"]{--c:#3fd47a}
+.mkt-up[data-k="rare"]{--c:#35b4f2}
+.mkt-up[data-k="epic"]{--c:#c474e6}
+.mkt-up[data-k="legendary"]{--c:#f59a3a;font-size:15px}
+.mkt-up[data-k="ultimate"]{--c:#f2404c;font-size:17px;text-shadow:0 0 8px #f2404c,0 0 14px #ff8f86,0 1px 2px #000}
+.reduce-fx .mkt-up{display:none}
+/* Market buttons: the outline runs all the way round (cut corners included) and stays solid when the side ones are tilted */
+.mkt .mkt-row .mkt-price,.mkt .mkt-row .mkt-fz{position:relative;isolation:isolate;border:0;border-radius:0;clip-path:none;background:none;box-shadow:none;--bc:rgba(255,201,74,.78);--fl:rgba(255,201,74,.09);filter:drop-shadow(0 0 5px rgba(255,201,74,.18))}
+.mkt .mkt-row .mkt-price::before,.mkt .mkt-row .mkt-fz::before{content:'';position:absolute;inset:0;z-index:-2;background:var(--bc);clip-path:var(--cut7)}
+.mkt .mkt-row .mkt-price::after,.mkt .mkt-row .mkt-fz::after{content:'';position:absolute;inset:1.5px;z-index:-1;background:linear-gradient(var(--fl),var(--fl)),#0b1517;clip-path:polygon(0 0,calc(100% - 6.1px) 0,100% 6.1px,100% 100%,6.1px 100%,0 calc(100% - 6.1px))}
+.mkt .mkt-row .mkt-price.short{opacity:1;filter:none}
+.mkt .mkt-row .mkt-price.short>*{opacity:.5}
+.mkt .mkt-row .mkt-fz.on{color:#d9fffb}
+.mkt .mkt-grid.n3 .mkt-cell:nth-child(1) .mkt-row{--tl:-8deg}
+.mkt .mkt-grid.n3 .mkt-cell:nth-child(3) .mkt-row{--tl:8deg}
+/* Market: smaller hand, fewer cards, owned button, slow bob */
+.mkt .mkt-grid.n2{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:0 62px;gap:6px;align-items:start}
+.mkt .mkt-grid.n2 .mkt-cell{margin-top:26px}
+.mkt .mkt-grid.n2 .mkt-cell:nth-child(1) .mkt-art{transform:rotate(-5deg);transform-origin:50% 115%}
+.mkt .mkt-grid.n2 .mkt-cell:nth-child(2) .mkt-art{transform:rotate(5deg);transform-origin:50% 115%}
+.mkt .mkt-grid.n2 .mkt-row{margin-top:30px}
+.mkt .mkt-grid.n2 .mkt-cell:nth-child(1) .mkt-row{--tl:-5deg}
+.mkt .mkt-grid.n2 .mkt-cell:nth-child(2) .mkt-row{--tl:5deg}
+.mkt .mkt-grid.n1{grid-template-columns:minmax(0,1fr);padding:0 118px}
+.mkt .mkt-grid.n1 .mkt-cell{margin-top:8px}
+.mkt .mkt-grid.n1 .mkt-row{margin-top:26px}
+.mkt .mkt-grid.n1 .mkt-cell::before{content:"";position:absolute;inset:-26px -26px 10px;z-index:-1;background:radial-gradient(closest-side,color-mix(in srgb,var(--rc) 34%,transparent),transparent);pointer-events:none}
+.mkt .mkt-row .mkt-owned{flex:1 1 0;min-width:0;position:relative;isolation:isolate;border:0;border-radius:0;background:none;clip-path:none;--bc:rgba(157,178,176,.32);--fl:rgba(255,255,255,.03);color:#9db2b0;font:700 12px var(--f-num);letter-spacing:1.6px;text-transform:uppercase;opacity:.75;cursor:default}
+.mkt .mkt-row .mkt-owned::before{content:'';position:absolute;inset:0;z-index:-2;background:var(--bc);clip-path:var(--cut7)}
+.mkt .mkt-row .mkt-owned::after{content:'';position:absolute;inset:1.5px;z-index:-1;background:linear-gradient(var(--fl),var(--fl)),#0b1517;clip-path:polygon(0 0,calc(100% - 6.1px) 0,100% 6.1px,100% 100%,6.1px 100%,0 calc(100% - 6.1px))}
+.mkt.open .mkt-art:not(.sold){animation:mkBob 5s ease-in-out infinite alternate}
+.reduce-fx .mkt .mkt-art{animation:none!important}
+/* more room for 3-digit prices: the cards are narrower than their column, the buttons use the whole column */
+.mkt .mkt-grid.n3 .mkt-art{width:84%;margin-inline:auto}
+.mkt .mkt-grid.n3 .mkt-cell:nth-child(1) .mkt-row,.mkt .mkt-grid.n3 .mkt-cell:nth-child(3) .mkt-row{padding:0}
+.mkt .mkt-row .mkt-price{padding:7px 3px;gap:4px}
+.mkt .mkt-row .mkt-price svg{width:15px;height:15px}
+.sh .mkt-cell[data-r="epic"]{--rc:#b968da;--lc:#dba0f5}
+/* header cards centred when there are fewer than three */
+.mkt-stk.n1,.mkt-stk.n2{justify-content:center;margin-left:0;margin-right:8px}
+.mkt.open .mkt-art:not(.sold){animation-duration:3.4s}
+.mkt.open .mkt-cell:nth-child(2) .mkt-art:not(.sold){animation-duration:4.2s;animation-delay:-1.4s}
+.mkt.open .mkt-cell:nth-child(3) .mkt-art:not(.sold){animation-duration:3.8s;animation-delay:-2.6s}
+/* Market buttons = the Shop-list button recipe (1px outline, soft fill, inner glow, cut corners), outline kept solid when tilted */
+.mkt .mkt-row .mkt-price{filter:none;font:700 14px var(--f-num)}
+.mkt .mkt-row .mkt-fz{filter:none}
+.mkt .mkt-row .mkt-price::after,.mkt .mkt-row .mkt-fz::after,.mkt .mkt-row .mkt-owned::after{inset:1px;box-shadow:inset 0 0 10px var(--gl,transparent)}
+.mkt .mkt-row .mkt-price span{color:#f2f7f6}
+.mkt .mkt-row .mkt-price.short{--gl:transparent}
+.mkt .mkt-row .mkt-price{--bc:rgba(255,201,74,.75);--fl:rgba(255,201,74,.09);--gl:transparent;color:rgb(255,201,74)}
+.mkt .mkt-row .mkt-fz{--bc:rgba(46,230,214,.75);--fl:rgba(46,230,214,.09);--gl:transparent}
+.mkt .mkt-row .mkt-fz.on{--bc:#7ff0ff;--fl:rgba(46,230,214,.26);--gl:transparent}
+.mkt .mkt-row .mkt-price::after,.mkt .mkt-row .mkt-fz::after,.mkt .mkt-row .mkt-owned::after{clip-path:polygon(0 0,calc(100% - 4.4px) 0,100% 4.4px,100% 100%,4.4px 100%,0 calc(100% - 4.4px))}
+/* Market buttons, exactly the Claim recipe: a real 1px border + soft fill + 5px cut corners (crisp text, nothing layered behind it) */
+.mkt .mkt-row .mkt-price::before,.mkt .mkt-row .mkt-price::after,.mkt .mkt-row .mkt-fz::before,.mkt .mkt-row .mkt-fz::after,.mkt .mkt-row .mkt-owned::before,.mkt .mkt-row .mkt-owned::after{content:none;display:none}
+.mkt .mkt-row .mkt-price.short{--bc:rgba(255,201,74,.3);--fl:transparent}
+/* the cut-corner clip reaches 2px past the straight edges so the 1px border is never half-clipped (it looked broken on the tilted buttons) */
+/* Market buttons: the outline + fill is ONE vector picture (border-image), drawn inside the button, so a tilted button has no clip-path edge to break */
+.mkt .mkt-row .mkt-price,.mkt .mkt-row .mkt-fz,.mkt .mkt-row .mkt-owned{border-radius:0;background:none;clip-path:none;box-shadow:none;filter:none;border-image-slice:6 fill;border-image-width:6px;border-image-repeat:stretch;box-sizing:border-box}
+/* tilted rows: no pixel-snapping of the digits, so the rotated number stays as sharp as it can */
+.mkt .mkt-row{text-rendering:geometricPrecision;-webkit-font-smoothing:antialiased}
+.mkt .mkt-t b{margin-left:-.6px}
+/* upright text, tilted shape: the picture is a rotated layer behind the button, the digits and icon stay straight (and sharp) */
+.mkt .mkt-row .mkt-price,.mkt .mkt-row .mkt-fz,.mkt .mkt-row .mkt-owned{border:0;border-image:none;position:relative;isolation:isolate;padding:7px 3px;min-height:30px}
+.mkt .mkt-row .mkt-owned{padding:8px 6px}
+.mkt .mkt-row .mkt-price::before,.mkt .mkt-row .mkt-fz::before,.mkt .mkt-row .mkt-owned::before{content:'';display:block;box-shadow:none;position:absolute;inset:0;z-index:-1;box-sizing:border-box;border-image-source:var(--bi);border-image-slice:6 fill;border-image-width:6px;border-image-repeat:stretch;pointer-events:none}
+.mkt .mkt-row .mkt-price{transform:translateY(var(--dy,0px))}
+.mkt .mkt-row .mkt-fz{transform:translateY(calc(var(--dy,0px) * -1))}
+.mkt .mkt-row .mkt-fz.on{background:none}
+/* frozen: the glow comes back */
+/* back to the whole button tilting (digits tilt with it, as before); the picture is not rotated separately */
+.mkt .mkt-row{transform:rotate(var(--tl,0deg))}
+.mkt .mkt-row .mkt-price,.mkt .mkt-row .mkt-fz{transform:none}
+.mkt .mkt-row .mkt-fz.on::before{filter:none}
+.mkt .mkt-row .mkt-fz.on{filter:drop-shadow(0 0 5px rgba(46,230,214,.45))}
+/* Claim-button outline: straight edges only, both cut corners left open (no diagonal line), same as the step-quest Claim button */
+.mkt .mkt-row .mkt-price{--bi:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Cpolygon points='.5,.5 13,.5 17.5,5 17.5,17.5 5,17.5 .5,13' fill='rgba%28255,201,74,.09%29'/%3E%3Cpath d='M13,.5 H.5 V13 M17.5,5 V17.5 H5' fill='none' stroke='rgba%28255,201,74,.75%29' stroke-width='1' stroke-linejoin='miter'/%3E%3C/svg%3E")}
+.mkt .mkt-row .mkt-price.short{--bi:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Cpolygon points='.5,.5 13,.5 17.5,5 17.5,17.5 5,17.5 .5,13' fill='rgba%280,0,0,0%29'/%3E%3Cpath d='M13,.5 H.5 V13 M17.5,5 V17.5 H5' fill='none' stroke='rgba%28255,201,74,.3%29' stroke-width='1' stroke-linejoin='miter'/%3E%3C/svg%3E")}
+.mkt .mkt-row .mkt-fz{--bi:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Cpolygon points='.5,.5 13,.5 17.5,5 17.5,17.5 5,17.5 .5,13' fill='rgba%2846,230,214,.09%29'/%3E%3Cpath d='M13,.5 H.5 V13 M17.5,5 V17.5 H5' fill='none' stroke='rgba%2846,230,214,.75%29' stroke-width='1' stroke-linejoin='miter'/%3E%3C/svg%3E")}
+.mkt .mkt-row .mkt-fz.on{--bi:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Cpolygon points='.5,.5 13,.5 17.5,5 17.5,17.5 5,17.5 .5,13' fill='rgba%2846,230,214,.26%29'/%3E%3Cpath d='M13,.5 H.5 V13 M17.5,5 V17.5 H5' fill='none' stroke='%237ff0ff' stroke-width='1' stroke-linejoin='miter'/%3E%3C/svg%3E")}
+.mkt .mkt-row .mkt-owned{--bi:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Cpolygon points='.5,.5 13,.5 17.5,5 17.5,17.5 5,17.5 .5,13' fill='rgba%28255,255,255,.04%29'/%3E%3Cpath d='M13,.5 H.5 V13 M17.5,5 V17.5 H5' fill='none' stroke='rgba%28157,178,176,.32%29' stroke-width='1' stroke-linejoin='miter'/%3E%3C/svg%3E")}
+/* Market buttons: outline is four thin rectangles inside an inline SVG (painted as vector, so it stays sharp when the row is tilted); the fill is a plain clipped layer */
+.mkt .mkt-row .mkt-price::before,.mkt .mkt-row .mkt-fz::before,.mkt .mkt-row .mkt-owned::before{border:0;border-image:none;background:var(--fl);clip-path:polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px));transform:none}
+.mkt .mkt-row .mkt-ol{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.mkt .mkt-row .mkt-ol rect{fill:var(--bc)}
+.mkt .mkt-row .mkt-ol .a{x:0;y:0;width:calc(100% - 5px)}
+.mkt .mkt-row .mkt-ol .b{x:0;y:0;height:calc(100% - 5px)}
+.mkt .mkt-row .mkt-ol .c{y:5px;height:calc(100% - 5px)}
+.mkt .mkt-row .mkt-ol .d{x:5px;width:calc(100% - 5px)}
+.mkt .mkt-row .mkt-price svg.mkt-ol,.mkt .mkt-row .mkt-fz svg.mkt-ol,.mkt .mkt-row .mkt-owned svg.mkt-ol{position:absolute;left:0;top:0;width:100%;height:100%}
+.mkt .mkt-row .mkt-ol .a{height:var(--lw,1px)}
+.mkt .mkt-row .mkt-ol .b{width:var(--lw,1px)}
+.mkt .mkt-row .mkt-ol .c{x:calc(100% - var(--lw,1px));width:var(--lw,1px)}
+.mkt .mkt-row .mkt-ol .d{y:calc(100% - var(--lw,1px));height:var(--lw,1px)}
+/* tilted rows: 1.5px lines, because a 1px line on a tilt breaks into dashes on ordinary (1x) screens */
+.mkt .mkt-grid.n3 .mkt-cell:nth-child(1) .mkt-row,.mkt .mkt-grid.n3 .mkt-cell:nth-child(3) .mkt-row,.mkt .mkt-grid.n2 .mkt-row{--lw:1.5px}
+/* Market buttons: price button = same size as the Shop list Buy (74px); rows may be a bit wider than their card and are centred under it */
+.mkt .mkt-row{width:max-content;gap:4px}
+.mkt .mkt-row .mkt-price{flex:none}
+.mkt .mkt-row .mkt-fz{width:30px}
+.mkt .mkt-row .mkt-price{width:clamp(54px,calc(33.3vw - 59px),74px)}
+@media (max-width:380px){
+.mkt .mkt-t b{font-size:17px;letter-spacing:.3px}
+}
+/* centre each row under its card even when the row is wider than the card (auto margins would push it to the left edge) */
+.mkt .mkt-row{position:relative;left:50%;translate:-50% 0;margin-inline:0}
+.mkt .mkt-row .mkt-owned{width:100%}
+.mkt .mkt-rr{position:absolute;top:6px;right:8px;z-index:3;display:flex;align-items:center;gap:6px;height:28px;padding:0 9px;color:#2ee6d6;background:rgba(46,230,214,.08);border:1px solid rgba(46,230,214,.5);cursor:pointer;font:700 12px var(--f-num)}
+.mkt .mkt-rr>svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.mkt .mkt-rr span{display:inline-flex;align-items:center;gap:3px}
+.mkt .mkt-rr:active:not(.off){background:rgba(46,230,214,.22)}
+.mkt .mkt-rr.off{opacity:.35;color:#9db2b0;border-color:rgba(255,255,255,.2);background:none;cursor:default}
+.mkt .mkt-row .mkt-price.short>span{color:var(--short);opacity:.9}
+@keyframes plusUp{from{opacity:0;transform:translateY(6px)}20%{opacity:1}to{opacity:0;transform:translateY(-16px)}}
+@keyframes zPop { 
+  0% { transform: scale(1.14); }
+}
+@keyframes mkBob{from{translate:0 0}to{translate:0 -9px}}

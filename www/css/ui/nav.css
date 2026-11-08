@@ -1,0 +1,76 @@
+/* nav styles. */
+.flourish{display:block;width:180px;height:18px;margin:2px auto 0}
+.board-head h2{margin:0}
+.board-head p{font-style:italic}
+.board-head .flourish{width:220px;margin-top:6px}
+/* follow-ups */
+/* board buttons */
+.board-actions{display:flex;gap:10px}
+#boardSub:empty{display:none}
+.tabs{position:fixed;z-index:6;display:flex;justify-content:center}
+.tabs::before{content:'';position:absolute;left:0;right:0;top:-9px;height:9px;background:var(--band);border-top:1px solid #000;border-bottom:1px solid var(--bronze-lo);box-shadow:0 -6px 16px rgba(0,0,0,.85)}
+.tabs-inner{display:flex;width:100%;max-width:560px}
+.tab{position:relative;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none}
+/* board buttons */
+.board-actions{margin:4px 12px 0}
+/* Progress: list button (top right) to choose which quests show */
+.board-head{position:relative}
+.top .flourish{display:none}
+.board-head{text-align:left}
+.board-head h2{font-family:var(--f-title);font-weight:600;font-size:23px;letter-spacing:.2px;color:#f2f7f6;text-shadow:none;background:none;filter:none}
+.board-head p{font-family:var(--f-body);color:#9db2b0}
+.board-head .flourish{display:none}
+.tabs{left:10px;right:10px;bottom:calc(10px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));max-width:560px;margin:0 auto;padding:5px;box-shadow:0 12px 30px rgba(0,0,0,.5)}
+.tabs::before{display:none}
+.tabs-inner{gap:4px}
+.tab{font-weight:600;color:#8aa09e;transition:color .2s,background .2s}
+.tab.on{color:#ff8a45}
+/* heading on one line: "Shop – Trade gold for wonders" */
+.board-head{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:10px;row-gap:2px;padding:20px 18px 4px}
+.board-head p{margin:0;font-size:13.5px}
+.board-head p::before{content:'–';margin-right:10px;color:#5f7472}
+/* bottom bar: tabs sized to their labels, spread evenly */
+.tabs-inner{justify-content:space-evenly}
+.tab{flex:0 1 auto !important;padding:7px 10px 6px !important}
+.board-actions .post{border-radius:3px;font-family:var(--f-num);letter-spacing:.5px;clip-path:var(--cut7)}
+/* form (i): same small quiet bubble as the Shop one */
+/* bottom bar in the HUD look */
+.tabs{border-radius:4px !important;border:1px solid rgba(46,230,214,.28) !important;clip-path:var(--cut14)}
+.tab{border-radius:3px !important;font-family:var(--f-num) !important;font-size:9.5px !important;letter-spacing:.5px !important;text-transform:uppercase}
+/* solid: tiles scrolling under it used to show through */
+.tabs{background:rgba(6,14,16,.97) !important}
+/* title row: Quests [arrange] ........ [widgets], all on one centre line */
+.board-head h2{line-height:30px}
+.reduce-fx .tab.on svg,.reduce-fx .qb-ring circle+circle{filter:none !important}
+/* (the coloured top border was taken out: the wash alone is calmer) */
+.fab-add{position:fixed;z-index:6;right:max(16px,calc(50% - 264px));bottom:calc(76px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));width:38px;height:38px;display:grid;place-items:center;padding:0;
+  color:#2ee6d6;border:1.5px solid rgba(46,230,214,.8);background:rgba(8,20,22,.92);clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);
+  box-shadow:inset 0 0 14px rgba(46,230,214,.18);cursor:pointer;transition:opacity .25s}
+.fab-add.left{right:auto;left:max(16px,calc(50% - 264px))}
+.fab-add.away{opacity:0;pointer-events:none}
+/* only fades: the zoom was distracting */
+.fab-add[hidden]{display:none}
+.tab.ping::after{content:'';position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:#ff8a45;box-shadow:0 0 7px #ff6b1a;pointer-events:none}
+/* tab bar: the open tab's orange box is one element that stretches across to the next tab (tabHl) */
+.tabs-inner{position:relative}
+.tab{z-index:1}
+.tab.on{box-shadow:none !important;background:none !important;clip-path:none !important}
+.tab-hl{position:absolute;top:0;bottom:0;left:0;width:0;pointer-events:none;background:rgba(var(--acc-rgb),.1);box-shadow:inset 0 0 0 1px rgba(var(--acc-rgb),.55),0 0 14px rgba(var(--acc-rgb),.12);clip-path:var(--cut7);border-radius:3px}
+/* card pictures: a soft shimmer until the picture is ready, then it fades in */
+#panel img.fi{opacity:0;transition:opacity .35s ease-out}
+#panel img.fi.ld{opacity:1}
+.dot-hl{position:absolute;top:0;left:0;width:0;height:6px;border-radius:3px;background:#e9f2f0;pointer-events:none}
+.inv-dots .dot-hl{height:7px;border-radius:4px;background:var(--dot,#ff6b1a);box-shadow:0 0 8px var(--dot,#ff6b1a)}
+.inv.th-mlbb .inv-dots .dot-hl{--dot:#7c5cff}
+.inv.th-hod .inv-dots .dot-hl{--dot:#ffb83a}
+.reduce-fx #panel img.fi{opacity:1}
+.reduce-fx .tab-hl,.reduce-fx .dot-hl{transition:none}
+.tab-hl{transition:left var(--t-fast) var(--e-move),width var(--t-fast) var(--e-move)}
+.dot-hl{transition:left var(--t-norm) var(--e-move),width var(--t-norm) var(--e-move)}
+/* the Shop header popover sits above the pack list (its "i" button was drawing over it) */
+.board-head{z-index:8}
+.sh .board-head { padding-top: 6px; }
+.tab.pop svg{animation:fzPop .38s cubic-bezier(.3,1.4,.5,1)}
+@keyframes fzPop { 
+  50% { transform: scale(1.25); }
+}

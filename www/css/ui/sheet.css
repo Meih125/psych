@@ -1,0 +1,52 @@
+/* sheet styles. */
+.rec-input input,.sheet input[type=text],.sheet input[type=number],.sheet select{width:100%;padding:10px 12px;font-size:17px;-webkit-user-select:text;user-select:text}
+.rec-input input:focus,.sheet input:focus,.sheet select:focus{outline:none}
+.dialog h3 + p:empty + .btn-row{margin-top:18px}
+.modal{position:fixed;inset:0;z-index:20;display:none;align-items:flex-end;justify-content:center;padding:0 8px}
+@media (max-width:575px){
+.modal{padding:0}
+.sheet{border-left:0;border-right:0;border-radius:0}
+}
+.modal.open{display:flex}
+.sheet{position:relative;width:100%;max-width:560px;max-height:92vh;overflow:auto;color:var(--bone);padding:22px 18px calc(20px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));animation:up .25s ease-out;scrollbar-width:thin}
+.sheet h2{margin:0}
+.sheet select{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--bronze) 50%),linear-gradient(135deg,var(--bronze) 50%,transparent 50%);background-position:calc(100% - 18px) 55%,calc(100% - 12px) 55%;background-size:6px 6px;background-repeat:no-repeat;padding-right:32px}
+.actions{display:flex;flex-direction:column;gap:8px;margin-top:20px}
+.btn-main{padding:12px}
+.btn-row{display:flex;gap:8px}
+.btn-plain{flex:1;padding:10px}
+.danger-block .btn-plain,.group .btn-plain{width:100%}
+/* confirm dialog */
+.modal.center{align-items:center;z-index:35;padding:20px}
+/* inputs */
+.rec-input input,.sheet input[type=text],.sheet input[type=number],.sheet select{border-radius:4px;border:1px solid var(--line-hi);background:rgba(4,10,12,.55);color:var(--bone);box-shadow:none;font-family:var(--f-body)}
+.rec-input input:focus,.sheet input:focus,.sheet select:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(var(--acc-rgb),.18)}
+.modal{background:rgba(2,6,7,.6)}
+.sheet{background:rgba(14,26,28,.94);border:1px solid var(--line-hi);border-bottom:0;border-radius:10px 10px 0 0;box-shadow:0 -14px 40px rgba(0,0,0,.6);scrollbar-color:rgba(200,230,225,.25) transparent}
+.sheet h2{text-align:left;font-weight:600;font-size:20px;color:#f2f7f6;text-shadow:none}
+.btn-main{border-radius:4px;border:1px solid rgba(var(--acc-rgb),.7);font-family:var(--f-title);font-weight:700;font-size:14.5px;letter-spacing:.6px;color:#ff8a45;background:rgba(var(--acc-rgb),.1);box-shadow:0 0 14px rgba(var(--acc-rgb),.18);text-shadow:none}
+.btn-main:active{transform:scale(.98)}
+.btn-plain{border:1px solid var(--line-hi);background:rgba(255,255,255,.04);color:#cfdedc;font-weight:600;font-size:13px}
+.modal.center{background:rgba(2,6,7,.66)}
+/* sheets (post a quest, settings) */
+#modal .sheet,#settings .sheet{border-radius:4px !important;background:rgba(6,14,16,.96);border:1px solid rgba(46,230,214,.3) !important;clip-path:var(--cut14)}
+.sheet h2{font-family:var(--f-num);letter-spacing:.5px}
+.sheet input:not([type=radio]):not([type=checkbox]),.sheet select,.sheet textarea{border-radius:3px !important}
+.btn-plain{border-radius:3px;font-family:var(--f-num);letter-spacing:.5px;clip-path:var(--cut7)}
+/* quest sheet floats in the middle; a new quest keeps one fixed height so switching kinds doesn't jump */
+#modal{align-items:center !important;padding:16px 10px !important}
+#modal .sheet{border-radius:14px !important;border-bottom:1px solid var(--line-hi) !important;max-height:88vh;padding-bottom:20px;animation:pop .22s ease-out}
+/* Post a quest: step 1 = only the 3x3 kind grid (short sheet, centred); step 2 = the setup for that kind */
+.pick-actions{display:none}
+#form.pick .pick-actions{display:grid;gap:8px;margin-top:14px}
+#form.pick .pick-actions .btn-main{width:100%}
+#modal .sheet#form.pick{height:auto !important;max-height:none}
+#widgets .sheet{overflow-y:auto}
+#widgets .sheet{border-radius:4px !important;background:rgba(6,14,16,.97);border:1px solid rgba(46,230,214,.3) !important;clip-path:var(--cut14)}
+.w-acts .btn-plain{margin-top:4px}
+#widgets .sheet{max-width:420px;max-height:88vh;padding:20px 18px;border-bottom:1px solid rgba(46,230,214,.3) !important;animation:pop .22s ease-out;box-shadow:0 18px 50px rgba(0,0,0,.7)}
+#widgets .actions{margin-top:10px;padding-top:0}
+.btn-plain.btn-undo{color:#ff8fb1;border-color:rgba(255,143,177,.6);background:rgba(255,143,177,.07)}
+#settings .sheet{max-height:calc(100dvh - 40px);overflow-y:auto}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+@keyframes pop{from{transform:scale(.94);opacity:0}}

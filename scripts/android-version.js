@@ -1,6 +1,6 @@
 // Copies the version from package.json into the app, so each release installs as an update:
 //  - android/app/build.gradle: "1.1.1" becomes versionName "1.1.1" and versionCode 10101 (major*10000 + minor*100 + patch)
-//  - www/app.js: APP_VERSION, which Settings shows and compares with GitHub's latest release
+//  - www/js/system/updates.js: APP_VERSION, which Settings shows and compares with GitHub's latest release
 const fs = require('fs'), path = require('path');
 const ver = require('../package.json').version;
 const [a, b, c] = ver.split('.').map(n => parseInt(n, 10) || 0);
@@ -13,6 +13,7 @@ if (fs.existsSync(gradle)){
   console.log(`android/app/build.gradle: version ${ver} (code ${code})`);
 } else console.log('android/ not found yet: run npm run setup first');
 
-const appJs = path.join(__dirname, '..', 'www', 'app.js');
+const appJs = path.join(__dirname, '..', 'www', 'js', 'system', 'updates.js');
 const js = fs.readFileSync(appJs, 'utf8'), js2 = js.replace(/const APP_VERSION = '[^']*';/, `const APP_VERSION = '${ver}';`);
-if (js2 !== js){ fs.writeFileSync(appJs, js2); console.log(`www/app.js: APP_VERSION ${ver}`); }
+if (!/const APP_VERSION = '/.test(js)) { console.error('APP_VERSION not found in www/js/system/updates.js'); process.exit(1); }
+if (js2 !== js){ fs.writeFileSync(appJs, js2); console.log(`www/js/system/updates.js: APP_VERSION ${ver}`); }

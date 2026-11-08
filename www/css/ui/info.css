@@ -1,0 +1,42 @@
+/* info styles. */
+.info{position:absolute;top:9px;left:10px;z-index:6}
+.info-pop{position:absolute;top:28px;left:-2px;width:210px;padding:12px 13px 11px;border-radius:3px;text-align:left;cursor:default;background:linear-gradient(#111f21,#081214);border:1.5px solid var(--bronze-lo);box-shadow:inset 0 0 0 1px #000,0 12px 28px rgba(0,0,0,.9);opacity:0;visibility:hidden;transform:translateY(-4px);transition:.18s}
+.info:hover .info-pop,.info.open .info-pop{opacity:1;visibility:visible;transform:none}
+.info-title{font-family:var(--f-title);font-size:16px;color:var(--bronze-hi);letter-spacing:1px}
+/* info pops (shop, drop rates, level, form tips) */
+.lvl-pop,.info-pop,.cy-tip{border-radius:3px !important;background:rgba(6,14,16,.97) !important;border:1px solid rgba(46,230,214,.3) !important;clip-path:var(--cut10)}
+.info-pop,.cy-tip{font-family:var(--f-num) !important;font-size:12px !important}
+.sh-h .info{position:relative;top:auto;left:auto;text-transform:none;letter-spacing:0}
+.sh-h .info-pop{width:auto;white-space:nowrap;padding:8px 11px;font-weight:400}
+/* drop-rate (i) next to the Shop title */
+.board-head h2 .info{position:relative;top:auto;left:auto;display:inline-block;vertical-align:3px}
+.board-head h2 .info-pop{font-size:13px;font-weight:400;letter-spacing:0;text-align:left;z-index:30}
+/* form hints live in a floating tip */
+#form p.cy-hint-src{display:none !important}
+.cy-tip{position:fixed;z-index:60;display:none;padding:10px 12px;border-radius:8px;white-space:pre-line;font-family:var(--f-body);font-size:13px;line-height:1.4;color:#cfdedc;background:rgba(14,26,28,.97);border:1px solid rgba(var(--teal-rgb),.4);box-shadow:0 14px 32px rgba(0,0,0,.6)}
+.cy-tip.open{display:block;animation:fadeIn .15s ease-out}
+.sk-info .info-pop{width:208px;z-index:30}
+.sk-pop{position:absolute;background:#0c1719 !important;opacity:1;visibility:visible;transform:none;width:208px}
+.sk-pop{z-index:9999}
+.sk-host{display:inline-flex;align-items:center;vertical-align:0}
+.sk-pop .tip-t{font:600 12.5px var(--f-body);color:#e9f2f0}
+.sk-pop:has(.tip-t){width:auto;padding:8px 11px}
+.sk-pop:has(.tip-t){max-width:200px}
+.info.earn-i{position:relative;top:auto;left:auto;z-index:auto;display:inline-block}
+/* info (i): the letter is drawn as a small vector (dot + stem) so it sits dead centre in the circle in every font; all info icons sit 2px closer to the title */
+/* all info icons sit 2px closer to their title */
+.board-head h2 .info{margin-left:6px}
+/* info (i): ONE icon everywhere = "broken border" notched square with a thin i; 16px, 6px from its text, centred on the text line */
+.info{display:inline-flex;align-items:center;margin-left:6px}
+.board-head h2 .info,.sh-h .info,.ep-lab .info,.sk-host,.sk-info{margin-left:0 !important}
+.sk-host{margin-left:6px !important}
+/* form (i) buttons use the same icon; every info icon turns cyan while its bubble is open */
+/* (i) icon: identical everywhere (made by infoIcon() in js/ui/info.js). 16px notched square with a thin i,
+   grey; cyan while its bubble is open. Sits 6px from its text, centred on the text line. */
+.info-btn{position:relative;display:inline-block;flex:none;width:16px !important;height:16px !important;margin:0;padding:0 !important;border:0 !important;border-radius:0 !important;background:none !important;box-shadow:none !important;font-size:0 !important;font-style:normal !important;color:transparent !important;opacity:1 !important;vertical-align:middle;cursor:pointer;--ic:#7f9593}
+.info-btn::before{content:'';position:absolute;inset:0;background:var(--ic);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-linecap='square'%3E%3Cpath d='M5 .5H.5V11L4 14.5M11 15.5H15.5V5L12 1.5M7 .5H11M5 15.5H9'/%3E%3Ccircle cx='8' cy='4.7' r='.9' fill='%23000' stroke='none'/%3E%3Crect x='7.4' y='6.9' width='1.2' height='4.9' fill='%23000' stroke='none'/%3E%3C/svg%3E") center/100% 100% no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-linecap='square'%3E%3Cpath d='M5 .5H.5V11L4 14.5M11 15.5H15.5V5L12 1.5M7 .5H11M5 15.5H9'/%3E%3Ccircle cx='8' cy='4.7' r='.9' fill='%23000' stroke='none'/%3E%3Crect x='7.4' y='6.9' width='1.2' height='4.9' fill='%23000' stroke='none'/%3E%3C/svg%3E") center/100% 100% no-repeat}
+.info-btn.open{--ic:#2ee6d6}
+.info > .info-btn{display:grid}
+#form label > .info-btn,#form .lbl > .info-btn,.den-gc .info-btn{margin-left:6px}
+.den-gc.l .info-btn.open{--ic:rgb(var(--den-gold))}
+@keyframes fadeIn{from{opacity:0}}

@@ -1,0 +1,51 @@
+/* tally styles. */
+/* steps tracker */
+.tl-note{font-family:var(--f-italic);font-style:italic;color:var(--bone-dim)}
+/* tally */
+.tl-note{margin-top:4px;min-height:0;font-size:12.5px}
+.tl-note:empty{display:none}
+.tl-rew{flex:none}
+.tally-card .tl-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:2px}
+.tl-totbox{display:flex;align-items:baseline;gap:7px}
+.tl-total{font:700 13.5px/1.25 var(--f-num);color:#f2f7f6}
+.tally-card .tl-note{margin:0;min-height:0;font:600 12px var(--f-num);font-style:normal;color:#9db2b0;text-align:right}
+.tally-card .tl-note.on{color:#ffc94a}
+.tl-meter{margin:1px 0 1px}
+.tl-meter i.pop{animation:tlSeg .4s ease-out both;animation-delay:calc(var(--i) * 45ms)}
+.tally-card .tl-in{gap:8px}
+.tally-card .tl-rew{flex:none}
+.tally-card .tl-add{flex:none;min-width:72px;padding:8px 12px !important;font:700 12.5px var(--f-title) !important;letter-spacing:.8px;color:#ffc94a !important;border:1px solid rgba(255,201,74,.75) !important;border-radius:4px;background:rgba(255,201,74,.09) !important;box-shadow:none !important;text-shadow:none !important}
+.tally-card .tl-add:active{background:rgba(255,201,74,.22) !important}
+.tally-card .tl-meter{position:relative}
+.tl-pop{position:absolute;top:50%;z-index:3;pointer-events:none;transform-origin:100% 50%;transform:translate(0,-50%) scale(0);opacity:0;font:900 24px/1 var(--f-title);letter-spacing:-.5px;color:#ffc94a}
+.tl-pop.go{animation:tlPop .62s cubic-bezier(.2,1.6,.4,1) both}
+.tl-pop.big{color:#fff3c4}
+.tl-pop.go.big{animation:tlPopBig .9s cubic-bezier(.2,1.8,.35,1) both}
+.tl-pop.out{transition:opacity .35s;opacity:0 !important}
+.tl-flash{position:absolute;pointer-events:none;opacity:0;background:radial-gradient(60% 140% at 100% 50%,rgba(255,201,74,.55),transparent 70%)}
+.tl-flash.big{background:radial-gradient(70% 220% at 100% 50%,rgba(255,225,140,.85),rgba(255,140,40,.25) 55%,transparent 75%)}
+.tl-flash.go{animation:tlFlash .45s ease-out}
+.tl-ring{position:absolute;top:50%;border:2px solid #ffc94a;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%) scale(.2);animation:tlRing .55s ease-out forwards}
+.tl-ring.big{border-color:#ffe08a;animation-duration:.75s}
+.tl-sp{position:absolute;top:2px;background:#ffe08a;pointer-events:none;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);animation:tlSp .6s ease-out forwards}
+.tl-sp.big{background:#fff3c4;animation-duration:.8s}
+/* Tally: the same slim bar as Target, and its fill-up show scaled down to match */
+.tl-pop{right:4px}
+.tl-flash{inset:-2px -1px}
+.tl-flash.big{inset:-6px -4px}
+.tl-ring{border-width:1.5px}
+.tl-ring.big{border-width:2px}
+.tl-sp{width:4px;height:4px}
+.tl-sp.big{width:5px;height:5px}
+.tl-pop{font-size:15px;text-shadow:0 0 6px rgba(255,201,74,.9),0 0 12px rgba(255,140,40,.6),0 1px 0 #7a4a00}
+.tl-pop.big{font-size:18px}
+.tl-ring{width:24px;height:24px}
+.tl-ring.big{width:34px;height:34px}
+.qb-badge.tl-rate .tl-per{color:#9db2b0}
+@keyframes tlSeg{from{opacity:.2;transform:scaleY(.3)}}
+@keyframes tlPop{0%{transform:translate(0,-50%) scale(.3) rotate(-12deg);opacity:0}35%{transform:translate(0,-95%) scale(1.35) rotate(4deg);opacity:1}70%,100%{transform:translate(0,-80%) scale(1);opacity:1}}
+@keyframes tlPopBig{0%{transform:translate(0,-50%) scale(.2) rotate(-18deg);opacity:0}30%{transform:translate(0,-110%) scale(1.75) rotate(6deg);opacity:1}
+  55%{transform:translate(0,-85%) scale(.95) rotate(-2deg);opacity:1}75%{transform:translate(0,-92%) scale(1.12)}100%{transform:translate(0,-88%) scale(1.05);opacity:1}}
+@keyframes tlFlash{25%{opacity:1}100%{opacity:0}}
+@keyframes tlRing{to{transform:translate(-50%,-50%) scale(1.8);opacity:0}}
+@keyframes tlSp{to{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0}}

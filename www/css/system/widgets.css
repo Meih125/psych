@@ -1,0 +1,197 @@
+/* widgets styles. */
+.w-place,.w-save{width:100%;margin:4px 0;padding:12px;border:1.5px solid #ff6b1a;background:rgba(255,107,26,.06);color:#ff8a45;font:700 13px var(--f-num);letter-spacing:.08em;text-transform:uppercase;clip-path:var(--cut7)}
+.w-place{border-color:#2ee6d6;background:rgba(46,230,214,.07);color:#2ee6d6}
+.w-del{width:100%;margin:4px 0;padding:10px;border:1.5px solid rgba(255,59,48,.6);background:none;color:#ff8a7f;font:700 12px var(--f-num);letter-spacing:.08em;text-transform:uppercase;clip-path:var(--cut7)}
+.w-acts{margin-top:10px;display:flex;flex-direction:column}
+.w-lab{margin:14px 0 6px;font:700 11px var(--f-num);letter-spacing:.16em;color:#2ee6d6;}
+.w-lab::before{content:'// ';opacity:.6}
+.w-name{width:100%;padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(210,240,236,.18);color:#f2f7f6;font:600 14px var(--f-num)}
+.w-prev{padding:16px;border-radius:18px;background:linear-gradient(160deg,#2a3d58,#5a3a5e)}
+/* the widget as it will look */
+.wv{border-radius:16px;color:#f2f7f6}
+#wPick{z-index:40}
+.w-pick{width:min(92vw,380px);max-height:80vh;overflow-y:auto;padding:16px;background:#0c1719;border:1px solid rgba(46,230,214,.3);clip-path:var(--cut14);display:flex;flex-direction:column;gap:6px}
+.w-pick button[data-wq]{text-align:left;padding:10px 12px;border:1px solid rgba(255,255,255,.1);background:rgba(20,36,38,.8);color:#f2f7f6;font:700 13px var(--f-num)}
+.w-pick button small{display:block;margin-top:3px;font:700 10px var(--f-num);color:var(--kc);letter-spacing:.06em}
+.w-pick .w-clear{color:#9db2b0 !important;text-align:center !important}
+/* Widgets: a centred dialog like the others (not a bottom sheet) */
+#widgets{z-index:30}
+/* widget preview = the real quest tiles */
+.w-prev .wv{background:none;border:0;padding:0;border-radius:0;display:flex;flex-direction:column;gap:8px}
+/* Widgets list (A): the widgets themselves on a wallpaper */
+.w-wall{padding:12px;border-radius:14px;background:linear-gradient(160deg,#2a3d58,#5a3a5e);display:flex;flex-direction:column;gap:12px}
+.w-card{display:block;width:100%;padding:0;border:0;background:none;text-align:left;cursor:pointer}
+.w-card .wv{pointer-events:none}
+.w-cap{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font:600 11px var(--f-num);color:#e3ecea}
+.w-cap em{font-style:normal;color:#c2cfcd}
+.w-newbox{width:100%;min-height:52px;border:0;border-radius:8px;background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.06));color:#f2f7f6;font:700 12.5px var(--f-num);letter-spacing:.08em;text-transform:uppercase;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.w-wall .wv{display:flex;flex-direction:column;gap:8px}
+/* Editor (B): size cards with the shape, spots on the preview */
+.w-sizes{display:grid;gap:8px}
+.w-sc{padding:10px;border:1.5px solid rgba(255,255,255,.14);background:rgba(14,26,28,.85);color:#f2f7f6}
+.w-sc.on{border-color:#2ee6d6;background:rgba(46,230,214,.07)}
+.w-shape.col{flex-direction:column;gap:5px}
+.w-prev .wv{pointer-events:auto}
+.wv-spot{cursor:pointer;border-radius:6px}
+.wv-spot:not(.empty):active{opacity:.8}
+.wv-add{border:1.5px dashed rgba(46,230,214,.6);border-radius:6px;background:rgba(46,230,214,.06);display:grid;place-items:center;font:700 12px var(--f-num);color:#2ee6d6}
+.w-wall .wv-add{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.05)}
+.wv .wv-spot + .wv-spot{margin-top:0}
+.w-wall .wv{background:none;border:0;padding:0;border-radius:0}
+/* size cards: the shape drawn with full (f) and half (h) blocks */
+.w-sizes{grid-template-columns:1fr 1fr}
+.w-shape{height:54px;display:flex;flex-direction:column;justify-content:center;gap:4px;align-items:center}
+.w-srow{display:flex;gap:4px;width:100%}
+.w-shape.narrow .w-srow{width:48%}
+.w-shape .w-srow:only-child i{height:24px}
+.wv-narrow{width:calc(50% - 4px);margin:0 auto}
+.wv{display:flex;flex-direction:column;gap:8px;background:none !important;border:0 !important;padding:0 !important}
+.wv-row{display:grid;grid-template-columns:1fr;gap:8px;height:118px}
+.wv-row.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.wv-spot,.wv-cell{min-width:0;height:100%}
+.wv-add{height:100%;min-height:0}
+.wt{height:100%;display:flex;flex-direction:column;padding:10px 12px;background:rgba(20,38,41,.95);border:1px solid rgba(210,240,236,.2);clip-path:var(--cut10);color:#f2f7f6;overflow:hidden}
+.wt.h{padding:9px 10px}
+.wt-r1,.wt-r2,.wt-r3{display:flex;align-items:center;gap:6px;min-width:0}
+.wt-r3{margin-top:5px}
+.wt-ic{flex:none;width:27px;height:27px;display:grid;place-items:center;border-radius:3px;color:var(--kc);background:color-mix(in srgb,var(--kc) 15%,transparent)}
+.wt.h .wt-ic{width:25px;height:25px}
+.wt-t{flex:1;min-width:0;font:700 13px var(--f-num);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wt.h .wt-t{flex:none;margin-top:5px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.wt-gap,.wt-fill{flex:1}
+.wt-mult{font:700 9.5px var(--f-num);color:#f5c542}
+.wt-st{font:700 13.5px var(--f-num)}
+.wt-rew{display:flex;gap:9px;font:700 12px var(--f-num);flex:none}
+.wt-note{flex:1;min-width:0;font:500 10.5px var(--f-num);color:#8fa6a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wt-sub{font:500 10.5px var(--f-num);color:#8fa6a3;margin-top:4px}
+.wt-bar{display:block;height:5px;margin-top:6px;border-radius:2px;background:rgba(255,255,255,.08)}
+.wt-b{flex:none;font:700 10px var(--f-num);padding:3px 8px;border:1.5px solid #ff6b1a;color:#ff8a45;clip-path:var(--cut5)}
+.wt-b.rec{border-color:#a98bff;color:#a98bff}
+.wt-b.k{border-color:var(--bc,#ff6b1a);color:var(--bc,#ff8a45)}
+.wt-b.done,.wt.h .wt-b.done{display:inline-flex;align-items:center;gap:5px;padding:3px 0;border:0;clip-path:none;background:none;}
+.wt-b.done::before{content:'';width:5px;height:5px;border-radius:50%;background:#3fd47a}
+.wt-orbs{flex:1;display:flex;gap:4px;min-width:0}
+.wt-r2 .wt-orbs{flex:none}
+.wt-orbs i.gold{border-color:#ffd27a}
+.wt.done .wt-t,.wt.done .wt-rew{opacity:.5}
+.wt-r3{justify-content:flex-start}
+.wt-r3.orb{margin-top:0;margin-bottom:5px}
+.wt-r3.orb .wt-orbs{flex:1}
+.wt.f .wt-sub{font-size:12.5px;color:#cfdedc}
+.wt-segs{display:flex;gap:4px;margin-top:8px}
+/* preview: half tiles at real widget proportions, nothing clipped */
+.wt.h .wt-rew{gap:6px;font-size:10.5px}
+.wt.h .wt-rew svg{width:11px;height:11px}
+.wt.h .wt-b{font-size:9px;padding:2px 6px}
+.wt.h .wt-r3{gap:4px;overflow:hidden}
+.wt.h .wt-st{font-size:12.5px}
+.wt.h .wt-t{font-size:12px}
+.w-sc{text-align:center}
+/* 4x4 widget preview: the whole Quests page, tabs + tiles, scrolls */
+.wb{display:flex;flex-direction:column;background:rgba(10,20,21,.96);border:1px solid rgba(46,230,214,.28);clip-path:var(--cut10);color:#f2f7f6;overflow:hidden;text-align:left}
+.wb-top{display:flex;align-items:center;gap:8px;padding:10px 12px 8px;border-bottom:1px solid rgba(210,240,236,.1)}
+.wb-logo{font:800 12px var(--f-title);letter-spacing:2.5px}
+.wb-lv{font:700 10px var(--f-num);color:#8fa6a3;white-space:nowrap}
+.wb-xp{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.wb-sum{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(210,240,236,.1)}
+.wb-ring{position:relative;width:40px;height:40px;flex:none}
+.wb-st{flex:1;min-width:0}
+.wb-l{display:flex;justify-content:space-between;gap:6px;font:600 10.5px var(--f-num);color:#8fa6a3}
+.wb-bar{display:block;height:4px;margin:5px 0;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
+.wb-ft{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.wb-tm{display:flex;flex-direction:column;gap:2px;min-width:0}
+.wb-tm small.warn{color:#ffb44a}
+.wb-clock{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--f-num);color:#ff8a45;white-space:nowrap}
+.wb-tabs{display:flex;gap:4px;padding:7px 10px 6px;border-bottom:1px solid rgba(210,240,236,.1)}
+.wb-tabs button{flex:1;min-width:0;min-height:33px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:5px 0;border:1px solid rgba(210,240,236,.12);border-radius:2px;background:rgba(150,195,195,.05);color:#8fa6a3;cursor:pointer}
+.wb-tabs button.on{color:#2ee6d6;border-color:rgba(46,230,214,.55);background:rgba(46,230,214,.08)}
+.wb-gh{display:flex;justify-content:space-between;align-items:center;padding:8px 12px 2px;font:700 10px var(--f-num);letter-spacing:1.5px;color:#8fa6a3}
+.wb-gh > span:last-child{letter-spacing:0}
+.wb-list{flex:1;min-height:0;padding:6px 10px 10px;gap:6px !important;scrollbar-width:thin}
+.wb-list .wv-row{gap:6px;flex:none}
+.wb-none{margin:24px 0;text-align:center;font:600 11px var(--f-num);color:#8fa6a3}
+.w-card .wb-tabs,.w-card .wb-list{pointer-events:auto}
+.w-shape.board{height:60px}
+.w-shape.board .w-srow i.t{height:7px}
+/* widgets: a bounty's time left (with the clock), and the red tile when it's due today or tomorrow */
+.wt-due{display:inline-flex;align-items:center;gap:4px;flex:none;font:700 11px var(--f-num);color:#ff8a45;white-space:nowrap}
+.wt.h .wt-due{margin-top:4px}
+.wt.urgent{background:linear-gradient(160deg,rgba(80,14,14,.95),rgba(30,8,8,.97));border-color:rgba(255,70,58,.75)}
+.wt.urgent .wt-due{color:#ff6b5e}
+.wt-r2 .wt-due{margin-left:auto}
+.wt-r2 .wt-mult{margin-left:6px}
+.wt-r2 .wt-st{margin-left:4px}
+.wb-tabs button.red{color:#ff6b5e;border-color:rgba(255,107,94,.5);background:rgba(255,59,48,.08)}
+.wb-gh-time{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--f-num);color:#ff8a45;letter-spacing:0}
+/* streak: the number near-white, the +% in the streak's colour */
+.wt-st{color:#e6efed}
+.wt-st.z{color:#8aa09e}
+.wt-r3 .wt-rew{min-width:0;overflow:hidden}
+.wt-b{white-space:nowrap}
+/* list tile on a widget: every item on its own line, same height for each; a done one is dimmed with a very light line through it (like the app) */
+.wt-list{display:flex;flex-direction:column;margin-top:4px}
+.wt-li{display:flex;align-items:center;gap:8px;min-height:28px;box-sizing:border-box;padding:4px 0;border-top:1px solid rgba(210,240,236,.09);font:700 12px var(--f-num)}
+.wt-li:first-child{border-top:0}
+.wt-li i{flex:none;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--kc,#5cabff)}
+.wt-li .wt-rew{font-size:10.5px;gap:6px}
+.wt-li.dn b{color:#6f8583;text-decoration:line-through;text-decoration-color:rgba(111,133,131,.6)}
+.wt-li.dn .wt-rew{opacity:.5}
+.wv-row.tall{height:360px}
+.wv-row.tall .wt{height:100%}
+.wb-list .wv-row.lst{height:auto}
+.wb-list .wv-row.lst .wt{height:auto}
+.wt.tall:has(.wt-list) .wt-fill{flex:0 0 4px}
+/* widget preview: rows grow with their tile instead of overlapping the next one */
+.wb-list .wv-row{min-height:0}
+.wb-list .wv-row .wt{height:auto;min-height:0}
+/* 4x4 widget: buttons are plain coloured words (no border); DONE is a faded green word */
+.wb .wt-b,.wv .wt-b{border:0 !important;clip-path:none !important;background:none !important;box-shadow:none !important;padding:3px 3px !important;letter-spacing:.8px}
+.wb .wt-b.k,.wv .wt-b.k{color:var(--bc,#ff8a45) !important}
+.wt-b.done,.wt.h .wt-b.done{color:#3fd47a !important;opacity:.55}
+.wt-b.done::before{display:none !important}
+.wb-gh.red{color:#ff6b5e}
+/* 4x4 preview: pages, slim rows, compact half tiles (mirrors the phone widget) */
+.wb{height:540px}
+.wb-list{display:flex;flex-direction:column;overflow:hidden !important}
+.wb-gh.sub{padding:6px 4px 2px}
+.ns{display:flex;align-items:center;gap:7px;padding:7px 9px;background:rgba(20,38,41,.95);border:1px solid rgba(210,240,236,.2);flex:none;min-height:42px;box-sizing:border-box}
+.ns.urgent{border-color:rgba(255,107,94,.55)}
+.ns .wt-t{flex:1;min-width:0}
+.ns .wt-rew{flex:none}
+.ns .wt-st{font:700 10px var(--f-num)}
+.ns.done .wt-t,.ns.done .wt-ic{opacity:.5}
+.ns.done .wt-t,.wt.done .wt-t{text-decoration:line-through;text-decoration-color:rgba(230,240,238,.35)}
+.ns-due{display:flex;align-items:center;gap:5px;font:600 10.5px var(--f-num);color:#ff8a45;margin:2px 3px -2px;flex:none}
+.ns-due.red{color:#ff6b5e}
+.wt.h.bd .wt-r1{gap:8px}
+.wt.h.bd .wt-t{margin-top:0;font-size:12.5px}
+.wb-pgr{display:flex;align-items:center;justify-content:center;gap:16px;padding:8px;border-top:1px solid rgba(210,240,236,.1)}
+.wb-pgr .dots{display:flex;gap:6px}
+.wb-pgr .dots i{width:7px;height:7px;border-radius:50%;background:#2a4546}
+.wb-pgr .dots i.on{background:#2ee6d6}
+.wb .wb-list{padding:6px 10px 8px !important}
+.wb-list .wv-row{height:auto}
+.wb-list .wv-cell{height:auto}
+.wb-list .wv-row.two .wt{height:100%}
+/* 4x4: Tally's rewards sit at the right of the total line */
+.wt-subrow{display:flex;align-items:center;gap:8px}
+.wt-subrow .wt-sub{flex:1;min-width:0}
+.wt-subrow .wt-rew{flex:none}
+.wt-subrow .wt-note{flex:none;font:600 10.5px var(--f-num);color:#8fa6a3}
+/* 4x4 DUE SOON: the Quests page's red bounty card */
+.bc{flex:none;padding:10px 12px;border:1px solid rgba(255,59,48,.75);background:linear-gradient(160deg,rgba(80,14,14,.92),rgba(26,8,8,.95));box-shadow:inset 0 0 18px rgba(255,59,48,.25);display:flex;flex-direction:column;gap:8px}
+.bc-hd{display:flex;align-items:center;gap:10px}
+.bc-nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.bc-nm .wt-t{font:700 14px var(--f-title);color:#f2f7f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bc-due{font:600 11px var(--f-num);color:#ff8a7f;white-space:nowrap}
+.bc-left{display:inline-flex;align-items:center;gap:4px;color:#ff6b5e;font-weight:700}
+.bc-ft{display:flex;align-items:center}
+.bc-ft .wt-gap{flex:1}
+.bc.done{opacity:.6}
+.wb .wt.f .wt-bar{margin-bottom:6px}
+/* 4x4: a full Target's "50 / 50" at the right end of its bar; finished tiles fade more; dots a little lower */
+.wt-barrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.wt-barrow .wt-bar{flex:1;margin-top:0;margin-bottom:0 !important}
+.wb .wt.done .wt-bar,.wb .wt.done .wt-barrow,.wb .wt.done .wt-sub,.wb .wt.done .wt-orbs,.wb .wt.done .wt-note{opacity:.4}
+.wb .wt-r3.orb{margin-top:5px}
+.wt-barrow{margin-bottom:6px}

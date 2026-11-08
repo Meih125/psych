@@ -1,0 +1,344 @@
+/* den styles. */
+.hlu-tk svg.den-ic{width:20px;height:20px;filter:drop-shadow(0 0 4px rgba(46,230,214,.5))}
+.dl-tk svg.den-ic{width:32px;height:32px;filter:drop-shadow(0 0 6px rgba(46,230,214,.7))}
+.mkt .mkt-rr span svg.den-ic{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.ptk-ic svg.den-ic{width:100%;height:100%}
+/* The Gambling Den (den.js). Class prefix l-. Built in layers: later blocks refine earlier ones. */
+:root{--den-teal:46,230,214;--den-gold:255,201,74;--den-red:255,59,92;--den-grn:61,220,132}
+svg.den-ic{width:1em;height:1em;vertical-align:-.15em}
+.den-ic,.den-gi{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.den-gi{width:100%;height:100%}
+/* header ticket: same plain look as the gold purse, cyan */
+.den-tkt{display:flex;align-items:center;gap:5px;margin-right:12px;padding:0;border:0;background:none;color:rgb(var(--den-teal));font:700 16px var(--f-num);cursor:pointer}
+.den-tkt svg{width:25px;height:25px;filter:drop-shadow(0 0 5px rgba(var(--den-teal),.55))}
+.den-tkt.zero{opacity:.5}
+.den-tkt:active{transform:scale(.94)}
+/* Den sheet */
+.den-ov{position:fixed;inset:0;z-index:30;display:flex;justify-content:center}
+.den-sheet{position:relative;width:100%}
+.den-sheet h2{margin:0 0 10px;font:800 22px var(--f-title);letter-spacing:.02em;color:#f2f7f6;text-align:left}
+.den-gc{position:relative;display:flex;align-items:center;gap:14px;width:100%;margin:0 0 10px;padding:14px;text-align:left;color:var(--bone,#eef4f3);border:1px solid rgba(var(--c),.55);background:linear-gradient(100deg,rgba(var(--c),.16),rgba(var(--c),.03));clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.den-gc.h{--c:46,230,214}
+.den-gc.l{--c:255,184,58}
+.den-gc:active{transform:scale(.985)}
+.den-gic{flex:none;width:58px;height:58px;padding:11px;color:rgb(var(--c));border:1px solid rgba(var(--c),.5);background:rgba(0,0,0,.3)}
+.den-gic.sm{width:34px;height:34px;padding:6px}
+.den-gtx{flex:1;min-width:0}
+.den-gtx b{font:800 15px var(--f-title);letter-spacing:.02em}
+.den-gtx em{display:block;margin:3px 0 0;font:500 11.5px/1.4 var(--f-body);font-style:normal;color:var(--bone-dim,#9db2b0)}
+.den-gb{align-self:flex-start;font:700 10px/1.4 var(--f-num);color:rgb(var(--c));text-align:right;letter-spacing:.08em}
+.den-head{display:flex;align-items:center}
+.den-back{flex:none;display:grid;place-items:center;font:400 24px var(--f-num);color:var(--bone-dim,#9db2b0);background:rgba(150,195,195,.06);border:1px solid rgba(210,240,236,.18);cursor:pointer}
+.den-pg.hack{--c:46,230,214}
+.den-pg.hilo{--c:255,184,58}
+.den-pg .den-gic.sm{border-color:rgba(var(--c),.45)}
+.den-head h3{margin:0;font:800 16px var(--f-title);white-space:nowrap}
+.den-pg.hack h3{color:#8dffbf;text-shadow:0 0 10px rgba(120,255,180,.4)}
+.den-pg.hilo h3{color:#ffd88a}
+/* hack board */
+.den-board{position:relative}
+.den-board::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px)}
+.den-grid{display:grid;grid-template-columns:repeat(3,1fr);margin:0 auto}
+.den-nd{position:relative;aspect-ratio:1;padding:0}
+.den-nd i{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;backface-visibility:hidden}
+.den-nd .den-cv{font:700 15px var(--f-num);flex-direction:row}
+.den-nd .den-cv::before{content:attr(data-a)}
+.den-nd .den-cv::after{content:'_';animation:lbl 1s steps(1) infinite}
+.den-nd .den-fc{font:700 18px var(--f-num);color:rgb(var(--den-gold))}
+.den-nd.open .den-fc{transform:none;transition-delay:.05s}
+.den-nd.bad .den-fc{border-color:rgba(var(--den-red),.9);background:rgba(var(--den-red),.14)}
+.den-nd:disabled{cursor:default}
+.den-nd:not(.open):not(:disabled):active .den-cv{transform:scale(.94)}
+/* higher / lower */
+.den-disp{position:relative;margin:4px auto 0;width:210px;display:grid;place-items:center;border:1px solid rgba(var(--den-teal),.45);background:linear-gradient(180deg,rgba(var(--den-teal),.1),rgba(0,0,0,.35));clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.den-disp b{font:800 76px/1 var(--f-num);color:#fff;letter-spacing:-.03em}
+.den-disp.lose{background:linear-gradient(180deg,rgba(var(--den-red),.3),rgba(0,0,0,.35));border-color:rgba(var(--den-red),.95)}
+.den-disp.lose b{color:rgb(var(--den-red))}
+.den-disp b.pop{animation:lpp .12s ease-out}
+.den-hb{font:700 14px var(--f-num);letter-spacing:.05em;border:1px solid var(--bc);background:var(--bf);color:var(--bk);clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))}
+.den-hb:disabled{opacity:.3}
+.den-hb:active:not(:disabled){transform:scale(.96)}
+/* bottom bar */
+.den-barwrap{bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:3}
+.den-go{display:flex;align-items:stretch;height:42px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.den-ar{flex:none;width:58px;font:400 26px var(--f-num);color:var(--bone-dim,#9db2b0);background:rgba(var(--den-gold),.07);border:1px solid rgba(var(--den-gold),.5);cursor:pointer}
+.den-ar:first-child{border-right:0;clip-path:polygon(0 0,100% 0,100% 100%,8px 100%,0 calc(100% - 8px))}
+.den-ar:last-child{border-left:0;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+.den-ar:active:not(:disabled){background:rgba(var(--den-gold),.22);color:#fff}
+.den-ar:disabled{opacity:.25}
+.den-mid{flex:1;display:flex;align-items:center;justify-content:center;gap:20px;font:700 17px var(--f-num);color:rgb(var(--den-teal));background:rgba(var(--den-teal),.1);border:1px solid rgba(var(--den-teal),.75);cursor:pointer}
+.den-mid span{display:inline-flex;align-items:center;gap:7px}
+.den-mid .g{color:rgb(var(--den-gold))}
+.den-mid svg{width:19px;height:19px}
+.den-mid:active{background:rgba(var(--den-teal),.22)}
+.den-go.off{align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.18);color:var(--bone-dim,#9db2b0);font:700 13px var(--f-num);letter-spacing:.08em;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))}
+.den-cash{width:100%;height:42px;display:flex;align-items:center;justify-content:center;gap:10px;font:700 16px var(--f-num);letter-spacing:.1em;color:rgb(var(--den-gold));background:rgba(var(--den-gold),.12);border:1px solid rgba(var(--den-gold),.8);cursor:pointer;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))}
+.den-cash .g{display:inline-flex;align-items:center;gap:6px}
+.den-cash:disabled{opacity:.4;color:var(--bone-dim,#9db2b0);border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.04)}
+.den-cash:active:not(:disabled){background:rgba(var(--den-gold),.26)}
+/* floating tab (centred, like Add quest); the game lives inside it */
+.den-ov{align-items:center;padding:16px;background:rgba(2,6,7,.72)}
+.den-sheet{max-width:380px;max-height:92vh;overflow:auto;padding:16px 14px 16px;border:1px solid rgba(var(--den-teal),.4);background:rgba(6,14,16,.98);box-shadow:0 0 0 1px rgba(0,0,0,.6),0 18px 50px rgba(0,0,0,.7),0 0 24px rgba(var(--den-teal),.12);clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% calc(100% - 0px),16px 100%,0 calc(100% - 16px));animation:lpop .18s ease-out}
+.den-pg{padding:0}
+.den-head{margin:0 0 10px;gap:8px}
+.den-back{width:36px;height:36px}
+.den-head h3{font-size:14px;letter-spacing:.1em}
+.den-bal{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px;font:700 13px/1.25 var(--f-num)}
+.den-bal span{display:inline-flex;align-items:center;gap:5px}
+.den-bal .g{color:rgb(var(--den-gold))}
+.den-bal .t{color:rgb(var(--den-teal))}
+.den-disp{height:104px}
+.den-disp b{font-size:68px}
+.den-hb{padding:12px 4px}
+.den-barwrap{position:static;padding:10px 0 0;background:none}
+/* one big button: same colour, no separators, same tap boxes */
+.den-go{border:1px solid rgba(var(--den-teal),.75);background:rgba(var(--den-teal),.1);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))}
+.den-go .den-ar,.den-go .den-mid{background:none;border:0;clip-path:none;color:rgb(var(--den-teal))}
+.den-go .den-ar{opacity:.8}
+.den-go .den-ar:active:not(:disabled),.den-go .den-mid:active{background:rgba(var(--den-teal),.2)}
+.den-go .den-ar:disabled{opacity:.22}
+.den-go.off{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.04)}
+/* chevrons, countdown, cash-out effects */
+.den-ar,.den-back{display:grid;place-items:center;padding:0}
+.den-go.off .cd{display:inline;color:rgb(var(--den-teal));margin-left:2px}
+.den-fx{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden}
+.den-flash{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 55%,rgba(var(--den-gold),.9),rgba(var(--den-gold),0) 62%)}
+.den-pop{position:absolute;left:50%;top:44%;text-align:center;opacity:0;will-change:transform,opacity;font-family:var(--f-num)}
+.den-pop b{display:flex;align-items:baseline;justify-content:center;gap:6px;font:800 56px/1.05 var(--f-num);color:rgb(var(--den-gold))}
+.den-pop b em{font-style:normal;font-size:26px}
+.den-pop u{display:block;text-decoration:none;font:700 18px var(--f-num);color:#fff;opacity:.9}
+.den-fx.big .den-pop b{font-size:66px}
+.den-fx.huge .den-pop b{font-size:78px}
+.den-fx.huge .den-pop small{color:rgb(var(--den-gold));font-size:15px}
+.den-bal .g{display:inline-flex;transform-origin:right center}
+/* readable cash-out */
+.den-dim{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 46%,rgba(2,6,7,.88),rgba(2,6,7,.55) 70%)}
+.den-pop{z-index:2}
+.den-pop b{text-shadow:0 0 22px rgba(var(--den-gold),.8),0 3px 0 rgba(0,0,0,.6)}
+/* Day Trader layout (thermometer on the left; on the right in left-hand mode) */
+.den-lrow{display:flex;gap:10px;align-items:stretch}
+.den-lrow.rt{flex-direction:row-reverse}
+.den-lmid{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.den-lmid .den-disp{width:100%}
+.den-lmid .den-hb{width:100%;padding:13px 4px;font-size:12.5px}
+/* Minesweeper: round radar blips */
+.den-board{overflow:hidden;padding:12px 10px 14px;border:1px solid rgba(var(--den-teal),.3);background:radial-gradient(circle,#0a1f24,#040a0c)}
+.den-board::after{display:none}
+.den-sweep{position:absolute;left:50%;top:50%;width:440px;height:440px;margin:-220px 0 0 -220px;border-radius:50%;background:conic-gradient(from 0deg,rgba(var(--den-teal),.22),transparent 28%);animation:lsw 4s linear infinite;pointer-events:none}
+.den-grid{position:relative;gap:12px;max-width:270px}
+.den-nd{border:1.5px solid rgba(var(--den-teal),.6);border-radius:50%;background:rgba(var(--den-teal),.08);color:rgb(var(--den-teal))}
+.den-nd i{border-radius:50%;clip-path:none;transition:none}
+.den-nd .den-cv{border:0;background:none;color:rgb(var(--den-teal));font-size:13px}
+.den-nd .den-fc{transform:none;opacity:0;border:0;background:none;font-size:15px}
+.den-nd.open .den-cv{transform:none;opacity:0}
+.den-nd.open .den-fc{opacity:1}
+.den-nd.open{border-color:rgb(var(--den-gold));background:radial-gradient(circle,rgba(var(--den-gold),.35),rgba(var(--den-gold),.06))}
+.den-nd.bad{border-color:rgb(var(--den-red));background:radial-gradient(circle,rgba(var(--den-red),.45),rgba(var(--den-red),.08))}
+.den-nd.dim{opacity:.4}
+.den-nd.dim .den-fc,.den-nd.dim .den-cv{opacity:1}
+.den-nd.dim.open .den-cv{opacity:0}
+.den-nd.bad .den-fc{color:rgb(var(--den-red))}
+.den-ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgb(var(--den-gold));pointer-events:none;opacity:0}
+.den-shock{position:absolute;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;border:4px solid rgb(var(--den-red));pointer-events:none;opacity:0}
+.reduce-fx .den-sweep{animation:none}
+/* Minesweeper: danger bar, edge heartbeat, red sweep, full-clear finale */
+.den-seg{position:relative;overflow:hidden;margin:12px 0 0;height:40px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.3);border:1px solid var(--c,#2ee6d6);--c:hsl(175,95%,55%);--p:2s;--a:.25}
+.den-sf{position:absolute;inset:0;transform-origin:left;transform:scaleX(0);background:var(--c);opacity:.28}
+.den-se{position:absolute;inset:-1px;border:2px solid var(--c);opacity:0;animation:lthr var(--p) ease-in-out infinite;pointer-events:none}
+.den-stx{position:relative;text-align:center}
+.den-stx b{font:800 20px/1 var(--f-num);color:#fff}
+.den-tens{position:fixed;inset:0;z-index:35;pointer-events:none;opacity:0;transition:opacity .5s;--p:1.7s}
+.den-tens i{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,40,40,.75) 100%);animation:ltb var(--p) ease-in-out infinite}
+.den-sweep{transition:opacity .3s}
+.den-board.red .den-sweep{background:conic-gradient(from 0deg,rgba(255,64,64,.3),transparent 28%)}
+.den-fring{position:absolute;border-radius:50%;border:2px solid #ffc94a;opacity:0;pointer-events:none}
+.den-fhalo{position:absolute;border-radius:50%;border:3px dashed #ffc94a;opacity:0;pointer-events:none;box-shadow:0 0 20px rgba(255,201,74,.4)}
+.den-ftx{position:absolute;transform:translate(-50%,-50%);text-align:center;pointer-events:none;white-space:nowrap}
+.den-ftx .ty{display:block;font:800 26px/1 var(--f-num);letter-spacing:.14em;color:#fff;text-shadow:0 0 18px #ffc94a,0 2px 6px #000}
+.den-ftx u{margin-top:8px;text-decoration:none;font:800 30px/1 var(--f-num);color:#ffc94a;text-shadow:0 0 16px rgba(255,201,74,.8),0 2px 6px #000}
+/* last tile = red alert: title, tab border, opened tiles */
+.den-sheet{transition:border-color .45s,box-shadow .45s}
+.den-head h3{transition:color .45s}
+.den-sheet.den-dng{border-color:rgba(var(--den-red),.75);box-shadow:0 0 0 1px rgba(0,0,0,.6),0 18px 50px rgba(0,0,0,.7),0 0 24px rgba(var(--den-red),.25)}
+.den-sheet.den-dng .den-head h3{color:rgb(var(--den-red))}
+.den-board.red .den-nd.open:not(.bad){border-color:rgb(var(--den-red));background:radial-gradient(circle,rgba(var(--den-red),.35),rgba(var(--den-red),.06))}
+.den-board.red .den-nd.open:not(.bad) .den-fc{color:rgb(var(--den-red))}
+/* mine icon + red alert extras */
+.den-nd .den-fc svg.den-mi{width:74%;height:74%;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.den-gic,.den-board{transition:color .45s,border-color .45s,background-color .45s}
+.den-sheet.den-dng .den-head .den-gic{color:rgb(var(--den-red));border-color:rgba(var(--den-red),.7)}
+.den-sheet.den-dng .den-board{border-color:rgba(var(--den-red),.6)}
+/* whole start bar lights up while the middle is pressed */
+.den-go{transition:background .12s}
+.den-go:has(.den-mid:active){background:rgba(var(--den-teal),.26)}
+.den-go.press{background:rgba(var(--den-teal),.28)}
+.den-go.press .den-mid,.den-go.press .den-ar{background:none}
+.den-go.press .den-ar{opacity:1}
+.den-bfx{position:absolute;pointer-events:none;opacity:0}
+/* Day Trader thermometer: 20 slanted segments + flowing light */
+.den-th{position:relative;flex:none;width:92px}
+.den-trk{position:absolute;left:0;right:0;top:8px;bottom:8px}
+.den-sgs{position:absolute;left:2px;top:0;bottom:0;width:26px}
+.den-sg{position:absolute;left:0;right:0;margin-bottom:1.5px;background:rgba(255,255,255,.07);overflow:hidden;clip-path:polygon(0 3px,100% 0,100% calc(100% - 3px),0 100%)}
+.den-sg i{position:absolute;inset:0;transform-origin:bottom;transform:scaleY(0)}
+.den-sg i::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(to top,transparent 0 10px,rgba(255,255,255,.28) 18px,transparent 26px);animation:lthfl 1.6s linear infinite}
+.den-tk{position:absolute;left:40px;font:700 12px var(--f-num);color:#5f7472;transform:translateY(50%);transition:color .4s}
+.den-tk.rch{color:var(--c)}
+.den-bub{position:absolute;left:36px;transform:translateY(50%);padding:2px 6px;font:800 12px var(--f-num);border:1px solid;border-radius:5px;background:#08161a;white-space:nowrap;display:none}
+.den-lrow.rt .den-sgs{left:auto;right:2px}
+.den-lrow.rt .den-tk{left:auto;right:40px;text-align:right}
+.den-lrow.rt .den-bub{left:auto;right:36px}
+.reduce-fx .den-sg i::after{animation:none}
+.den-rst{width:100%;height:42px;display:flex;align-items:center;justify-content:center;font:700 16px var(--f-num);letter-spacing:.14em;color:rgb(var(--den-teal));cursor:pointer}
+.den-rst:disabled{opacity:.5}
+/* sonar board: blips at random positions each round */
+.den-grid.free{display:block;max-width:none;width:100%;position:relative}
+.den-grid.free .den-nd{position:absolute;aspect-ratio:auto}
+.den-board.sn .den-nd{border:0;background:radial-gradient(circle,rgba(var(--den-teal),.4),transparent 70%)}
+.den-board.sn .den-nd::before{content:'';position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px;border-radius:50%}
+.den-board.sn .den-nd.open::before{opacity:0}
+.den-board.sn .den-nd .den-cv{align-items:flex-end;padding-bottom:5px;font-size:10px;opacity:.8}
+.den-board.sn .den-nd.open{background:radial-gradient(circle,rgba(var(--den-gold),.42),transparent 70%);border:0}
+.den-board.sn .den-nd.bad{background:radial-gradient(circle,rgba(var(--den-red),.5),transparent 70%);border:0}
+.den-board.sn.red .den-nd.open:not(.bad){border:0;background:radial-gradient(circle,rgba(var(--den-red),.45),transparent 70%)}
+.den-board.sn .den-nd.dim{opacity:.5}
+/* free layout: empty board + radar reveal, colour fades instead of flips, label centred */
+.den-nd .den-cv::after{width:0;overflow:visible;white-space:nowrap}
+.den-grid.free .den-nd{transition:color .4s,border-color .4s,background-color .4s,opacity .45s,scale .45s cubic-bezier(.3,1.4,.5,1)}
+.den-grid.free .den-nd.hid{opacity:0;scale:.4;pointer-events:none}
+.den-board.sn .den-nd{color:rgb(var(--den-teal));isolation:isolate}
+.den-board.sn .den-nd::before{background:currentColor;box-shadow:0 0 14px currentColor;transition:opacity .3s}
+.den-board.sn .den-nd::after{content:'';position:absolute;inset:0;z-index:-1;border-radius:50%;background:radial-gradient(circle,currentColor,transparent 70%);opacity:.3;pointer-events:none}
+.den-board.sn .den-nd.open,.den-board.sn .den-nd.open:not(.bad) .den-fc{color:rgb(var(--den-gold))}
+.den-board.sn .den-nd.open::after{opacity:.4}
+.den-board.sn.red .den-nd.open,.den-board.sn .den-nd.bad,.den-board.sn.red .den-nd.open:not(.bad) .den-fc,.den-board.sn .den-nd.bad .den-fc{color:rgb(var(--den-red))}
+.den-board.sn .den-nd.open,.den-board.sn.red .den-nd.open{border:0}
+.den-board.sn .den-cv,.den-board.sn .den-fc{color:inherit}
+.den-board.sn .den-nd.bad::after{opacity:.5}
+.den-board.sn .den-sweep{background:conic-gradient(from 260deg,transparent,rgba(var(--den-teal),.28) 27.7%,transparent 28.1%)}
+.den-board.sn.red .den-sweep{background:conic-gradient(from 260deg,transparent,rgba(255,64,64,.34) 27.7%,transparent 28.1%)}
+/* full-width radar field */
+.den-board.fr-full{--rg:rgba(var(--den-teal),.16)}
+.den-board.red.fr-full{--rg:rgba(var(--den-red),.2)}
+.den-sheet.den-dng .den-board.fr-full{border-color:rgba(var(--den-red),.6)}
+.den-board.fr-full{margin:0 -14px;border-left:0;border-right:0;background:repeating-radial-gradient(circle,transparent 0 62px,var(--rg) 63px 64px),radial-gradient(circle,#0a1f24,#040a0c)}
+/* multiplier: the × hangs outside so the number itself is what gets centred / aligned */
+.den-m{position:relative;display:inline-block;font:inherit}
+.den-m s{position:absolute;right:100%;text-decoration:none;margin-right:.05em}
+.den-hb>span{display:grid;grid-template-columns:1fr 1fr;column-gap:.35em;white-space:nowrap}
+.den-hb .hw{text-align:right}
+.den-hb .hn{text-align:left}
+/* Den landing: tickets on the title row, won / lost bar with net badge */
+.den-hd{display:flex;justify-content:space-between;margin:0 0 14px}
+.den-st{display:flex;align-items:center;gap:10px;margin:0 0 14px}
+.den-sn i{display:block;font:700 10px var(--f-num);font-style:normal;letter-spacing:.14em;color:var(--bone-dim,#9db2b0)}
+.den-sn b{display:block;font:700 14px var(--f-num);white-space:nowrap}
+.den-sn.w b{color:#5ee28c}
+.den-sn.l{text-align:right}
+.den-sn.l b{color:#ff405a}
+.den-sb{position:relative;flex:1;margin-top:12px}
+.den-sbar{display:flex;height:4px}
+.den-sbar i{display:block;transform:skewX(-20deg);transition:width .5s}
+.den-sbar .a{background:#5ee28c}
+.den-sbar .b{background:#ff405a}
+.den-sbar .z{background:#355;width:50%}
+.den-sbd{position:absolute;top:-22px;transform:translateX(-50%);display:flex;align-items:center;gap:3px;white-space:nowrap;font:700 11px var(--f-num);color:rgb(var(--den-gold))}
+.den-spt{position:absolute;top:-9px;transform:translateX(-50%);font-size:8px;line-height:1;color:rgb(var(--den-gold))}
+.den-st{padding-top:0}
+.den-hd{margin-bottom:9px}
+/* gold full-clear bar + coin-icon pop values */
+.den-seg{transition:border-color .45s}
+.den-pop b svg{width:.78em;height:.78em;align-self:center;flex:none}
+.den-ftx u{display:flex;align-items:center;justify-content:center;gap:8px}
+.den-ftx u svg{width:.9em;height:.9em;flex:none}
+/* Day Trader: price-line chart behind a small gold number */
+.den-lmid .den-disp{display:block;height:128px;border-color:rgba(var(--den-gold),.5)}
+.den-dh{position:absolute;left:10px;top:6px;right:10px;display:flex;align-items:baseline;gap:8px;z-index:1;pointer-events:none}
+.den-lmid .den-disp b{font-size:32px;color:rgb(var(--den-gold));text-shadow:0 0 12px rgba(var(--den-gold),.45)}
+.den-disp b.pop{transform-origin:left center}
+.den-disp.win b{color:rgb(var(--den-gold))}
+.den-dh i{font:700 11px var(--f-num);font-style:normal}
+.den-disp.win{background:linear-gradient(180deg,rgba(var(--den-gold),.2),rgba(0,0,0,.4));border-color:rgba(var(--den-gold),.95)}
+/* LIQUIDATED stamp over the chart on a loss */
+.den-liq{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:2;pointer-events:none;background:rgba(0,0,0,.35)}
+.den-liq b{font:700 14px var(--f-num);color:rgb(var(--den-red))}
+.den-lmid .den-disp .den-liq b{font:700 14px var(--f-num);color:rgb(var(--den-red));text-shadow:none;letter-spacing:.06em}
+/* border + line + fill follow the move (green up / red down); only the number, price tag and dashed line stay gold */
+.den-lmid .den-disp{transition:border-color .3s}
+/* starts green; LONG = green ▲, SHORT = red ▼ */
+.den-lmid .den-disp{background:linear-gradient(180deg,rgba(var(--den-grn),.06),rgba(0,0,0,.4))}
+.den-lmid .den-disp.win{background:linear-gradient(180deg,rgba(var(--den-grn),.06),rgba(0,0,0,.4))}
+.den-hb.up{--bc:rgba(61,220,132,.8);--bf:rgba(61,220,132,.1);--bk:#8ff0b8}
+.den-hb.dn{--bc:rgba(255,59,92,.8);--bf:rgba(255,59,92,.1);--bk:#ff8da1}
+.den-hb .tri{font-style:normal;font-size:.8em;margin-right:.45em;display:inline-block;vertical-align:.08em}
+/* info (i) next to the game name + how-to bubble */
+.den-ib{position:absolute;left:14px;right:14px;z-index:6;padding:10px 12px;font:500 12px/1.5 var(--f-body);color:#eef4f3;background:#0b1d20;border:1px solid rgba(var(--den-teal),.75);box-shadow:0 10px 26px rgba(0,0,0,.65);animation:lib .16s ease-out}
+.den-ib[data-g="hilo"]{border-color:rgba(var(--den-gold),.75)}
+.den-ib::before{content:'';position:absolute;top:-6px;left:var(--ax,20px);width:10px;height:10px;background:#0b1d20;border-left:1px solid inherit;border-top:1px solid inherit;border-color:inherit;border-right:0;border-bottom:0;transform:rotate(45deg)}
+.reduce-fx .den-ib{animation:none}
+.den-ib.up::before{top:auto;bottom:-6px;transform:rotate(225deg)}
+.den-ib.up{animation-name:libu}
+/* quieter (i): small grey outline like the one next to "Earned today", centred on the name */
+.den-gtx b{display:flex;align-items:center}
+.reduce-fx .den-nd i,.reduce-fx .den-sheet,.reduce-fx .den-nd .den-cv::after,.reduce-fx .den-disp b.pop{transition:none !important;animation:none !important}
+/* Den title row: 5 ticket chips (+N in the corner when you have more), daily profit counter under the title */
+.den-tch{position:relative;display:flex}
+.den-tc{color:rgb(var(--den-teal));opacity:.22}
+.den-tc.on{opacity:1;filter:drop-shadow(0 0 4px rgba(var(--den-teal),.5))}
+.den-more{position:absolute;font:800 11px/14px var(--f-num);font-style:normal;color:rgb(var(--den-teal))}
+.den-cap{display:flex;align-items:center;gap:5px;margin-top:6px;font:700 12px var(--f-num);color:rgb(var(--den-gold))}
+.den-cap b{font-weight:700}
+.den-cap b.o{color:rgb(200,30,55)}
+/* header ticket count rolls like the gold */
+.den-tkn{display:inline-block;line-height:1em}
+.den-tkn .od{display:inline-block;height:1em;vertical-align:top;overflow:visible;clip-path:inset(0 -6px)}
+.den-tkn .od i{display:block;font-style:normal;line-height:1em;transition:transform .6s cubic-bezier(.3,.8,.3,1)}
+.den-tkn.tk-pop{animation:tkPop .9s cubic-bezier(.2,1.4,.4,1)}
+.reduce-fx .den-tkn .od i{transition:none}
+.den-ptk{width:34px;height:34px;left:0;top:0}
+.den-ptk svg{filter:drop-shadow(0 0 1px #021012) drop-shadow(0 0 1px #021012) drop-shadow(0 0 3px #021012) drop-shadow(0 0 8px rgba(var(--den-teal),.8))}
+/* daily limit reached: games dimmed, the day's number plastered over them */
+.den-gl{position:relative}
+.den-gl.lock .den-gc{opacity:.13;filter:grayscale(.6);pointer-events:none}
+.den-lim{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;pointer-events:none}
+.den-lim div{display:flex;align-items:center;gap:10px;font:800 26px var(--f-num);color:rgb(var(--den-gold));text-shadow:0 2px 14px rgba(0,0,0,.95)}
+.den-cap[hidden]{display:none}
+.den-lim b{font-weight:800}
+.den-lim b.o{color:rgb(200,30,55)}
+/* a ticket flying to the header count */
+.den-ftk{color:rgb(var(--den-teal));filter:drop-shadow(0 0 6px rgba(var(--den-teal),.8))}
+/* last blip: the risk number turns red; the bar behind it dims so it stays readable */
+.den-sf{transition:transform .45s cubic-bezier(.3,1.2,.5,1),background .45s,opacity .3s}
+.den-seg.last .den-sf{opacity:.12}
+.den-seg.last .den-stx b{color:#ff3b5c;text-shadow:0 0 12px rgba(255,59,92,.8),0 0 2px #000}
+/* header: title + profit goal on one line, 10 ticket chips spread across the full width underneath; "resets in" only shows under the number when the Den is locked */
+.den-hd{align-items:center}
+.den-hd h2{margin:0}
+.den-hd .den-cap{margin-top:0}
+.den-tch{justify-content:space-between;gap:0;margin:2px 0 12px;font-size:0}
+.den-tc{font-size:22px}
+.den-tc svg{display:block}
+.den-more{right:0;top:-14px}
+/* short on gold or tickets: the missing number is red, the button fades like in the Shop (the stake arrows stay usable) */
+.den-go.short{border-color:rgba(var(--den-teal),.32);background:rgba(var(--den-teal),.04)}
+.den-go.short .den-mid{opacity:.55}
+.den-mid .red{color:var(--short)}
+/* ticket sources bubble (the (i) next to THE DEN) */
+.den-ib .den-tr{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:3px 0;font:700 12.5px var(--f-num)}
+.den-ib .den-tr b{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:rgb(var(--den-teal))}
+.den-ib .den-tr .den-ic{width:15px;height:15px}
+.den-ib .den-tr.dn span,.den-ib .den-tr.dn b{color:#6f8583;text-decoration:line-through;text-decoration-color:rgba(111,133,131,.6)}
+.den-ib .den-tr.dn .den-ic{opacity:.45}
+.den-ib[data-g="tix"]{right:auto;width:max-content;min-width:176px;max-width:calc(100% - 28px)}
+.den-ib[data-g="tix"] .den-tr{gap:28px}
+.den-hd h2{display:flex;align-items:center;gap:6px}
+@keyframes lbl{50%{opacity:.15}}
+@keyframes lpp{from{transform:scale(1.25);opacity:.4}to{transform:none;opacity:1}}
+@keyframes lpop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+@keyframes lsw{to{transform:rotate(360deg)}}
+@keyframes lthr{0%,100%{opacity:calc(var(--a)*.3)}50%{opacity:var(--a)}}
+@keyframes ltb{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes lthfl{to{background-position:0 -26px}}
+@keyframes lib{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@keyframes libu{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes tkPop{0%{transform:scale(1)}25%{transform:scale(1.4);color:#d8fffb;text-shadow:0 0 10px rgba(var(--den-teal),.95)}100%{transform:scale(1)}}

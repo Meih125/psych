@@ -1,0 +1,45 @@
+/* rank styles. */
+.lvl-pop{position:absolute;top:100%;left:-4px;z-index:9;width:250px;margin-top:6px;padding:12px 13px 10px;border-radius:3px;background:linear-gradient(#111f21,#081214);border:1.5px solid var(--bronze-lo);box-shadow:inset 0 0 0 1px #000,0 14px 30px rgba(0,0,0,.9);opacity:0;visibility:hidden;transform:translateY(-6px);transition:.18s}
+.lvl-pop.open{opacity:1;visibility:visible;transform:none}
+.lp-title{font-family:var(--f-title);font-size:16px;letter-spacing:1px;color:var(--bronze-hi);margin-bottom:4px}
+.lp-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid rgba(210,240,236,.14)}
+.lp-l small{display:block;font-size:13px;color:var(--bone-faint)}
+.lp-rank{display:block;font-family:var(--f-italic);font-style:italic;font-size:13px}
+.lp-g{display:flex;align-items:center;gap:5px}
+.lp-boss{letter-spacing:1px;padding:0 4px;margin-left:4px;vertical-align:2px}
+.lp-foot{margin-top:6px;font-family:var(--f-italic);font-style:italic;font-size:12.5px;color:var(--bone-faint)}
+.ranks{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px;margin-top:10px}
+.rank{text-align:center;padding:10px 4px 8px}
+.lp-rank{color:var(--acc-hi)}
+.lp-g{font-family:var(--f-num);font-weight:700;font-size:13px;color:var(--gold)}
+.lp-row.milestone .lp-l b,.lp-row.milestone .lp-g{color:var(--gold);text-shadow:0 0 8px rgba(var(--gold-rgb),.45)}
+.lp-boss{font-family:var(--f-title);font-weight:700;color:#fff;background:var(--red);border:0;border-radius:3px;font-size:9.5px;box-shadow:0 0 10px rgba(var(--red-rgb),.6)}
+.rank{border-radius:var(--r);border:1px solid var(--line);background:rgba(255,255,255,.03)}
+.rank.cur{border-color:rgba(255,170,120,.6);background:rgba(var(--acc-rgb),.08);box-shadow:0 0 16px rgba(var(--acc-rgb),.2)}
+/* rank emblem animation (transform / opacity / dash only, all cheap) */
+.em-spin{transform-box:view-box;transform-origin:40px 46px}
+.em-shock{transform-box:view-box;transform-origin:40px 46px}
+.em-flap{transform-box:view-box;transform-origin:40px 46px}
+.hlu-msg{position:absolute;left:104px;top:50%;transform:translateY(-50%);opacity:0;transition:opacity .3s ease .15s;pointer-events:none}
+.top.hlu .hlu-msg{opacity:1}
+.hlu-big{font:800 23px var(--f-title);letter-spacing:3px;color:#ffd877;text-shadow:0 0 16px rgba(240,180,41,.5)}
+.hlu-rw{display:flex;align-items:center;gap:6px;margin-top:3px;font:800 16px var(--f-num);color:#ffc94a}
+.hlu-rw svg{width:18px;height:18px}
+.hlu-nr{margin-top:3px;font:700 11px var(--f-num);letter-spacing:1.5px;text-transform:uppercase}
+.xpbar .hlu-wave{position:absolute;left:0;top:0;bottom:0;width:0;z-index:2;pointer-events:none}
+#lvlEmblem .emu-o,#lvlEmblem .emu-n{position:absolute;inset:0}
+#lvlEmblem .emu-o svg,#lvlEmblem .emu-n svg{width:100%;height:100%}
+.emu-sp{position:absolute;width:4px;height:4px;margin:-2px;border-radius:50%;pointer-events:none;z-index:3}
+.emu-ring{position:absolute;left:50%;top:50%;width:46px;height:46px;border:2px solid;border-radius:50%;pointer-events:none}
+/* SVG-internal rotation can't run on the GPU: draw it in few steps (about 5 per second) instead of every frame */
+.em-spin{animation:emSpin 26s steps(130) infinite}
+.em-spin.em-rev{animation:emSpin 16s steps(80) infinite reverse}
+.em-shock{animation:emShock 2.4s steps(12) infinite}
+.em-flap{animation:emFlap 3s steps(15) infinite}
+/* Den tickets: level-up row, daily-login badge, Market reroll */
+.hlu-rws{display:flex;align-items:center;gap:14px;margin-top:3px}
+.hlu-rws .hlu-rw{margin-top:0}
+.hlu-tk{color:#2ee6d6}
+@keyframes emSpin{to{transform:rotate(360deg)}}
+@keyframes emShock{0%{transform:scale(1);opacity:.9}100%{transform:scale(2.3);opacity:0}}
+@keyframes emFlap{0%,100%{transform:scaleX(1)}50%{transform:scaleX(1.08)}}

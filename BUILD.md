@@ -1,6 +1,6 @@
 # Building Psych (Windows)
 
-The app is the `www` folder: `index.html` (layout), `app.css` (look), `app.js` (logic).
+The app is the `www` folder: `index.html` (layout and the file list), `css/` (look), `js/` (logic), split by area.
 Double-click `www\index.html` to try it in Chrome, or build a one-file preview with test data:
 `node tools\make-preview.js` makes `Psych-preview.html` (open it on any device, even the phone).
 Everything else in this folder turns it into an Android app.
@@ -38,7 +38,7 @@ Run this once, then build as usual:
     npm run sync
 
 ## Updating later
-1. Replace the changed files in `www` (usually `index.html`, `app.css`, `app.js`).
+1. Replace the changed files in `www` (`index.html`, files in `www/css` and `www/js`). Unzipping over the project does this; old `www/app.js`, `www/app.css`, `www/den.js` and `www/den.css` are no longer used and can be deleted.
 2. `npm run sync`
 3. Android Studio: Build > Generate APKs, then install over the old app (your data is kept).
 

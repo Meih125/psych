@@ -1,0 +1,330 @@
+/* collection styles. */
+.set-claim{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;letter-spacing:.5px}
+.set-claim:not(.ready) svg{opacity:.45;filter:grayscale(1)}
+.set-claim.ready em{color:var(--bone)}
+.col-grid{display:grid}
+.ct{position:relative;aspect-ratio:480/672;padding:0;border:0;background:#000;overflow:hidden;box-shadow:0 3px 8px rgba(0,0,0,.7)}
+.ct.r-ultimate{box-shadow:0 0 0 1.5px #c8242f,0 3px 8px rgba(0,0,0,.7)}
+.ct.r-legendary{box-shadow:0 0 0 1.5px #f08a24,0 3px 8px rgba(0,0,0,.7)}
+/* UR and SSR only: art-coloured gradient frame (the card's own edge colours, with a soft glow in its middle colour) */
+.ct.edge{padding:2px;background:linear-gradient(135deg,var(--e1),var(--e2) 50%,var(--e3));box-shadow:0 0 7px -1px var(--e2),0 3px 8px rgba(0,0,0,.7)}
+.ct.edge img{border-radius:3px}
+.pz-strip{user-select:none;-webkit-user-select:none;scrollbar-width:none}
+.pz-strip::-webkit-scrollbar{display:none}
+.pz-track{display:flex;width:max-content}
+.pz{width:150px;aspect-ratio:480/672;flex:none}
+.pz-strip.drag{cursor:grabbing}
+.col-scenes{display:grid;grid-template-columns:repeat(2,1fr)}
+.cs{position:relative;aspect-ratio:672/480;padding:0;border:0;overflow:hidden}
+.cs.locked span{inset:0;display:grid;place-items:center;background:none;font-style:italic;text-align:center}
+/* collection: more breathing room */
+.col-grid{grid-template-columns:repeat(3,1fr);gap:12px}
+.col-scenes{gap:12px}
+.ct{border-radius:4px}
+.set-claim{border-radius:4px;font-family:var(--f-title);font-weight:600;font-size:11px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:#4e6260}
+.set-claim.ready{padding:3px 9px}
+.set-claim.got{font-family:var(--f-title)}
+.pz-strip{border-radius:4px;box-shadow:inset 0 0 0 1px var(--line)}
+.cs{border-radius:4px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px var(--line)}
+/* Collection 2 */
+.cc-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:12px 0 0;padding:2px 12px 4px}
+.cc-chips::-webkit-scrollbar{display:none}
+.cc-chip{flex:none;display:flex;align-items:center;gap:7px;padding:6px 12px 6px 6px;border:1px solid var(--line);background:rgba(14,26,28,.75);font:600 12.5px var(--f-title);color:#cfdedc}
+.cc-chip .cc-ring{width:24px;height:24px;transform:rotate(-90deg);flex:none}
+.cc-chip.ready,.cc-fold.ready{border:1.5px solid transparent;background:linear-gradient(rgba(60,46,18,.95),rgba(40,32,14,.95)) padding-box,
+  linear-gradient(115deg,#7a5410,#f7e08a 18%,#b8861b 32%,#fff6cf 46%,#a8740f 60%,#e9c25a 78%,#6e4a0c) border-box;background-size:100% 100%,240% 100%;animation:ccGold 4s linear infinite;box-shadow:0 0 10px rgba(232,185,74,.35),inset 0 0 8px rgba(232,185,74,.12)}
+/* picked + ready: solid polished gold with dark text */
+.cc-chip.ready.on{color:#2a1a02;border-color:transparent;background:linear-gradient(115deg,#8a5e12,#f7e08a 18%,#c9951f 32%,#fff6cf 46%,#b8820f 60%,#ecc85e 78%,#7a520c) border-box;background-size:240% 100%;animation:ccGoldOn 4s linear infinite;box-shadow:0 0 14px rgba(240,195,80,.6),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(0,0,0,.3)}
+.cc-chip.ready.on .cc-ring circle:first-child{stroke:rgba(0,0,0,.25)}
+.cc-chip.ready.on .cc-ring circle:last-child{stroke:#5a3c06}
+.cc-over{margin:10px 12px 0;padding:12px 14px;display:flex;flex-direction:column}
+.cc-tt{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+.cc-tt b{text-transform:uppercase}
+.cc-bar{position:relative;display:block;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
+.cc-bar i.gold{background:#f5c542}
+.cc-fold{margin:10px 12px 0;border:1px solid var(--line)}
+.cc-hd{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 12px;}
+.cc-pv{display:flex;width:56px}
+.cc-pv.land img{width:52px;aspect-ratio:16/10;}
+.cc-mid{min-width:0}
+.cc-mid .cc-bar{height:4px;margin-top:7px}
+.cc-hd .set-claim{flex-direction:column;gap:1px;}
+.cc-hd .set-claim em{gap:1px}
+.cc-bd{padding:2px 12px 12px}
+.cc-bd .col-grid{gap:9px}
+.cc-over{border-radius:4px;border:1px solid rgba(46,230,214,.35);clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+.cc-tt b::before{content:'// '}
+.cc-chip{border-radius:3px;font-family:var(--f-num);font-size:11.5px;letter-spacing:.4px;clip-path:var(--cut7)}
+.cc-fold{border-radius:4px;background:rgba(6,14,16,.85);clip-path:var(--cut14)}
+.cc-fold.ready{background:linear-gradient(#0a1416,#0a1416) padding-box,linear-gradient(115deg,#7a5410,#f7e08a 18%,#b8861b 32%,#fff6cf 46%,#a8740f 60%,#e9c25a 78%,#6e4a0c) border-box;background-size:100% 100%,240% 100%}
+.cc-hd .set-claim{border-radius:3px}
+/* claimable: thicker edges */
+.cc-fold.ready{border-width:2.5px}
+.cc-chip.ready{border-width:2px}
+.set-claim.ready{border-width:1.5px !important}
+/* big gold "ready" set sections stay still (the moving edge on a large box repaints the whole box); chips keep it */
+.cc-fold.ready{animation:none}
+/* sets far down the Collection aren't laid out or painted until you scroll near them */
+.cc-fold{content-visibility:auto;contain-intrinsic-size:auto calc(66px + var(--rows,0) * ((100vw - 66px) * .467 + 9px))}
+/* breathing room: title -> Today box -> past days */
+/* Today box: reward on top, Reset underneath, Claim on the right */
+/* Collection search */
+.col-search{position:absolute;display:grid;place-items:center;padding:0;border-radius:3px;border:1px solid rgba(46,230,214,.35);background:rgba(6,14,16,.85);color:#9db2b0}
+.col-search[hidden]{display:none}
+.col-search.on{color:#2ee6d6;border-color:rgba(46,230,214,.8);background:rgba(46,230,214,.1)}
+.cc-search{position:absolute;left:150px;right:62px;top:18px;height:38px;display:flex;align-items:center;gap:6px;padding:0 6px 0 9px;border:1px solid rgba(46,230,214,.45);border-radius:3px;background:rgba(6,14,16,.9);clip-path:var(--cut10)}
+.cc-search[hidden]{display:none}
+.cc-search input{flex:1;min-width:0;height:36px;border:0;outline:0;background:none;color:#f2f7f6;font:500 13px var(--f-num)}
+.cc-search input::placeholder{color:#5f7472}
+.cc-search input::-webkit-search-cancel-button{display:none}
+.cc-sx[hidden]{display:none}
+.cc-sx{flex:none;width:26px;height:26px;padding:0;border:0;background:none;color:#9db2b0;font:400 22px/1 var(--f-num)}
+#ccRes{margin:0 12px}
+.cc-count{margin:12px 2px 8px;font:600 11px var(--f-num);letter-spacing:1px;color:#7f9593}
+.cc-count::before{content:'// '}
+.cc-hits{gap:12px 9px}
+.cc-hit{min-width:0;display:flex;flex-direction:column}
+.cc-hit small{font:600 10px var(--f-num);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cc-none{margin:16px 2px;color:#7f9593;font:500 13px var(--f-body)}
+/* Collection: cards you don't own show face up, darkened and grey (same look as missing puzzle pieces) */
+.ct.locked img{opacity:1;filter:brightness(.2) grayscale(1)}
+.ct.locked{box-shadow:0 3px 8px rgba(0,0,0,.7)}
+.col-search{width:30px;height:30px;top:20px;clip-path:var(--cut5)}
+.col-search{right:12px}
+.pz-grid{grid-template-columns:repeat(4,1fr) !important;gap:7px !important}
+.pz-pic{display:block;width:100%;margin-top:9px;padding:7px 0;font:700 11px var(--f-num);letter-spacing:1px;color:#9db2b0;border:1px solid var(--line);background:rgba(255,255,255,.03);clip-path:var(--cut5);cursor:pointer}
+.pz-strip{cursor:pointer}
+.col-duo{display:grid;grid-template-columns:1fr;gap:10px}
+.duo{display:flex;flex-direction:row;gap:0;border-radius:6px;background:#05080c}
+.duo.whole{filter:drop-shadow(0 0 7px rgba(255,184,58,.55))}
+.cs.duo-c{flex:1 1 50%;min-width:0;overflow:visible;border-radius:0;box-shadow:none;background:none}
+.cs.duo-c img{object-fit:contain}
+.cs.duo-c.locked img{filter:brightness(.2) grayscale(1)}
+.duo-one{position:relative;display:block;padding:0;border:0;background:none;border-radius:8px}
+.ct.jl{container-type:inline-size}
+.ct.jl img{filter:brightness(.4) grayscale(.55)}
+.ct.jl b{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-55deg);white-space:nowrap;font:800 28cqw system-ui;letter-spacing:.06em;color:transparent;-webkit-text-stroke:1.3px rgba(200,205,210,.3);pointer-events:none}
+/* two-card categories: an overlapping fan */
+.col-fan{position:relative;aspect-ratio:100/66;margin:4px 0 2px}
+.fc{position:absolute;top:0;width:42%;padding:0;border:0;background:none;border-radius:8px;container-type:inline-size}
+.fc img{width:100%;display:block;border-radius:8px;aspect-ratio:480/672;object-fit:cover}
+.fc.fa{left:14%;transform:rotate(-7deg)}
+.fc.fb{right:14%;top:6%;transform:rotate(6deg)}
+.fc:not(.lk):not(.off){box-shadow:-6px 0 18px 2px rgba(var(--g1),.6),6px 0 18px 2px rgba(var(--g2),.55)}
+.fc.lk b{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-55deg);white-space:nowrap;font:800 28cqw system-ui;letter-spacing:.06em;color:transparent;-webkit-text-stroke:1.3px rgba(200,205,210,.3);pointer-events:none}
+.col-fan .fq{position:absolute;top:auto;bottom:2px;min-width:0;font-size:11px;padding:0 6px;border-radius:9px;background:rgba(8,12,16,.88);border:1px solid rgba(255,255,255,.28);color:var(--bone);z-index:3}
+.col-fan .fq-l{left:2px;right:auto}
+.col-fan .fq-r{right:2px;left:auto}
+.cc-mid small .nx{color:#ffc94a;margin-left:6px;text-shadow:0 0 6px rgba(255,201,74,.45)}
+/* set claim row (V2): small fixed button, the pay under the bar */
+.cc-hd .set-claim{width:84px;justify-content:center;padding:9px 0;text-align:center;line-height:1.2;flex:none}
+.set-claim.got{font-style:normal;color:#b8cbc9;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04)}
+.cc-pay{display:flex;align-items:center;gap:8px;font:12px var(--f-num);color:#b8cbc9;white-space:nowrap}
+.cc-pay svg{width:12px;height:12px;margin-left:2px;vertical-align:-2px}
+.pk-sh .cc-pay{flex:none;}
+.pk-sh .set-claim{flex:none;width:72px;height:26px;font-size:11px;padding:0}
+.pkc{position:relative}
+.pkc .ct{width:100%;display:block;position:relative;z-index:1}
+.pkc.s1::before,.pkc.s2::before,.pkc.s2::after{content:"";position:absolute;left:0;right:0;top:0;bottom:0;background:#2c3a40;border:1px solid rgba(255,255,255,.28);transform:translate(2px,-2px);z-index:0}
+.pkc.s2::after{transform:translate(4px,-4px);background:#223036}
+.pkc.s2::before{transform:translate(2px,-2px)}
+.pkc i{position:absolute;left:2px;top:1px;z-index:3;font:800 10px system-ui;font-style:normal;text-shadow:0 0 3px #000,0 0 3px #000;pointer-events:none}
+.cc-pay{margin-top:6px}
+.pk-sh .cc-pay{margin:0}
+.set-claim,.cc-hd .set-claim,.pk-sh .set-claim{display:inline-flex;align-items:center;justify-content:center;text-align:center;padding-left:0;padding-right:0}
+.pkc i{color:var(--sc)}
+.cc-act{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px}
+.cc-act .set-claim{margin:0}
+.cc-pay2{display:flex;align-items:center;gap:3px;font:700 12px var(--f-num);white-space:nowrap}
+.cc-pay2 svg{width:13px;height:13px}
+.cc-pay2 b{margin-left:0;font-weight:700;background:linear-gradient(90deg,#4fe6d8,#f5c542);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+/* set claim: cyan when ready, very dim when it can't be claimed yet */
+.set-claim.ready{color:#7ff3e6 !important;border-color:rgba(46,230,214,.7) !important;box-shadow:0 0 10px rgba(46,230,214,.2),inset 0 1px 0 rgba(255,255,255,.06) !important;text-shadow:0 0 8px rgba(46,230,214,.4) !important}
+.set-claim.ready:active{background:rgba(46,230,214,.16) !important}
+.set-claim:not(.ready):not(.got){opacity:.45}
+.cc-pay2.dim{opacity:.3}
+.cc-pay.dim{opacity:.3}
+/* Realms / Chapters: pin board (framed pictures, 2 per line, slightly crooked and uneven) */
+.col-scenes.pbd{grid-template-columns:repeat(2,1fr);gap:18px 14px;padding:8px 4px 6px}
+.cs.pb{aspect-ratio:672/480;padding:2px;border:0;overflow:visible;transform:translate(var(--tx,0),var(--ty,0)) rotate(var(--r,0deg));background:linear-gradient(135deg,rgba(46,230,214,.75),rgba(255,201,74,.55));box-shadow:0 5px 11px #000,0 0 10px rgba(46,230,214,.14);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));border-radius:0}
+.cs.pb img{width:100%;height:100%;object-fit:cover;display:block}
+.cs.pb span{position:absolute;left:2px;right:2px;bottom:2px;padding:12px 8px 4px;font:700 11px var(--f-num);letter-spacing:.5px;text-transform:uppercase;text-align:left;background:linear-gradient(transparent,rgba(0,0,0,.88));color:#eef4f3}
+.cs.pb.locked{background:rgba(255,255,255,.12);box-shadow:none}
+.cs.pb.locked i{position:absolute;inset:2px;background:repeating-linear-gradient(45deg,#101c1e,#101c1e 6px,#142225 6px,#142225 12px)}
+.cs.pb.locked span{inset:2px;display:grid;place-items:center;background:none;color:#5b7072;font-size:15px;font-style:normal}
+/* ★ next to the card name */
+/* pin board border: solid gradient from the picture's own colours, no glow */
+.cs.pb:not(.locked){background:linear-gradient(135deg,var(--e1),var(--e2) 50%,var(--e3));box-shadow:0 4px 8px rgba(0,0,0,.7)}
+/* header pictures: card backs when nothing owned; no fold on the pictures (they open the picker) */
+.cc-hd{cursor:default}
+.cc-pv[data-act]{cursor:pointer}
+.cc-mid[data-act]{cursor:pointer}
+/* picture picker sheet */
+.cvp{position:fixed;inset:0;z-index:70;display:flex;justify-content:center;background:rgba(0,0,0,.6)}
+.cvp-sheet{width:min(100%,520px);overflow:auto;padding:14px 12px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(#0f1c1e,#0a1416)}
+.cvp-t{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.cvp-t b{font:700 14px var(--f-num);color:#f2f7f6}
+.cvp-h{font:700 10px var(--f-num);letter-spacing:2px;color:#7fa09c;margin:10px 0 5px;}
+.cvp-sc{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.cvp-sc::-webkit-scrollbar{display:none}
+.cvp-page{flex:0 0 100%;scroll-snap-align:start;display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:6px;align-content:start}
+.cvp-c{position:relative;padding:0;border-radius:4px;background:#000;overflow:hidden}
+.cvp-c img{display:block;width:100%;aspect-ratio:480/672;object-fit:cover}
+.cvp-c.l img{aspect-ratio:672/480}
+.cvp-c i{position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;font:800 11px/18px var(--f-num);font-style:normal;text-align:center}
+.cvp-dots{display:flex;justify-content:center;gap:5px;margin-top:6px}
+.cvp-dots u{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.2)}
+.cvp-dots u.on{}
+.cvp-dn{display:flex;gap:8px;margin-top:12px}
+.cvp-dn button.a{color:#7ff3e6;border-color:rgba(46,230,214,.7)}
+/* puzzle strip: moved by a transform (smooth), not by scrolling */
+.pz-strip{overflow:hidden !important;touch-action:pan-y}
+.pz-track{will-change:transform}
+/* header pictures: the first one sits on top of the stack; 1 or 2 pictures are drawn bigger */
+.cc-pv img{position:relative}
+.cc-pv.n1 img{width:42px;transform:none}
+.cc-pv.n2 img{width:36px;}
+.cc-pv.land.n1 img{margin-right:0}
+.cc-pv.land.n2 img{width:56px;}
+/* picker: centred, cyan frame; only the picked card is orange (thin) */
+.cvp{align-items:center;padding:16px}
+.cvp-sheet{border:1px solid rgba(46,230,214,.5);border-radius:12px;max-height:84vh;box-shadow:0 0 30px rgba(0,0,0,.7)}
+.cvp-c{border:1px solid rgba(255,255,255,.14)}
+.cvp-c.on{border:1.5px solid #ff6b1a;box-shadow:none}
+.cvp-c i{background:rgba(8,12,16,.88);color:#fff;border:1px solid rgba(255,255,255,.35)}
+.cvp-dots u.on{background:#7ff3e6}
+/* header stack: the first picture on top at the right, the others peek out to its left */
+.cc-pv{flex-direction:row-reverse;justify-content:flex-start}
+.cc-pv img{margin-left:0;margin-right:-17px}
+.cc-pv img:nth-child(1){transform:none;margin-right:0}
+.cc-pv img:nth-child(2){transform:rotate(-6deg)}
+.cc-pv img:nth-child(3){transform:rotate(-12deg)}
+.cc-pv.land img{margin-left:0;margin-right:-44px}
+.cc-pv.land img:nth-child(1){margin-right:0}
+.cc-pv.n1 img{margin:0}
+.cc-pv.n2 img{margin-left:0;margin-right:-18px}
+.cc-pv.n2 img:nth-child(1){margin-right:0}
+.cc-pv.n2 img:nth-child(2){transform:rotate(-7deg)}
+.cc-pv.land.n2 img{margin-right:-44px}
+.cc-pv.land.n2 img:nth-child(1){margin-right:0}
+/* cards in the grids: hold = big, hold + drag = move (no coloured borders) */
+.cc-bd .col-grid{grid-auto-flow:dense}
+.cc-bd .col-grid > .ct.big{grid-column:span 2;grid-row:span 2;aspect-ratio:480/672}
+.cc-bd .col-grid > .ct{transition:transform .15s,opacity .15s;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.cc-bd .col-grid > .ct img{-webkit-user-drag:none;user-select:none}
+.cc-bd .col-grid > .ct.holding{transform:scale(.96)}
+.cc-bd .col-grid > .ct.armed{transform:scale(1.04);z-index:3}
+.cc-bd .col-grid > .ct.lifted{opacity:.3}
+.cc-bd .col-grid > .ct.pop{animation:ctPop .4s}
+.ct.ghost{opacity:.92;transform:scale(1.06);box-shadow:0 10px 24px rgba(0,0,0,.8);cursor:grabbing}
+.pz{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.pz.lift{transform:scale(1.07);z-index:5;filter:brightness(1.1);box-shadow:0 8px 18px #000}
+.pz-strip.moving{cursor:grabbing}
+/* header pictures: one picture sits in the middle; wide stacks are calmer (the ones underneath are dimmed, thin dark edge) */
+.cc-pv.n1{justify-content:center}
+.cc-pv.land.n1 img{width:56px}
+.cc-pv.land img:nth-child(n+2){filter:brightness(.6)}
+.cc-bd .col-grid > .ct.big.br{grid-column:2 / 4}
+.ct.ghost{transform-origin:0 0}
+/* joined Duo art in the header: crop the printed frame away (it is noise at this size) */
+.cc-pv img.dj{object-view-box:inset(7% 5%)}
+/* unowned cards: darker, so owned ones stand out */
+.ct.locked img,.cs.duo-c.locked img{filter:brightness(.12) grayscale(1)}
+.fc.off img{filter:brightness(.14) grayscale(.8)}
+.fc.lk img{filter:brightness(.24) grayscale(.6)}
+/* locked Jokers: the hint under the two cards, in the Joker colours between two fading lines */
+.jk-note.c{display:flex;align-items:center;gap:10px;margin:10px 4px 2px;font:600 12px var(--f-num);letter-spacing:.04em}
+.jk-note.c::before,.jk-note.c::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,#7a2a9a,#9a1a30,transparent)}
+.jk-note.c span{background:linear-gradient(90deg,#d77cff,#ff4a5c);-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap}
+/* pack switch, in place: colours fade across, the name slides, the UR boxes fill / empty one by one */
+.inv-name .nm-box{display:inline-grid;overflow:hidden;vertical-align:top}
+.inv-name .nm-box > span{grid-area:1/1;justify-self:center;white-space:nowrap}
+.inv-name .nm-o{animation:nmOut .42s cubic-bezier(.4,0,.2,1) both}
+.inv-name .nm-n{animation:nmIn .42s cubic-bezier(.2,.7,.2,1) both}
+/* undo: rewards flying back from the purse */
+#ccRes{position:relative}
+/* pack-colour glints on UR cards in the grid are drawn only while on screen */
+#panel .cc-fold{content-visibility:auto}
+/* collection pack switch: name slider + growing bars */
+.cc-tt b .nm-box{display:inline-grid;overflow:hidden;vertical-align:top}
+.cc-tt b .nm-box > span{grid-area:1/1;white-space:nowrap}
+.cc-tt b .nm-o{animation:nmOut .42s cubic-bezier(.4,0,.2,1) both}
+.cc-tt b .nm-n{animation:nmIn .42s cubic-bezier(.2,.7,.2,1) both}
+.cc-over .cc-bar i{transition:width .5s cubic-bezier(.3,.7,.2,1)}
+.cc-over .nv{font-style:normal}
+.reduce-fx .cc-over .cc-bar i{transition:none}
+/* the deck dots keep their stretch while colours morph */
+.cc-tt b span{font:inherit;color:inherit;text-shadow:none;letter-spacing:inherit}
+/* idle loops rest while scrolling (main thread stays free for the scroll) */
+.cc-chip.ready,.cc-chip.ready.on{animation:none !important}
+/* gold shine on ready chips: a light band slides across (transform only, no repaint). Reduce effects: plain gold border. */
+.cc-chip.ready{position:relative;overflow:hidden}
+.cc-chip.ready::after{content:'';position:absolute;top:0;bottom:0;left:0;width:45%;pointer-events:none;background:linear-gradient(105deg,transparent,rgba(255,246,207,.55),transparent);transform:translateX(-130%);animation:ccShine 3.4s ease-in-out infinite}
+.reduce-fx .cc-chip.ready::after{display:none;animation:none}
+/* ready set rows: the same sliding shine across the row header (Reduce effects: plain gold border) */
+.cc-fold.ready .cc-hd{position:relative;overflow:hidden}
+.cc-fold.ready .cc-hd::after{content:'';position:absolute;top:0;bottom:0;left:0;width:35%;pointer-events:none;background:linear-gradient(105deg,transparent,rgba(255,246,207,.32),transparent);transform:translateX(-130%);animation:ccShine 3.8s ease-in-out infinite}
+.reduce-fx .cc-fold.ready .cc-hd::after{display:none;animation:none}
+#ccMain{position:relative}
+/* the overview card animates numbers and bars: keep its relayouts from touching the rest of the page */
+.cc-over{contain:layout style}
+.cc-over .cc-bar{contain:layout paint}
+/* the overview card owns sideways drags (pack swipe); the page still scrolls up and down */
+#panel .cc-over{touch-action:pan-y;user-select:none;-webkit-user-select:none}
+/* Collection set rows: the rarity colour as an edge stripe + soft glow, and two bars (rarity above, gold "next claim" below) */
+.cc-hd{position:relative;background:linear-gradient(90deg,color-mix(in srgb,var(--c) 16%,transparent),transparent 45%)}
+.cc-hd::before{content:none}
+.cc-pv img{outline:1px solid color-mix(in srgb,var(--c) 65%,#000)}
+.cc-mid .cc-bar2{height:3px;margin-top:3px}
+.cc-bar i.gold{left:0}
+.cc-mid small .nx.dim{opacity:.4;text-shadow:none}
+.cc-bar2.dim i.gold{opacity:.4}
+.cc-br + .cc-br{margin-top:4px}
+.cc-n{flex:none;min-width:34px;text-align:right;font:700 11px/1 var(--f-num);color:#9db2b0}
+.cc-n.nx{color:#ffc94a}
+.cc-n.dim{opacity:.4}
+.cc-mid b small{color:#9db2b0;margin-left:6px}
+.cc-nm{display:flex;align-items:baseline;gap:8px}
+.cc-nm b{flex:1;min-width:0}
+.cc-br{display:flex;align-items:center;gap:8px;margin-top:6px}
+.cc-bars{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.cc-bars .cc-bar{flex:none;width:100%}
+.cc-mid .cc-bars .cc-bar{height:var(--bh1,4px);margin-top:0}
+.cc-mid .cc-bars .cc-bar2{height:var(--bh2,2px)}
+.cc-bars .cc-bar i{top:0;bottom:0;height:auto}
+/* All packs overview: one rarity strip (each block sized by how many cards that rarity has) + a column per rarity, on a soft cyan wash */
+.cc-over{background:linear-gradient(120deg,rgba(46,230,214,.14),rgba(6,14,16,.88) 55%) !important;border-color:rgba(46,230,214,.4) !important;gap:0 !important}
+.ov-strip{display:flex;gap:3px;height:16px;margin-top:10px}
+.ov-strip span{position:relative;display:block;background:color-mix(in srgb,var(--c) 19%,transparent);clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)}
+.ov-strip i{position:absolute;left:0;top:0;bottom:0;background:var(--c);box-shadow:0 0 8px var(--c);transition:width .5s cubic-bezier(.3,.7,.2,1)}
+.ov-cols{display:grid;gap:4px;margin-top:12px}
+.ov-cols div{text-align:center;border-top:2px solid var(--c);padding-top:6px;min-width:0}
+.ov-cols b{display:block;font:700 11px var(--f-num);color:var(--c)}
+.ov-cols em{display:block;font:700 15px var(--f-num);font-style:normal;color:#fff;margin-top:3px}
+.ov-cols em small{font-size:10px;color:#7f9593}
+.reduce-fx .ov-strip i{transition:none}
+.ov-strip span{transition:flex-grow .5s cubic-bezier(.3,.7,.2,1)}
+.reduce-fx .ov-strip span{transition:none}
+.mkt-art .ct { display: block; width: 100%; }
+.mkt-art.sold .ct { filter: brightness(0.4) saturate(0.6); }
+.sh .mkt-art .ct { box-shadow: rgba(0, 0, 0, 0.7) 0px 3px 8px; }
+.sh .mkt-art.sold .ct { filter: none; }
+.sh .col-line{ display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font: 600 11px var(--f-title); color: rgb(157, 178, 176); }
+.sh .col-line .bar{ height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.sh .col-line .bar i{ display: block; height: 100%; background: var(--ac); }
+.sh .col-line b{ font: 700 11.5px var(--f-num); color: rgb(242, 247, 246); }
+.mkt-stk .ct{width:40px;border-radius:3px}
+.mkt .mkt-stk .ct{transform:rotate(-4deg)}
+.u-r .col-line { grid-template-columns: auto 1fr auto; }
+.mkt .mkt-stk .ct { width: 60px; margin-right: -28px; border-radius: 4px; box-shadow: rgba(0, 0, 0, 0.65) 0px 8px 14px, rgba(46, 230, 214, 0.2) 0px 0px 14px; }
+.mkt .mkt-stk .ct:nth-child(1) { transform: rotate(-9deg) translateY(4px); }
+.mkt .mkt-stk .ct:nth-child(2) { transform: translateY(-6px); z-index: 2; }
+.mkt .mkt-stk .ct:nth-child(3) { transform: rotate(9deg) translateY(4px); margin-right: 0px; }
+.mkt-stk.n1 .ct{transform:none!important;margin-right:0!important}
+.mkt-stk.n2 .ct:nth-child(2){margin-right:0}
+@keyframes ccGoldOn{from{background-position:0 0}to{background-position:240% 0}}
+@keyframes ccGold{from{background-position:0 0,0 0}to{background-position:0 0,240% 0}}
+@keyframes ctPop{40%{transform:scale(1.04)}}
+@keyframes nmOut{to{transform:translateX(calc(var(--d) * 110%));opacity:0}}
+@keyframes nmIn{from{transform:translateX(calc(var(--d) * 110%));opacity:0}}
+@keyframes ccShine{0%,35%{transform:translateX(-130%)}80%,100%{transform:translateX(330%)}}

@@ -1,0 +1,80 @@
+/* Cross-area overrides: rules that must load after every area file (kept in their original order). */
+.seg.s5 span{font-size:13px}
+.lvl-pop,.info-pop{border-radius:var(--r);background:rgba(14,26,28,.97);border:1px solid var(--line-hi);box-shadow:0 18px 40px rgba(0,0,0,.6)}
+.lp-title,.info-title{font-family:var(--f-title);font-weight:600;font-size:14px;letter-spacing:.3px;color:#f2f7f6}
+.lp-row,.rate{border-top:1px solid var(--line)}
+.sc-name,.in-name{font-family:var(--f-title);font-weight:600}
+.tab.on svg{filter:drop-shadow(0 0 5px rgba(var(--acc-rgb),.5))}
+.hx-c{-webkit-appearance:none;appearance:none;box-sizing:border-box;margin:0;min-width:0;width:100%;height:auto;aspect-ratio:1;border-radius:50%;border:0;padding:0;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1;background:rgba(255,255,255,.04);font:600 11px var(--f-num);color:#5f7472;font-style:normal}
+.sh-cols.in-r{animation:shIn .25s ease-out}
+.sh-cols.in-l{animation:shInL .25s ease-out}
+/* HUD look (as in the Steps panel): mono font, // labels, cut corners — easy to revert, see backup-before-hud-style.html */
+.dka-stats div{border-radius:4px;border:1px solid rgba(var(--acr),.4);background:rgba(6,14,16,.85);text-align:left;padding:7px 12px 9px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.sh-tip b.t{color:#2ee6d6}
+.av-n small{margin-left:5px;font:600 11px var(--f-num);color:#9db2b0}
+.kind-head small{display:block;font:500 11.5px var(--f-body);color:#7f9593}
+.date-btn small{font:500 12px var(--f-num);color:#7f9593}
+.sk-info{position:relative;top:auto;left:auto;text-transform:none;letter-spacing:0}
+.w-sc small{font:500 10.5px var(--f-body);color:#7f9593}
+.post.save{font-family:var(--f-num) !important;letter-spacing:.14em;border-style:solid;border-color:rgba(var(--acc-rgb),.6);color:#ff8a45;background:rgba(var(--acc-rgb),.08)}
+.toggle > span:has(.sk-host){display:inline-flex;align-items:center}
+.up-v small{display:block;font:500 12px var(--f-body);color:#7f9593;margin-top:2px}
+.wb-tm small{font:500 10px var(--f-num);color:#7f9593;white-space:nowrap}
+.wb-tabs small{font:600 9px var(--f-num);opacity:.75}
+.dl-head small{font:700 10.5px var(--f-num);letter-spacing:.5px;color:#8fa6a3;}
+.tl-totbox small{font:700 9.5px var(--f-num);letter-spacing:1.4px;color:#7f9593}
+.av-ms span{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0 4px;border:1px solid rgba(210,240,236,.1);background:rgba(255,255,255,.02);
+  clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px);font:700 9px var(--f-num);color:#5f7472}
+.av-ms span.on{color:#ff8fb1;border-color:rgba(255,143,177,.45);background:rgba(255,143,177,.08)}
+.ep-h span{font-weight:500;letter-spacing:.3px;color:#7f9593}
+.ep-nm small{margin-left:5px;font-size:11px;color:#7f9593}
+.cn-ms span{font:600 10.5px var(--f-num);color:#8fa6a3;white-space:nowrap}
+.cy-sel-list button{border-radius:2px;clip-path:var(--cut7);font-size:14px;padding:9px 10px;border-left:2px solid transparent}
+.cy-sel-list button:hover{background:rgba(46,230,214,.07)}
+.cy-sel-list button.on{color:#f2f7f6;background:rgba(var(--acc-rgb),.12);border-left-color:var(--acc)}
+.wb-pgr button{font:700 18px var(--f-num);color:#2ee6d6;border:1px solid rgba(46,230,214,.6);background:none;width:46px;line-height:22px;padding:0}
+.pk-sh>b small{font:600 11px var(--f-num);color:var(--bone-dim);margin-left:4px}
+.cvp-t span{font:700 11px var(--f-num);}
+.cvp-dn button{flex:1;padding:9px 0;border-radius:4px;font:700 12px var(--f-num);color:#8fa6a3;border:1px solid rgba(255,255,255,.14);background:none}
+.cvp-t span{color:#7ff3e6}
+.ur-slots i.on:not(.ur){background:rgba(255,255,255,.03)}
+:is(.sh-buy,.btn-main,.btn-plain,.post,.cc-chip,.pk-tile,.set-claim,.hx-undo,.chip,.open-all,.av-slip,.rec-btn,.tl-add):active:not(:disabled){transform:scale(.95);filter:brightness(1.15)}
+.sh-dots i.on{width:6px;background:rgba(210,240,236,.22)}
+.inv-dots button.on{width:7px;background:rgba(210,240,236,.22);box-shadow:none}
+.pki-buy .sh-qty button{width:30px;height:100%;background:none;border:0;color:#cfe;font:700 16px var(--f-num)}
+.pki-buy .sh-buy svg{width:17px;height:17px}
+.reduce-fx .pki-stars i,.reduce-fx .pki-mist{animation:none}
+.ur-slots i:not(.ur){border-radius:2px;clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px)}
+.ov-cols span{display:block;font:500 10px var(--f-num);color:#7f9593;margin-top:2px}
+.dl-row span{flex:1;min-width:0;color:var(--bone)}
+.sh .tb b{ position: relative; font-weight: 700; opacity: 0; transition: opacity 0.2s 0.15s; }
+.sh .tb b{ transition-delay: 0.38s; }
+.sh .pips i{ flex: 1 1 0%; height: 7px; background: rgba(255, 255, 255, 0.07); clip-path: polygon(2px 0px, 100% 0px, calc(100% - 2px) 100%, 0px 100%); }
+.sh .pips i.on{ background: linear-gradient(rgb(224, 50, 61), rgb(143, 20, 28)); }
+.mkt-t small { display: block; font: 700 9.5px var(--f-num); letter-spacing: 2.2px; color: rgb(46, 230, 214); margin-bottom: 2px; }
+.u-r .bgl img { display: none; position: absolute; pointer-events: none; }
+.rw-both svg{width:14px;height:14px}
+/* not enough gold: the price number turns red as well as the button fading (Shop list, pack details, Market) */
+.sh-buy.short span,.sh .sh-buy.short span{color:var(--short) !important}
+.board-head h2,.sh-h,.ep-lab{display:flex;align-items:center;gap:6px}
+.field > label:has(> .info-btn),.field > .lbl:has(> .info-btn){display:flex;align-items:center}
+.den-cash svg{width:19px;height:19px}
+.den-bal svg{width:14px;height:14px}
+.den-ar svg,.den-back svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.den-back svg{width:20px;height:20px}
+.den-pop small{display:block;font:800 12px var(--f-title);letter-spacing:.3em;color:#fff;text-shadow:0 0 12px rgba(var(--den-gold),.9)}
+.den-stx small{display:block;margin-bottom:2px;font:700 9.5px var(--f-num);letter-spacing:.2em;color:var(--bone-faint,#5f7472)}
+.den-ftx .ty span{display:inline-block}
+.reduce-fx .den-se,.reduce-fx .den-tens i{animation:none}
+.den-sbd svg{width:12px;height:12px}
+.den-disp svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.den-liq small{font:800 18px var(--f-title);letter-spacing:.22em;color:rgb(var(--den-red));text-shadow:0 0 14px rgba(var(--den-red),.7)}
+.den-cap svg{width:14px;height:14px}
+.den-lim small{font:700 10px var(--f-num);color:rgba(157,178,176,.85)}
+.den-lim svg{width:26px;height:26px}
+.den-ftk svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.den-lim small{font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:none}
+@keyframes shIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes shInL{from{transform:translateX(-40px);opacity:0}to{transform:none;opacity:1}}
+/* the shared "not enough" shake (deny() in js/ui/motion.js; keyframes in ui/fx.css) */
+.slot.deny,.sh-buy.deny,.mkt-price.deny,.mkt .mkt-rr.deny,.den-go.deny{animation:deny .3s}
