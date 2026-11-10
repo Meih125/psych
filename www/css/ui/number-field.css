@@ -3,10 +3,11 @@
 .stepper button{width:24px;height:28px;padding:0;border:0;background:none;color:var(--bronze-hi);font-size:20px;line-height:1;font-family:var(--f-num)}
 .stepper button:disabled{opacity:.25}
 /* reward / number steppers */
-.stp{display:grid;grid-template-columns:38px 1fr 38px;align-items:stretch;border-radius:6px;border:1px solid var(--line-hi);background:rgba(4,10,12,.5);overflow:hidden}
+.stp{display:grid;grid-template-columns:34px 1fr 34px;align-items:stretch;border-radius:3px;clip-path:var(--cut5);border:1px solid var(--line-hi);background:rgba(4,10,12,.5);overflow:hidden}
 .stp input{border:0 !important;border-radius:0 !important;background:none !important;box-shadow:none !important;text-align:center;font-family:var(--f-num) !important;font-weight:700;font-size:16px !important;padding:9px 0 !important;min-width:0}
 .stp button{border:0;background:rgba(255,255,255,.04);color:#cfdedc;font-size:18px;line-height:1}
 .stp button:active{background:rgba(var(--acc-rgb),.18);color:#ff8a45}
 .stp:focus-within{border-color:var(--acc);box-shadow:0 0 0 3px rgba(var(--acc-rgb),.15)}
 #form .row2 > div > .stp,#form .row3f > div > .stp{flex:1;min-width:0}
-#form .row3f .stp{grid-template-columns:28px 1fr 28px}
+#form .row3f .stp{grid-template-columns:30px 1fr 30px}
+.stp input{font-size:15px !important}

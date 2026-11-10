@@ -14,8 +14,6 @@
 .tl-meter i.pop{animation:tlSeg .4s ease-out both;animation-delay:calc(var(--i) * 45ms)}
 .tally-card .tl-in{gap:8px}
 .tally-card .tl-rew{flex:none}
-.tally-card .tl-add{flex:none;min-width:72px;padding:8px 12px !important;font:700 12.5px var(--f-title) !important;letter-spacing:.8px;color:#ffc94a !important;border:1px solid rgba(255,201,74,.75) !important;border-radius:4px;background:rgba(255,201,74,.09) !important;box-shadow:none !important;text-shadow:none !important}
-.tally-card .tl-add:active{background:rgba(255,201,74,.22) !important}
 .tally-card .tl-meter{position:relative}
 .tl-pop{position:absolute;top:50%;z-index:3;pointer-events:none;transform-origin:100% 50%;transform:translate(0,-50%) scale(0);opacity:0;font:900 24px/1 var(--f-title);letter-spacing:-.5px;color:#ffc94a}
 .tl-pop.go{animation:tlPop .62s cubic-bezier(.2,1.6,.4,1) both}
@@ -49,3 +47,21 @@
 @keyframes tlFlash{25%{opacity:1}100%{opacity:0}}
 @keyframes tlRing{to{transform:translate(-50%,-50%) scale(1.8);opacity:0}}
 @keyframes tlSp{to{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0}}
+/* half-size Tally */
+.tl-tot{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:0}
+.tl-tot .qb-next b{color:#f2f7f6;font-size:14px;display:inline-block}
+.tl-cr{font:600 10.5px var(--f-num);color:#7f9593}
+.qb-item:not(.wide) .card.qb-t > .tl-h{margin-top:auto !important}
+.qb-item:not(.wide) .card.qb-t > .tl-h + .qb-hf{margin-top:6px}
+.tl-h input{padding:7px 8px !important;font-size:13px !important}
+.tl-in .tl-dot{display:inline-flex;align-items:center;gap:5px;flex:none;padding:3px 0 !important;border:0 !important;background:none !important;color:rgb(var(--kc,255,201,74)) !important;font:700 10px var(--f-num) !important;letter-spacing:.8px}
+.tl-dot::before{content:'';flex:none;width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 5px currentColor}
+.tl-in .tl-dot.off{opacity:.5}
+/* the reward stamp: covers the tile for a moment */
+.tl-stamp{position:absolute;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;background:rgba(5,12,13,.94);pointer-events:none;opacity:0}
+.tl-big{display:flex;align-items:center;gap:8px;font:800 30px var(--f-num);color:#ffc94a}
+.tl-big svg{width:30px;height:30px}
+/* when XP and gold differ the stamp shows two columns, each icon over its number */
+.tl-big .xp-r,.tl-big .gold-r{display:flex;flex-direction:column;align-items:center;gap:5px;padding:0 15px;font:800 23px var(--f-num)}
+.tl-big .xp-r svg,.tl-big .gold-r svg{width:24px;height:24px}
+.tl-big .gold-r{border-left:1px solid rgba(255,255,255,.14)}

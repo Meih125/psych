@@ -44,11 +44,12 @@ function qbSummary(){
   const vis = S.quests.filter(ringQuest);
   const done = vis.filter(isDone).length, T = S.today && S.today.day === dayKey() ? S.today : { xp:0, gold:0 };
   const sq = firstSteps(), st = sq ? stepDue(sq, dayKey()).steps : 0, due = sq ? dueTotals(sq) : { keys:[] };
+  const goalReady = sq && sq.goal && st >= sq.goal && !(sq.goalPaid && sq.goalPaid[dayKey()]);   // today's goal can be claimed here (older days: Progress)
   return `<div class="qb-sumw"><div class="qb-sum"${sq ? ` data-holdedit="${sq.id}"` : ''}>${qbRing(done, vis.length)}<div class="qb-st">
     <div class="ln"><span class="ep-lab">Earned today<span class="info earn-i" data-act="earn">${infoIcon('Where it came from', '', earnOpen)}</span></span><b><span class="xp-r">${ico('i-gem')}<i class="et" data-v="${T.xp}">${fmt(T.xp)}</i></span><span class="gold-r">${ico('i-coin')}<i class="et" data-v="${T.gold}">${fmt(T.gold)}</i></span></b></div>
     ${sq ? `<div class="ln qb-stp"><span>Steps</span><b>${fmt(st)}${sq.goal ? ' / ' + fmt(sq.goal) : ''}</b></div><div class="qb-bar"><i style="width:${sq.goal ? Math.min(100, st / sq.goal * 100) : 0}%"></i></div>` : ''}
     ${sq ? `<div class="qb-sumft"><span class="qb-tm">${stepsSyncTag()}</span>
-      ${due.keys.length ? `<button class="qb-sclaim" data-act="claimall" data-q="${sq.id}" title="+${fmt(due.xp)} XP, +${fmt(due.gold)} gold">Claim</button>` : ''}</div>` : ''}</div></div>${earnOpen ? earnPanel() : ''}</div>`;
+      <span class="qb-sbtns">${goalReady ? `<button class="qb-sclaim qb-gclaim" data-act="goalnow" data-q="${sq.id}" data-day="${dayKey()}">${window.PsychDen ? PsychDen.icon() : ''}Goal</button>` : ''}${due.keys.length ? `<button class="qb-sclaim" data-act="claimall" data-q="${sq.id}" title="+${fmt(due.xp)} XP, +${fmt(due.gold)} gold">Claim</button>` : ''}</span></div>` : ''}</div></div>${earnOpen ? earnPanel() : ''}</div>`;
 }
 /* "Earned today" (i): a small panel under the summary card listing where today's XP and gold came from.
    Tap the (i) to open / close it; tapping anywhere else closes it. */
@@ -73,17 +74,22 @@ function earnPanel(){
   const lv = L.find(r => r.k === 'lv'); if (lv) other.push(row('#f0b429', 'Level up', lv.lv ? `Lv ${lv.lv[0]} → ${lv.lv[1]}` : '', lv.xp, lv.gold));
   const dl = L.find(r => r.k === 'daily'); if (dl) other.push(row('#2ee6d6', 'Daily reward', (dl.parts || []).slice(-1)[0] || '', dl.xp, dl.gold));
   L.filter(r => r.k.startsWith('set:')).forEach(r => { const c = CARDS.find(x => x.set === r.k.slice(4)), col = c ? RARITY[c.rarity].color : '#c792ff'; other.push(row(col, 'Set complete', r.n + (r.c > 1 ? ' ×' + r.c : ''), r.xp, r.gold, col)); });
-  L.filter(r => r.k === 'scenes' || r.k.startsWith('scenes:')).forEach(sc => other.push(row('#9db2b0', sc.k === 'scenes' ? 'All chapters' : sc.n, '', sc.xp, sc.gold)));
+  L.filter(r => r.k.startsWith('scenes:')).forEach(sc => other.push(row('#9db2b0', sc.n, '', sc.xp, sc.gold)));
   // anything not in a row: earned before this version, or from somewhere not tagged
   const ex = T.xp - L.reduce((a, r) => a + r.xp, 0), eg = T.gold - L.reduce((a, r) => a + r.gold, 0);
   if (ex > 0 || eg > 0) other.push(row('#4e6260', 'Earlier today', '', Math.max(0, ex), Math.max(0, eg)));
+  const DEN_C = { hack:'46,230,214', hilo:'255,184,58', lock:'150,225,255' };   // each game's colour in the Den
+  const denG = g => (v => `<span class="ep-g${v < 0 ? ' neg' : ''}">${v < 0 ? '−' : '+'}${fmt(Math.abs(v))}</span>`);
+  const dnRows = ['hack', 'hilo', 'lock'].map(g => L.find(r => r.k === 'den:' + g)).filter(Boolean), dnNet = dnRows.reduce((a, r) => a + r.gold, 0);
+  const dn = !dnRows.length ? [] : [`<div class="ep-row"><i style="--c:#ff3b30"></i><span class="ep-nm">The Den</span><span class="ep-x z">–</span>${denG()(dnNet)}</div>`].concat(dnRows.map(r =>
+    `<div class="ep-row ep-sub"><i style="--c:rgb(${DEN_C[r.k.slice(4)]})"></i><span class="ep-nm">${esc(r.n)}</span><span class="ep-x z">–</span>${denG()(r.gold)}</div>`));
   const grp = (t, rows) => rows.length ? `<div class="ep-grp">${t}</div>${rows.join('')}` : '';
-  const any = quests.length + steps.length + other.length;
+  const any = quests.length + steps.length + dn.length + other.length;
   // the title sits on the same line as the XP / gold column icons
   return `<div class="ep-pop" data-act="earnpop">
     ${any ? `<div class="ep-row ep-hd"><span class="ep-ttl" style="grid-column:1 / 3">EARNED TODAY</span><span class="ep-x">${ico('i-gem')}</span><span class="ep-g">${ico('i-coin')}</span></div>
-      ${grp('QUESTS', quests)}${grp('STEPS', steps)}${grp('OTHER', other)}
-      <div class="ep-row ep-tot"><i></i><span>Total</span><span class="ep-x">+${fmt(T.xp)}</span><span class="ep-g">+${fmt(T.gold)}</span></div>`
+      ${grp('QUESTS', quests)}${grp('STEPS', steps)}${dn.join('')}${grp('OTHER', other)}
+      <div class="ep-row ep-tot"><i></i><span>Total</span><span class="ep-x">+${fmt(T.xp)}</span><span class="ep-g${T.gold < 0 ? ' neg' : ''}">${T.gold < 0 ? '−' : '+'}${fmt(Math.abs(T.gold))}</span></div>`
     : '<div class="ep-h">EARNED TODAY</div><div class="ep-empty">Nothing yet today. Claim a quest to start.</div>'}</div>`;
 }
 function earnToggle(open){
@@ -114,26 +120,36 @@ function qbStandard(q, wide){
     ${wide ? `<div class="qb-foot">${qbRew(R.xp, R.gold, done)}</div>` : qbHF(qbRew(R.xp, R.gold, done), b)}
   </article>`;
 }
-function qbPair(q){
+function qbPair(q, wide = true){
   // List: one line per quest (a box that fills in the list colour when done), then the Bonus line.
   // faded once the bonus is claimed (or all done with no bonus)
   const t = now(), keys = listKeys(q), n = listDoneN(q), all = n === keys.length, earned = q.bonusUntil > t;
   const B = boosted(q, q.bonus.xp, q.bonus.gold), hasBonus = B.xp > 0 || B.gold > 0, faded = all && (earned || !hasBonus);
-  const rows = keys.map(k => { const r = itemOf(q, k), d = r.until > t, R = boosted(q, r.xp, r.gold);
-    return `<div class="ql-row${d ? ' done' : ''}" data-act="${d ? 'reopen' : 'claim'}" data-row="${k}"><i class="ql-ck"></i><span class="ql-n">${esc(r.name)}</span>${qbRew(R.xp, R.gold, d)}</div>`; }).join('');
+  const rows = keys.map(k => { const r = itemOf(q, k), d = r.until > t, R = boosted(q, r.xp, r.gold), rw = qbRew(R.xp, R.gold, d);
+    const body = wide ? `<span class="ql-n">${esc(r.name)}</span>${rw}` : `<div class="nm"><span class="ql-n">${esc(r.name)}</span>${rw}</div>`;   // half: the rewards sit under the name
+    return `<div class="ql-row${d ? ' done' : ''}" data-act="${d ? 'reopen' : 'claim'}" data-row="${k}"><i class="ql-ck"></i>${body}</div>`; }).join('');
   const ready = all && !earned && hasBonus;
   // bottom line: how many are done (DONE once it is all over), the bonus rewards on the right
   const bonus = `<div class="ql-bonus${ready ? ' ready' : ''}${faded ? ' got' : ''}"${ready ? ' data-act="claim" data-row="bonus"' : ''}><span class="ql-bn">${faded ? 'DONE' : `${n}/${keys.length}`}</span>${hasBonus ? qbRew(B.xp, B.gold, earned) : ''}</div>`;
-  return `<article class="card qb-t wide${faded ? ' done' : ''}"${ready ? ' data-act="claim" data-row="bonus"' : ''}>
-    ${qbTR(qbStreak(q))}
-    ${qbHead(q)}${qbNote(q)}
+  const head = wide ? qbTR(qbStreak(q)) + qbHead(q) : `<div class="qb-top">${qbIcon(q)}${qbStreak(q)}</div><h4 class="qb-h2">${esc(q.name)}</h4>`;
+  return `<article class="card qb-t${wide ? ' wide' : ''}${faded ? ' done' : ''}"${ready ? ' data-act="claim" data-row="bonus"' : ''}>
+    ${head}${qbNote(q)}
     <div class="ql">${rows}${bonus}</div>
   </article>`;
 }
+const SC_SEEN = {};   // the +% last drawn for each Recurring quest, so a change ticks up (or down) like the gold
+function scalingPctTick(id, from, to){
+  document.querySelectorAll(`.sc-pct[data-sq="${id}"]`).forEach(el => {
+    countTo(el, from, to, 600, { every:45, show: v => '+' + Math.round(v) + '%' });
+    replay(el, 'pct-up');
+  });
+}
 function qbScaling(q, wide){
   const n = weekClaims(q), next = scaledReward(q, n + 1), up = Math.round((Math.pow(1 + q.growth / 100, n) - 1) * 100);
+  const seen = SC_SEEN[q.id]; SC_SEEN[q.id] = up;
+  if (seen != null && seen !== up && !S.reduceFx && !QUIET) requestAnimationFrame(() => scalingPctTick(q.id, seen, up));
   if (!wide){   // half: claims so far (2×) with what the next one pays under it, rewards and the dot on one line
-    const corner = `<span class="cy-count cy-streak rc"><span class="nn"><b>${n}</b>×</span>${up ? `<u>+${up}%</u>` : ''}</span>`;
+    const corner = `<span class="cy-count cy-streak rc"><span class="nn"><b>${n}</b>×</span>${up ? `<u class="sc-pct" data-sq="${q.id}">+${up}%</u>` : ''}</span>`;
     return `<article class="card qb-t" data-act="claim">
       <div class="qb-top">${qbIcon(q)}${corner}</div><h4 class="qb-h2">${esc(q.name)}</h4>${qbNote(q)}
       ${qbHF(qbRew(next.xp, next.gold), qbBadge('CLAIM'))}
@@ -143,7 +159,7 @@ function qbScaling(q, wide){
     ${qbTR(qbBadge('CLAIM'))}
     ${qbHead(q)}${qbNote(q)}
     <div class="qb-pips">${Array.from({ length:7 }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}${n > 7 ? `<em>+${n - 7}</em>` : ''}</div>
-    <span class="qb-next">${(w => n ? `Claimed ×${n}${up ? ` · Next pays <b>+${up}%</b>` : ''}` : `Each claim ${w} pays <b>${q.growth}%</b> more`)(periodOf(q) === 1 ? 'today' : `this ${periodWord(q)}`)}</span>
+    <span class="qb-next">${(w => n ? `Claimed ×${n}${up ? ` · Next pays <b class="sc-pct" data-sq="${q.id}">+${up}%</b>` : ''}` : `Each claim ${w} pays <b>${q.growth}%</b> more`)(periodOf(q) === 1 ? 'today' : `this ${periodWord(q)}`)}</span>
     <div class="qb-foot">${qbRew(next.xp, next.gold)}</div>
   </article>`;
 }
@@ -167,27 +183,42 @@ function qbCounter(q, wide){
 }
 // the next round number to aim for
 function counterMilestone(n){ const L = [10, 25, 50, 100, 250, 500, 1000]; return L.find(v => n < v) || (Math.floor(n / 1000) + 1) * 1000; }
-function qbRecord(q){
+function qbRecord(q, wide){
   const done = isDone(q), p = parentOf(q), locked = p && !isVisible(q), last = q.entries.length ? q.entries[q.entries.length - 1].v : null, u = esc(q.unit);
+  if (!wide){   // half: the best in the corner, the value box + REC on one line, rewards and the last value under it
+    const input = done || locked ? '' : `<div class="rec-input qb-in rec-h"><input type="number" step="0.1" inputmode="decimal" placeholder="${last != null ? fmt(last) : 'Value'}" aria-label="Value"><button class="rec-btn rec-dot off" data-act="record" aria-label="Record">REC</button></div>`;
+    return `<article class="card qb-t${done ? ' done' : ''}${locked ? ' locked' : ''}"${done ? ' data-act="reopen"' : ''}>
+      <div class="qb-top">${qbIcon(q)}<span class="qb-next">${q.best == null ? 'No entries yet' : `Best ${fmt(q.best)} ${u}`}</span></div><h4 class="qb-h2">${esc(q.name)}</h4>${qbNote(q)}
+      ${input}${qbHF(qbRew(q.xpPer, q.goldPer, done || locked), done ? qbBadge('DONE', 'ok') : last != null ? `<span class="qb-next">Last ${fmt(last)}</span>` : '')}
+    </article>`;
+  }
   return `<article class="card qb-t wide${done ? ' done' : ''}${locked ? ' locked' : ''}"${done ? ' data-act="reopen"' : ''}>
     ${done ? qbTR(qbBadge('DONE', 'ok')) : ''}
     ${qbHead(q)}${qbNote(q)}
     <div class="qb-tot">${q.best == null ? '<span>First entry sets your starting point</span>' : `<span>Best <b>${fmt(q.best)} ${u}</b></span>${last != null ? `<span>Last ${fmt(last)} ${u}</span>` : ''}`}</div>
-    ${done || locked ? '' : `<div class="rec-input qb-in"><input type="number" step="0.1" inputmode="decimal" placeholder="${last != null ? fmt(last) : 'Enter value'}" aria-label="Value"><span class="unit">${u}</span><button class="claim off rec-btn" data-act="record">Record</button></div>`}
+    ${done || locked ? '' : `<div class="rec-input qb-in"><input type="number" step="0.1" inputmode="decimal" placeholder="${last != null ? fmt(last) : 'Enter value'}" aria-label="Value"><span class="unit">${u}</span><button class="rec-btn rec-dot off" data-act="record">RECORD</button></div>`}
     <div class="qb-foot">${qbRew(q.xpPer, q.goldPer, done || locked)}<span class="qb-sub">${recSub(q)}</span></div>
   </article>`;
 }
-function qbTally(q){
+function qbTally(q, wide){
   const mine = tlFrom && tlFrom.id === q.id ? tlFrom : null, fr = mine && !S.reduceFx ? mine : null;
   if (mine) tlFrom = null;   // used once
   const pv = tallyPreview(q, ''), total = q.total || 0, ph = 'Amount';
-  if (fr) requestAnimationFrame(() => { tallyCountUp(q.id, fr.total, total, fr.laps ? tallyLapsMs(fr.units) : 650); if (fr.laps) tallyLaps(q.id, fr); });
+  if (fr) requestAnimationFrame(() => { tallyCountUp(q.id, fr.total, total, fr.laps ? tallyLapsMs(fr.units) : fr.quick ? 450 : 650); if (fr.laps) tallyLaps(q.id, fr); });
+  if (!wide){   // half: total + carry in the corner, amount box + ADD on one line, rewards and the step size under it
+    const carry = q.carry ? `<span class="tl-cr">${fmtU(q, q.carry)} carried over</span>` : '';
+    return `<article class="card qb-t tally-card tl-half">
+      <div class="qb-top">${qbIcon(q)}<span class="tl-tot"><span class="qb-next">Total <b class="tl-total" data-qid="${q.id}">${fr ? fmtU(q, fr.total) : fmtU(q, total)}</b></span>${carry}</span></div><h4 class="qb-h2">${esc(q.name)}</h4>${qbNote(q)}
+      <div class="qb-in tl-in tl-h"><input type="number" min="0" step="any" inputmode="decimal" placeholder="${ph}" data-tallyin="${q.id}" aria-label="Amount"><button class="tl-dot off" data-act="tally" aria-label="Add">ADD</button></div>
+      ${qbHF(qbRew(q.xpPer, q.goldPer), `<span class="qb-next">every ${esc(fmtU(q, q.chunk))}</span>`)}
+    </article>`;
+  }
   return `<article class="card qb-t wide tally-card">
     ${qbTR(qbBadge(`${rewPair(q.xpPer, q.goldPer, fmtShort)}<span class="tl-per">/ ${esc(fmtU(q, q.chunk))}</span>`, 'tl-rate'))}
     ${qbHead(q)}${qbNote(q)}
     <div class="tl-top"><div class="tl-totbox"><small>TOTAL</small><b class="tl-total" data-qid="${q.id}">${fr ? fmtU(q, fr.total) : fmtU(q, total)}</b></div><span class="tl-note">${tallyNote(q, pv)}</span></div>
     <div class="tl-meter tg-seg">${tallyMeterHtml(q, pv, fr && !fr.laps ? fr : null)}</div>
-    <div class="qb-in tl-in"><span class="tl-rew">${rewardsHtml(pv.xp, pv.gold).replace('class="rewards"', 'class="rewards" style="opacity:.45"')}</span><input type="number" min="0" step="any" inputmode="decimal" placeholder="${ph}" data-tallyin="${q.id}" aria-label="Amount"><button class="claim tl-add off" data-act="tally">ADD</button></div>
+    <div class="qb-in tl-in"><span class="tl-rew">${rewardsHtml(pv.xp, pv.gold).replace('class="rewards"', 'class="rewards" style="opacity:.45"')}</span><input type="number" min="0" step="any" inputmode="decimal" placeholder="${ph}" data-tallyin="${q.id}" aria-label="Amount"><button class="tl-dot off" data-act="tally">ADD</button></div>
   </article>`;
 }
 // Target: orbs up to 10, a ring + 10 segments above that
@@ -201,7 +232,7 @@ function qbTarget(q, wide){
     const orbs = `<div class="tg-orbs${full ? ' full' : ''}"${done ? '' : ' data-act="tunhit"'}>${Array.from({ length:need }, (_, i) => `<i class="${i < hits ? 'on' : ''}"></i>`).join('')}</div>`;
     return `<article class="card qb-t${done ? ' done' : ''}" data-act="${done ? 'reopen' : 'claim'}">
       <div class="qb-top">${qbIcon(q)}${qbStreak(q)}</div><h4 class="qb-h2">${esc(q.name)}</h4>${qbNote(q)}
-      ${qbHF(qbRew(R.xp, R.gold, done), badge) + `<div class="qb-strk tg-strk tg-row">${orbs}</div>`}</article>`;
+      <div class="qb-strk tg-strk tg-row">${orbs}</div>${qbHF(qbRew(R.xp, R.gold, done), badge)}</article>`;
   }
   // full tile: a slim bar (a segment per hit up to 10) with hits / need
   const segs = Math.min(10, need), on = need <= 10 ? hits : Math.floor(hits / need * 10 + 1e-9), many = need > 10;
@@ -223,7 +254,7 @@ function qbAvoid(q, wide){
   const slip = slippedToday(q), done = isDone(q), n = daysClean(q), R = boosted(q, q.xp, q.gold);
   const best = Math.max(q.best || 0, n);
   const badge = slip ? `<span class="qb-badge red" data-act="unslip">SLIPPED</span>` : qbBadge(done ? 'DONE' : 'CLAIM', done ? 'ok' : '');
-  const slipBtn = slip ? '' : `<button class="av-slip" data-act="slip">${wide ? 'SLIPPED' : 'SLIP'}</button>`;
+  const slipBtn = slip ? '' : wide ? `<button class="av-slip" data-act="slip">SLIPPED</button>` : `<button class="av-slip av-sq" data-act="slip" aria-label="Slipped today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v4h4"/></svg></button>`;
   const big = `<div class="av-n">${fmt(n)}<small>${n === 1 ? 'day' : 'days'} clean${wide ? ` · best ${fmt(best)}` : ''}</small></div>`;
   // full tile: milestone badges, earned ones lit, the next dashed with time left
   let strip = '';
@@ -234,9 +265,9 @@ function qbAvoid(q, wide){
   }
   const act = slip ? '' : ` data-act="${done ? 'reopen' : 'claim'}"`;
   return `<article class="card qb-t${wide ? ' wide' : ''}${done ? ' done' : ''}${slip ? ' slipped' : ''}"${act}>
-    ${wide ? qbTR(qbStreak(q)) + qbHead(q) : `<div class="qb-top">${qbIcon(q)}${qbStreak(q)}</div><h4 class="qb-h2">${esc(q.name)}</h4>`}${qbNote(q)}
+    ${wide ? qbTR(qbStreak(q)) + qbHead(q) : `<div class="qb-top"><span class="av-tl">${qbIcon(q)}${slipBtn}</span>${qbStreak(q)}</div><h4 class="qb-h2">${esc(q.name)}</h4>`}${qbNote(q)}
     ${wide ? big : ''}${strip}
-    ${wide ? `<div class="qb-foot av-foot">${qbRew(R.xp, R.gold, done)}<span class="av-r">${slipBtn}${badge}</span></div>` : qbHF(qbRew(R.xp, R.gold, done), slipBtn + badge, ' av-hf')}</article>`;
+    ${wide ? `<div class="qb-foot av-foot">${qbRew(R.xp, R.gold, done)}<span class="av-r">${slipBtn}${badge}</span></div>` : qbHF(qbRew(R.xp, R.gold, done), badge)}</article>`;
 }
 // the quest's note, if it has one (2 lines at most on a half tile, 3 on a full one)
 function qbNote(q){ return q.note ? `<p class="qb-note">${esc(q.note)}</p>` : ''; }
@@ -263,11 +294,11 @@ function qbTile(q, wide){
   return body.replace(/^(\s*<article\b[^>]*?)(>)/, `$1 style="--kc:${rgb}"$2<span class="kt"></span>`);
 }
 function qbTileBody(q, wide){
-  if (q.kind === 'pair') return qbPair(q);
+  if (q.kind === 'pair') return qbPair(q, wide);
   if (q.kind === 'scaling') return qbScaling(q, wide);
   if (q.kind === 'counter') return qbCounter(q, wide);
-  if (q.kind === 'record') return qbRecord(q);
-  if (q.kind === 'tally') return qbTally(q);
+  if (q.kind === 'record') return qbRecord(q, wide);
+  if (q.kind === 'tally') return qbTally(q, wide);
   if (q.kind === 'target') return qbTarget(q, wide);
   if (q.kind === 'bounty') return qbBounty(q, wide);
   if (q.kind === 'avoid') return qbAvoid(q, wide);
@@ -282,60 +313,6 @@ function qbGroupOf(q, noPin){
   if (q.kind === 'bounty') return bountyUrgent(q) ? { key:'a-due', order:-1, title:'Due soon', time:'' } : { key:'z-other', order:9e9, title:'Others', time:'' };
   const d = q.kind === 'scaling' ? periodOf(q) : isTracker(q) ? 1 : (q.days || 1);
   return { key:'d' + d, order:d, title:cycleName(d), time:d === 1 ? cd(nextMidnight()) : '' };
-}
-// Group layout: half tiles pair up, an odd one takes the full row. q.size: 'full', 'half' (even alone), or unset (half, stretches alone).
-const canHalf = q => !q.parent && (q.kind === 'standard' || q.kind === 'scaling' || q.kind === 'counter' || q.kind === 'bounty' || q.kind === 'avoid' || (q.kind === 'target' && q.need <= 10) || isTracker(q)) && !S.quests.some(c => c.parent === q.id);
-/* Free placement. Each group is a list of rows saved in S.layout[groupKey]:
-   [id] = a full-width tile, [idL, idR] = two half slots (either may be null = an empty spot).
-   Quests not placed yet are added at the end (halves pair up). A lone half that was never set to HALF stretches. */
-const isWide = q => !canHalf(q) || q.size === 'full';
-function groupRows(key, list){
-  const ids = new Set(list.map(q => q.id)), seen = new Set(), ok = id => id && ids.has(id) && !seen.has(id) ? (seen.add(id), id) : null;
-  const out = [];
-  const L = S.layout || {};   // the old Tally / Bounties groups' arrangement carries over into Others
-  (L[key] || (key === 'z-other' ? [...(L['y-bounty'] || []), ...(L['z-tally'] || [])] : [])).forEach(r => {
-    if (!Array.isArray(r)) return;
-    const [a, b] = r.length === 1 ? [ok(r[0]), null] : [ok(r[0]), ok(r[1])];
-    const qa = a && byId(a), qb = b && byId(b);
-    if (r.length === 1){ if (a) out.push(isWide(qa) ? [a] : [a, null]); return; }
-    if (qa && isWide(qa)){ out.push([a]); if (qb) out.push(isWide(qb) ? [b] : [null, b]); return; }
-    if (qb && isWide(qb)){ if (qa) out.push([a, null]); out.push([b]); return; }
-    if (a || b) out.push([a, b]);
-  });
-  let open = null;   // a row made just now with a free right slot
-  list.filter(q => !seen.has(q.id)).forEach(q => {
-    if (isWide(q)){ out.push([q.id]); open = null; }
-    else if (open){ open[1] = q.id; open = null; }
-    else { open = [q.id, null]; out.push(open); }
-  });
-  return out;
-}
-// the cells to draw, in order: a tile (full or half) or an empty spot
-function rowCells(rows, withGaps){
-  const cells = [];
-  rows.forEach((r, ri) => {
-    if (r.length === 1){ cells.push({ q:byId(r[0]), w:true, r:ri, c:-1 }); return; }
-    const one = (r[0] ? 1 : 0) + (r[1] ? 1 : 0) === 1, lone = byId(r[0] || r[1]);
-    if (one && lone.size !== 'half'){ cells.push({ q:lone, w:true, r:ri, c:r[0] ? 0 : 1 }); return; }   // never set to HALF: stretch
-    r.forEach((id, c) => cells.push(id ? { q:byId(id), w:false, r:ri, c } : { gap:true, r:ri, c }));
-  });
-  if (withGaps) cells.push({ gap:true, add:true, r:rows.length, c:0 });
-  return cells;
-}
-// move a quest to row tr, slot tc (-1 = whole row); a half dropped on a half swaps
-function moveTile(key, list, id, tr, tc){
-  const rows = groupRows(key, list).map(r => r.slice()), q = byId(id); if (!q) return;
-  let sr = -1, sc = -1; rows.forEach((r, i) => { const j = r.indexOf(id); if (j >= 0){ sr = i; sc = j; } });
-  tr = Math.max(0, Math.min(rows.length, Math.floor(+tr) || 0)); tc = [-1, 0, 1].includes(+tc) ? +tc : -1;   // only real spots
-  if (sr < 0 || (sr === tr && sc === tc)) return;
-  if (tr >= rows.length) rows.push([null, null]);
-  const T = rows[tr];
-  if (isWide(q)){ rows[sr][sc] = null; rows.splice(tr > sr ? tr + 1 : tr, 0, [id]); }
-  else if (T.length === 1 || tc < 0){ rows[sr][sc] = null; rows.splice(tr > sr ? tr + 1 : tr, 0, [id, null]); }
-  else { const other = T[tc]; T[tc] = id; rows[sr][sc] = other || null; }
-  const placed = rows.find(r => r.includes(id));
-  if (placed && placed.length === 2 && !(placed[0] && placed[1])) q.size = 'half';   // put next to an empty spot on purpose: keep it half
-  (S.layout ||= {})[key] = rows.filter(r => r.some(Boolean));
 }
 function boardGroups(){
   const groups = {};
@@ -385,17 +362,24 @@ function boardSections(noPin){
     // follow-ups (and their follow-ups) go under their quest, one step further in per level
     // a folded quest hides its follow-ups (they show as a stack behind it)
     const kidsOf = (q, d = 1) => folded(q) ? [] : S.quests.filter(c => c.parent === q.id).flatMap(c => [{ q:c, d }, ...kidsOf(c, d + 1)]);
-    const tiles = [];
-    rowCells(groupRows(g.key, g.list), false).forEach(c => { tiles.push(c); if (c.q) kidsOf(c.q).forEach(k => tiles.push({ q:k.q, w:true, kid:k.d })); });
-    return { g, time, ends, counted, cnt, tiles };
+    const cells = [];
+    rowCells(groupRows(g.key, g.list), false).forEach(c => { cells.push(c); if (c.q) kidsOf(c.q).forEach(k => cells.push({ q:k.q, w:true, kid:k.d })); });
+    return { g, time, ends, counted, cnt, cells, tiles:flatCells(cells) };   // cells: what the board draws (a List and its column is one cell) · tiles: the same, one tile each
   });
 }
+// one tile on the board: the wrapper that every tap and hold looks for (.qb-item[data-id]) around the tile
+function qbItem(t, extra = ''){
+  const fresh = freshTile.id === t.q.id ? ' fresh' : '';
+  return `<div class="item qb-item${t.w ? ' wide' : ''}${t.kid ? ' fol' : ''}${folded(t.q) ? ' qb-stacked' + (kidCount(t.q) > 1 ? ' qb-stacked2' : '') : ''}${fresh}${extra}" data-id="${t.q.id}"${t.kid ? ` style="--fd:${Math.min(t.kid, 4)}"` : ''}>${foldBtn(qbTile(t.q, t.w), t.q)}</div>`;
+}
+// a row built around a half List: two columns of tiles, each as tall as its own tiles
+function qbStack(c){
+  return `<div class="qb-stk">${c.cols.map(col => `<div class="qb-col">${col.map(q => qbItem({ q, w:false })).join('')}</div>`).join('')}</div>`;
+}
 function questBoard(){
-  const html = boardSections().map(({ g, time, cnt, tiles }) => {
-    const fresh_ = id => freshTile.id === id ? ' fresh' : '';
-    return `<section class="qb-g${g.key === 'a-due' ? ' due' : ''}"><div class="qb-gh"><b>${g.title}</b>${time ? `<span class="qb-time">${ico('i-hourglass','0 0 16 16')}${time}</span>` : ''}</div>
-      <div class="qb-grid">${tiles.map(t => t.gap ? '<div class="qb-gap"></div>' : `<div class="item qb-item${t.w ? ' wide' : ''}${t.kid ? ' fol' : ''}${folded(t.q) ? ' qb-stacked' + (kidCount(t.q) > 1 ? ' qb-stacked2' : '') : ''}${fresh_(t.q.id)}" data-id="${t.q.id}"${t.kid ? ` style="--fd:${Math.min(t.kid, 4)}"` : ''}>${foldBtn(qbTile(t.q, t.w), t.q)}</div>`).join('')}</div></section>`;
-  }).join('');
+  const html = boardSections().map(({ g, time, cnt, cells }) =>
+    `<section class="qb-g${g.key === 'a-due' ? ' due' : ''}"><div class="qb-gh"><b>${g.title}</b>${time ? `<span class="qb-time">${ico('i-hourglass','0 0 16 16')}${time}</span>` : ''}</div>
+      <div class="qb-grid">${cells.map(c => c.gap ? '<div class="qb-gap"></div>' : c.stk ? qbStack(c) : qbItem(c)).join('')}</div></section>`).join('');
   return `<div class="qb">${updateBanner()}${S.vacation ? '<div class="vac-note">Vacation mode · streaks paused</div>' : ''}${qbSummary()}${html}</div>`;
 }
 

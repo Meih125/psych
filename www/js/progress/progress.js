@@ -29,7 +29,7 @@ function backOk(q, key){
 }
 function bkMissing(q, o){ return listKeys(q).filter(k => !(o && o['p_' + k])); }
 function listBackHtml(q, o, label){
-  const miss = bkMissing(q, o), id = q.id + '|' + selDay, sel = bkSel[id] || (bkSel[id] = new Set(miss)), n = miss.filter(k => sel.has(k)).length;
+  const miss = bkMissing(q, o), id = q.id + '|' + selDay, sel = bkSel[id] || (bkSel[id] = new Set()), n = miss.filter(k => sel.has(k)).length;
   const rows = listKeys(q).map(k => { const r = itemOf(q, k), done = !miss.includes(k);
     return `<button type="button" class="dl-row${done ? ' done' : ''}"${done ? ' disabled' : ` data-act="bkpick" data-q="${q.id}" data-k="${k}"`}><i class="dl-ck${done ? ' on' : sel.has(k) ? ' sel' : ''}"></i><span>${esc(r.name)}</span><em>${done ? 'done' : rewardsHtml(r.xp, r.gold)}</em></button>`; }).join('');
   const b = q.bonus && (q.bonus.xp || q.bonus.gold) ? `<span class="mut">Bonus ${rewardsHtml(q.bonus.xp, q.bonus.gold)} if all done</span>` : '<span></span>';

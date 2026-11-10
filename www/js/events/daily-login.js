@@ -80,7 +80,7 @@ function dlOpen(){
     if (!flipped){   // a tap first turns the card over, like in a pack
       flipped = true;
       const c = pop.querySelector('.dl-card'); c.classList.add('flipped');
-      c.querySelector('.pk-tag').innerHTML = rw.fresh ? 'NEW' : `<em>×${ownedCard(rw.id)}</em>`;
+      c.querySelector('.pk-tag').classList.toggle('nw', !!rw.fresh); c.querySelector('.pk-tag').innerHTML = rw.fresh ? 'NEW' : `<em>×${ownedCard(rw.id)}</em>`;
       setTimeout(() => revealFX(c, rw.rarity), 180);
       pop.querySelector('.dl-hint').textContent = HINT.next;
       popBusy = true; setTimeout(() => { popBusy = false; }, 700);

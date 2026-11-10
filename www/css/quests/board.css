@@ -108,6 +108,9 @@
 .qb-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .qb-item{min-width:0}
 .qb-item.wide{grid-column:1/3}
+.qb-stk{grid-column:1/3;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:start}   /* a row built around a half List: two columns of tiles, each as tall as its own tiles (nothing stretches) */
+.qb-col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.qb-measure .qb-grid{align-items:start}   /* while Arrange measures the tiles, nothing stretches */
 .card.qb-t{-webkit-touch-callout:none;position:relative;height:100%;display:flex;flex-direction:column;gap:7px;margin:0;padding:12px;border:1px solid var(--line);cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;transition:transform .12s}
 .card.qb-t:active{transform:scale(.98)}
 .card.qb-t h4{margin:0;padding-right:44px;font:700 14.5px var(--f-title);color:#f2f7f6;line-height:1.25;overflow-wrap:anywhere}
@@ -266,7 +269,6 @@
 .card.qb-t.urgent .bt-left{color:#ff6b5e}
 .card.qb-t.wide:has(.bt-due) .qb-hd{padding-right:72px}
 .av-slip{padding:3px 7px;font-size:10px;letter-spacing:.8px;line-height:normal}
-.qb-strk .av-slip{min-width:50px;text-align:center}
 /* bounty half: time left as a chip where other tiles show their streak */
 .bt-chip{display:inline-flex;align-items:center;gap:4px;color:#ff8a45;font:700 10.5px var(--f-num);white-space:nowrap}
 .bt-chip .bt-clk{width:12px;height:12px}
@@ -322,9 +324,12 @@
 .ep-grp{margin:9px 0 3px;font:700 9.5px var(--f-num);letter-spacing:1.4px;color:#7f9593}
 .ep-row{display:grid;grid-template-columns:10px minmax(0,1fr) 46px 46px;gap:7px;align-items:center;padding:3px 0;font:500 12px var(--f-num);color:#e9f2f0}
 .ep-row > i{width:7px;height:9px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--c)}
+.ep-sub{padding-left:16px;grid-template-columns:6px minmax(0,1fr) 46px 46px}
+.ep-row.ep-sub > i{width:6px;height:6px;clip-path:none;border-radius:50%}
 .ep-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ep-x{text-align:right;font-weight:700;color:#2ee6d6}
 .ep-g{text-align:right;font-weight:700;color:#ffc94a}
+.ep-g.neg{color:#ff5c6c}
 .ep-row .z{color:#4e6260}
 .ep-hd{margin-bottom:2px}
 .ep-hd .ep-ttl{font:700 10.5px var(--f-num);letter-spacing:1.3px;color:#2ee6d6}
@@ -380,7 +385,6 @@
 .av-r .qb-badge{position:static}
 .qb-hf{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:auto;flex-wrap:wrap}
 .qb-hf .qb-strk{margin:0;flex:none;gap:6px}
-.qb-hf.av-hf .qb-strk{margin-left:auto}
 .qb-item:not(.wide) .card.qb-t > .qb-hf{margin-top:auto}
 .qb-item:not(.wide) .card.qb-t > .qb-next{margin-top:auto;margin-bottom:6px}
 .qb-item:not(.wide) .card.qb-t > .qb-next + .qb-hf{margin-top:0}
@@ -391,7 +395,7 @@
 .cy-streak.cn .nn b{font-size:15px}
 .qb-next.cn-today{color:#8fa6a3}
 .qb-ic.k-counter,.kh-ic.k-counter{background:rgba(77,208,160,.13);color:#4dd0a0}
-.qb-item:not(.wide) .card.qb-t > .qb-hf + .tg-row{margin-top:8px;justify-content:flex-start}
+.qb-item:not(.wide) .card.qb-t > .tg-row{margin-top:auto;margin-bottom:-2px;justify-content:flex-start}   /* half Target: the orbs come first, rewards + CLAIM sit at the bottom like the other tiles */
 .cn-ms{display:flex;align-items:center;gap:8px;margin-top:2px}
 .cn-ms .tg-seg{flex:1}
 .cn-ms .tg-seg i.on{background:#4dd0a0}
@@ -428,12 +432,12 @@
 .qb-badge.tl-rate .xp-r{color:#2ee6d6}
 .cc-pay .rewards{display:flex;gap:10px;align-items:center;margin:0;padding:0;flex-direction:row}
 /* tiles and buttons dip a little under your finger */
-:is(.card.qb-t,.sh-row,.sh-buy,.btn-main,.btn-plain,.post,.cc-chip,.pk-tile,.set-claim,.hx-undo,.chip,.open-all,.qb-badge,.av-slip,.rec-btn,.tl-add){transition:transform .12s ease-out,filter .12s}
+:is(.card.qb-t,.sh-row,.sh-buy,.btn-main,.btn-plain,.post,.cc-chip,.pk-tile,.set-claim,.hx-undo,.chip,.open-all,.qb-badge,.av-slip,.rec-btn){transition:transform .12s ease-out,filter .12s}
 :is(.card.qb-t,.sh-row):active{transform:scale(.985)}
 /* Reduce effects: the motion pass is off (old look) */
-.reduce-fx :is(.card.qb-t,.sh-row,.sh-buy,.btn-main,.btn-plain,.post,.cc-chip,.pk-tile,.set-claim,.hx-undo,.chip,.open-all,.av-slip,.rec-btn,.tl-add):active{transform:none;filter:none}
+.reduce-fx :is(.card.qb-t,.sh-row,.sh-buy,.btn-main,.btn-plain,.post,.cc-chip,.pk-tile,.set-claim,.hx-undo,.chip,.open-all,.av-slip,.rec-btn):active{transform:none;filter:none}
 .qb-sumw .et{font-style:normal}
-:is(.card.qb-t,.sh-row,.sh-buy,.btn-main,.btn-plain,.post,.cc-chip,.pk-tile,.set-claim,.hx-undo,.chip,.open-all,.av-slip,.rec-btn,.tl-add){transition:transform var(--t-fast) var(--e-arrive),filter var(--t-fast)}
+:is(.card.qb-t,.sh-row,.sh-buy,.btn-main,.btn-plain,.post,.cc-chip,.pk-tile,.set-claim,.hx-undo,.chip,.open-all,.av-slip,.rec-btn){transition:transform var(--t-fast) var(--e-arrive),filter var(--t-fast)}
 .dl-f .rewards,.dl-row .rewards{display:inline-flex;margin:0 !important;gap:8px}
 .hud-rate .xp-r{color:#2ee6d6}
 .hud-rate .gold-r{color:#ffc94a}
@@ -452,3 +456,35 @@
 @keyframes sheen{to{background-position:-40% 0}}
 @keyframes cardGlow{0%{box-shadow:0 0 0 1px #ffc49a,0 0 34px 6px rgba(var(--acc-rgb),.45)}100%{}}
 @keyframes epIn{from{opacity:0;transform:translateY(-4px)}}
+/* half-size Record: value box + REC on one line */
+.qb-top .qb-next{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qb-item:not(.wide) .card.qb-t > .rec-h{margin-top:auto !important;gap:6px}
+.qb-item:not(.wide) .card.qb-t > .rec-h + .qb-hf{margin-top:6px}
+.rec-input.rec-h input{padding:7px 8px !important;font-size:13px !important}
+.rec-input .rec-btn.rec-dot{display:inline-flex;align-items:center;gap:5px;padding:3px 0 !important;border:0 !important;background:none !important;color:rgb(var(--kc,169,139,255)) !important;font:700 10px var(--f-num) !important;letter-spacing:.8px}
+.rec-dot::before{content:'';flex:none;width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 5px currentColor}   /* the same lit dot as CLAIM */
+.rec-input .rec-btn.rec-dot.off{opacity:.5}
+.rec-input .rec-btn.rec-dot:active{background:none !important;opacity:.8}
+/* Quests step card: Goal + Claim buttons side by side */
+.qb-sbtns{display:flex;align-items:center;gap:8px}
+.qb-gclaim{border-color:rgba(255,210,122,.7);color:#ffd27a;background:rgba(255,210,122,.08) !important;box-shadow:0 0 10px rgba(255,210,122,.2)}
+.qb-gclaim svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+/* half Avoid: a small icon-only SLIP button next to the tile icon; the bottom row matches every other half tile */
+.av-tl{display:flex;align-items:center;gap:6px}
+.av-slip.av-sq{width:28px;height:28px;padding:0;margin:0;display:grid;place-items:center}
+.av-slip.av-sq svg{width:15px;height:15px}
+/* Recurring +%: ticks like the gold */
+.sc-pct{display:inline-block}
+.sc-pct.pct-up{animation:numPop .9s cubic-bezier(.2,1.4,.4,1),gUp .9s ease-out}
+.qb-item:not(.wide) .card.qb-t > .tg-row + .qb-hf{margin-top:0}   /* orbs + rewards both sit at the bottom */
+
+/* half List: names wrap to two lines, each line's rewards sit under its name */
+.qb-item:not(.wide) .ql{margin-top:2px}
+.qb-item:not(.wide) .ql-row{align-items:flex-start;gap:8px;padding:7px 0}
+.qb-item:not(.wide) .ql-ck{margin-top:1px}
+.qb-item:not(.wide) .ql-row .nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.qb-item:not(.wide) .ql-n{flex:none;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:clip;font:600 12px/1.3 var(--f-num)}
+.qb-item:not(.wide) .ql-row .qb-rew{font:700 11px var(--f-num);gap:2px 7px}
+.qb-item:not(.wide) .ql-row .qb-rew svg{width:12px;height:12px}
+.qb-item:not(.wide) .ql-bonus{padding-top:8px}
+.qb-item:not(.wide) .card.qb-t > .ql{margin-bottom:auto}

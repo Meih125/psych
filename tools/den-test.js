@@ -1,6 +1,6 @@
 /* Preview-only test buttons for the Gambling Den (added to the purple test bar by tools/make-preview.js; never in www/ or the zip).
    make-preview.js also patches two lines of js/den/den.js in the preview so "No mines" and "Hilo win" work. */
-window.__dT = { noMine:false, hiWin:false };
+window.__dT = { noMine:false, hiWin:false, heatE:false };   // heatE: Lockpick uses heat ladder E instead of the Minesweeper one
 (function(){
   let tries = 0;
   const t = setInterval(() => { if (add() || ++tries > 40) clearInterval(t); }, 250);
@@ -11,8 +11,10 @@ window.__dT = { noMine:false, hiWin:false };
     const tog = (k, name) => b => { __dT[k] = !__dT[k]; b.textContent = name + ': ' + (__dT[k] ? 'ON' : 'off'); b.style.background = __dT[k] ? '#2a9d5c' : '#7c43b0'; };
     const btns = [
       mk('dTix', '+5 Tickets', () => PsychDen.gain(5)),
+      mk('dGem', '+5 Gems', () => __dGem(5)),
       mk('dMine', 'No mines: off', tog('noMine', 'No mines')),
-      mk('dWin', 'Hilo win: off', tog('hiWin', 'Hilo win'))
+      mk('dWin', 'Hilo win: off', tog('hiWin', 'Hilo win')),
+      mk('dHeat', 'Lock heat E: off', tog('heatE', 'Lock heat E'))
     ];
     const hide = [...bar.children].find(c => c.textContent === 'Hide bar'); let ref = hide ? hide.nextSibling : null;
     btns.forEach(b => bar.insertBefore(b, ref));

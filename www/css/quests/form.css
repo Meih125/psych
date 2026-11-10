@@ -43,11 +43,11 @@
 #nameLbl{display:none}
 .inlabel{font-size:12px !important}
 /* resets every */
-.dp-step{border-radius:6px;border:1px solid var(--line-hi);background:rgba(255,255,255,.04);color:#e9f2f0}
+.dp-step{border-radius:3px;clip-path:var(--cut7);border:1px solid var(--line-hi);background:rgba(255,255,255,.04);color:#e9f2f0}
 .dp-step:active{border-color:var(--acc);color:#ff8a45}
 .dp-val input{border:0 !important;background:none !important;box-shadow:none !important;font-weight:700;color:#f2f7f6}
 .dp-val span{font-family:var(--f-title);font-weight:600;color:#9db2b0}
-.dp-quick button{border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:#9db2b0;font-family:var(--f-title);font-weight:600}
+.dp-quick button{border-radius:3px;clip-path:var(--cut5);border:1px solid var(--line);background:rgba(255,255,255,.03);color:#9db2b0;font-family:var(--f-title);font-weight:600}
 /* custom dropdown */
 .cy-select{position:relative}
 .cy-sel-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border:1px solid var(--line-hi);background:rgba(4,10,12,.5);color:#f2f7f6;font-family:var(--f-body);font-size:15px;text-align:left}
@@ -65,7 +65,8 @@
 #form .row3f{gap:8px}
 #form .row3f > div:first-child{flex-direction:column;align-items:stretch;gap:4px}
 #form .row3f > div:first-child > label{display:block}
-#form .row3f{grid-template-columns:.8fr 1fr 1fr;align-items:end}
+#form .row3f{grid-template-columns:1fr 1fr;align-items:end}
+#form .row3f > div:first-child{grid-column:1/-1}
 #form .row3f > div:not(:has(.stp)) input{padding:9px 10px !important}
 #form .row2 > div > label:not(.cy-ico),#form .row3f > div > label:not(.cy-ico){display:block;margin-bottom:5px;font-weight:600}
 #form .field:has(> .seg.s5) > .lbl{display:none}
@@ -126,3 +127,9 @@
 #daysField.nr :is(.days-pick,.dp-quick,#daysHelp,.lbl){opacity:.4;pointer-events:none}
 #daysField.nr :is(.days-pick,.dp-quick,#daysHelp){opacity:.4;pointer-events:none}
 #form label:has(> .info-btn),#form .lbl:has(> .info-btn){display:flex !important;align-items:center;flex-wrap:nowrap;white-space:nowrap}
+/* small phones: icon + stepper stay on one line and 3–4 digit rewards fit (every reward stepper in the form) */
+#form :is(.row2,.row3f) > div:has(.stp){gap:5px}
+#form :is(.row2,.row3f) label.cy-ico{width:20px}
+#form :is(.row2,.row3f) label.cy-ico svg{width:18px;height:18px}
+#form .stp{grid-template-columns:26px 1fr 26px}
+#form .stp input{padding:9px 0 !important;font-size:15px !important;width:100%}

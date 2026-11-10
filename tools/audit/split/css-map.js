@@ -34,6 +34,7 @@ const PREFIX = {
   'events/daily-login': ['dl'],
   'events/birthday': ['bd'],
   'den/den': ['den', 'lTkt'],
+  'den/market': ['bm'],
 };
 // state / modifier words never decide the area
 const GENERIC = new Set(['on', 'open', 'ready', 'done', 'dim', 'hot', 'go', 'big', 'reduce-fx', 'idle', 'busy', 'bg', 'offs', 'neg', 'full', 'half', 'wide', 'locked', 'empty', 'new', 'off', 'red', 'green', 'gold', 'a', 'b', 'c', 'd', 'l', 'r', 'h', 'n', 's', 't', 'x', 'g', 'u', 'z', 'k', 'q', 'f', 'o', 'w', 'sl', 'up', 'dn', 'in', 'out', 'land', 'joker', 'last', 'first', 'now', 'cur', 'sel', 'sm', 'lg', 'center', 'left', 'right', 'flipped', 'front', 'back', 'show', 'gone', 'pop', 'tap', 'same', 'two', 'free', 'ok', 'bad', 'warn', 'late', 'short', 'deny', 'shine', 'glow', 'edge', 'flash', 'burst', 'gain', 'lift', 'lifted', 'moving', 'drag', 'dragging', 'sliding', 'closing', 'press', 'away', 'split', 'tall', 'whole', 'zero', 'none', 'claimed', 'earned', 'got', 'best', 'pick', 'dark', 'alt', 'blank', 'just', 'nx', 'nt', 'nr', 'sw', 'td', 'ty', 'dj', 'lk', 'nn', 'et', 'rl', 'mo', 'pb', 'od', 'fi', 'rt', 'sn', 'hw', 'huge', 'lose', 'ice', 'cnt', 'pin-on', 'th-tarot', 'th-mlbb', 'th-hod']);

@@ -16,19 +16,24 @@ function D(){   // always the live save (S is replaced on restore / reset), ever
   const o = S.den = S.den && typeof S.den === 'object' && !Array.isArray(S.den) ? S.den : {};
   ['stake', 'best', 'st'].forEach(k => { if (!o[k] || typeof o[k] !== 'object' || Array.isArray(o[k])) o[k] = {}; });
   o.stake.hack = STAKES.includes(o.stake.hack) ? o.stake.hack : 25; o.stake.hilo = STAKES.includes(o.stake.hilo) ? o.stake.hilo : 25;
-  o.best.hack = Math.max(0, num(o.best.hack)); o.best.hilo = Math.max(0, num(o.best.hilo));
+  o.best.hack = Math.max(0, num(o.best.hack)); o.best.hilo = Math.max(0, num(o.best.hilo)); o.best.lock = Math.max(0, Math.round(num(o.best.lock)));
   o.st.w = Math.max(0, num(o.st.w)); o.st.l = Math.max(0, num(o.st.l));   // gold won / lost in the Den, all time
   o.t = Math.max(0, Math.min(1e6, Math.round(num(o.t))));
+  o.b = Math.max(0, Math.min(1e9, Math.round(num(o.b))));   // Gem: Lockpick's second currency (spent in the Black Market)
+  o.p = Math.max(0, Math.min(FREE_AT, Math.round(num(o.p))));   // paid plays since the last free one; at FREE_AT the next play is free
   delete o.d;   // tickets used to be refilled each day
   if (typeof o.pd !== 'string') o.pd = ''; if (typeof o.pk !== 'string') o.pk = ''; o.pn = Math.max(0, Math.min(1e9, num(o.pn)));
+  if (!o.mk || typeof o.mk !== 'object' || Array.isArray(o.mk)) o.mk = {};   // Black Market stock (market.js validates it)
   if (o.sv && (typeof o.sv !== 'object' || Array.isArray(o.sv))) delete o.sv;
   return o;
 }
+const FREE_AT = 9;   // every 9 paid plays, the 10th is free (the shattered ticket)
 const tickets = () => D().t;
+const freeReady = () => D().p >= FREE_AT;
 const nextMid = () => { const d = new Date(now()); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime(); };
 /* Daily profit limit: when the day's winnings (S.den.pn) reach PROFIT_CAP the Den closes until tomorrow; the round that
    crosses it is paid in full. Losses don't lower pn, so losing never reopens room. */
-const PROFIT_CAP = 1000;
+const PROFIT_CAP = 1000, CAP_TEST_FREEZE = false;   // CAP_TEST_FREEZE: set true only while testing, it stops the day's profit counter from rising (the daily limit then never triggers)
 function netToday(){ const o = D(), k = dayKey(); if (o.pd !== k){ o.pd = k; o.pn = 0; } return o.pn; }
 const pay = (stake, m) => Math.floor(stake * m);   // what a cash-out pays: always the real win, the limit only closes the Den afterwards
 const capped = () => netToday() >= PROFIT_CAP;
@@ -39,13 +44,51 @@ const fm = m => '×' + m.toFixed(2);
 /* ---------- icons ---------- */
 const GI = {
   hack: '<circle cx="24" cy="24" r="18"/><circle cx="24" cy="24" r="9"/><path d="M24 24L36.7 11.3A18 18 0 0 1 42.0 24.0z" fill="currentColor" fill-opacity="0.35" stroke="none"/><path d="M24 24L42.0 24.0"/><circle cx="36.0" cy="18.9" r="2" fill="currentColor" stroke="none"/>',
+  lock: '<circle cx="24" cy="24" r="17"/><circle cx="24" cy="24" r="4"/><path d="M24 4v9M24 35v9M4 24h9M35 24h9"/>',
   hilo: '<path d="M5 34l10-14 8 8 10-17 10 11V41H5z" fill="currentColor" fill-opacity=".18" stroke="none"/><path d="M5 34l10-14 8 8 10-17 10 11"/><circle cx="43" cy="22" r="3" fill="currentColor" stroke="none"/>'
 };
 const sprite = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 sprite.setAttribute('width', 0); sprite.setAttribute('height', 0); sprite.style.position = 'absolute'; sprite.setAttribute('aria-hidden', 'true');
 
 sprite.innerHTML = `<symbol id="den-chip" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="20" height="20" rx="3.5"/><rect x="19.5" y="19.5" width="9" height="9" rx="1.5" fill="currentColor" fill-opacity=".3"/><path d="M20 14V8M24 14V4M28 14V8M20 34v6M24 34v8M28 34v6M14 20H8M14 24H4M14 28H8M34 20h6M34 24h8M34 28h6"/><path d="M33 15l6-6M15 33l-6 6"/><circle cx="41" cy="7" r="2.2"/><circle cx="7" cy="41" r="2.2"/></g></symbol>`;
+const SHC = (id, pts) => `<clipPath id="${id}"><polygon points="${pts}"/></clipPath>`;
+const SHB = '<g transform="scale(.5)" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="20" height="20" rx="3.5"/><rect x="19.5" y="19.5" width="9" height="9" rx="1.5" fill="currentColor" fill-opacity=".3"/><path d="M20 14V8M24 14V4M28 14V8M20 34v6M24 34v8M28 34v6M14 20H8M14 24H4M14 28H8M34 20h6M34 24h8M34 28h6"/><path d="M33 15l6-6M15 33l-6 6"/><circle cx="41" cy="7" r="2.2"/><circle cx="7" cy="41" r="2.2"/></g>';
+sprite.innerHTML += `<symbol id="den-chip-sh" viewBox="0 0 24 24"><defs>${SHC('dsa', '0,0 15,0 9,12 0,14')}${SHC('dsb', '15,0 24,0 24,18 14,13 9,12')}${SHC('dsc', '0,14 9,12 14,13 24,18 24,24 0,24')}</defs>
+<g clip-path="url(#dsa)" transform="translate(-1.1 -.9) rotate(-4 8 7)">${SHB}</g><g clip-path="url(#dsb)" transform="translate(1.4 -.6) rotate(5 18 8)">${SHB}</g><g clip-path="url(#dsc)" transform="translate(-.2 1.5) rotate(-2 12 18)">${SHB}</g></symbol>`;
 document.body.appendChild(sprite);
+const chipSh = (cls = '') => `<svg class="den-ic ${cls}" viewBox="0 0 24 24"><use href="#den-chip-sh"/></svg>`;
+// Gem: a small red octahedron that turns. One shared loop redraws every .g3 icon on screen (and stops when there are none); static with Reduce effects.
+const GEM_V = [[0,-1.3,0],[0,1.3,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1]], GEM_F = [[0,2,4],[0,4,3],[0,3,5],[0,5,2],[1,4,2],[1,3,4],[1,5,3],[1,2,5]], GEM_L = [-.35,-.5,.79];
+const GEM_CT = Math.cos(-.36), GEM_ST = Math.sin(-.36);
+const gemHull = pts => { pts = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]); const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
+  for (const q of pts){ while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of pts.reverse()){ while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  up.pop(); lo.pop(); return lo.concat(up); };
+const gemLp = (a, b, k) => a + (b - a) * k;
+/* fa = 0..1: how far a Black Market slot gem is filled (hollow crystal -> solid faces in the edge colour) */
+const gemDraw = (svg, a, fa = 0) => {
+  const ca = Math.cos(a), sa = Math.sin(a), P = svg.querySelectorAll('polygon');
+  const v = GEM_V.map(([x, y, z]) => { const X = x * ca + z * sa, Z = -x * sa + z * ca; return [X, y * GEM_CT - Z * GEM_ST, y * GEM_ST + Z * GEM_CT]; });
+  P[0].setAttribute('points', gemHull(v.map(q => [q[0], q[1]])).map(q => q[0].toFixed(2) + ',' + q[1].toFixed(2)).join(' '));
+  GEM_F.map(f => { const c = [0, 1, 2].map(k => (v[f[0]][k] + v[f[1]][k] + v[f[2]][k]) / 3), n = Math.hypot(c[0], c[1], c[2]); return { f, z: c[2], lit: Math.max(0, (c[0] * GEM_L[0] + c[1] * GEM_L[1] + c[2] * GEM_L[2]) / n) }; })
+    .sort((p, q) => p.z - q.z).forEach((o, i) => { const el = P[i + 1];
+      el.setAttribute('points', o.f.map(k => v[k][0].toFixed(2) + ',' + v[k][1].toFixed(2)).join(' '));
+      if (o.z > 0){ const a0 = .04 + .2 * o.lit, sh = .72 + .28 * o.lit; el.setAttribute('fill', `rgba(${gemLp(255, 255 * sh, fa).toFixed(0)},${gemLp(120, 59 * sh, fa).toFixed(0)},${gemLp(145, 92 * sh, fa).toFixed(0)},${gemLp(a0, 1, fa).toFixed(2)})`); el.setAttribute('stroke', '#ff3b5c'); el.setAttribute('stroke-width', '.09'); }
+      else { el.setAttribute('fill', `rgba(${gemLp(150, 125, fa).toFixed(0)},${gemLp(20, 16, fa).toFixed(0)},${gemLp(47, 38, fa).toFixed(0)},${gemLp(.1, 1, fa).toFixed(2)})`); el.setAttribute('stroke', 'rgba(255,59,92,.6)'); el.setAttribute('stroke-width', '.06'); } });
+};
+let gemRun = false;
+let gemT = 0;
+const gemFa = (s, fn, snap) => { const h = s.closest('.bm-gem'), tg = h && h.classList.contains('f') ? 1 : 0; let f = s._fa || 0; f = snap ? tg : f + (tg - f) * .14; if (Math.abs(tg - f) < .004) f = tg; s._fa = f; fn(s, gemT / 1000 * .7 + (+s.dataset.ph || 0), f); };
+const gemPaint = () => document.querySelectorAll('svg.g3').forEach(s => gemFa(s, gemDraw, true));   // one redraw (Reduce effects stops the loop)
+const gemTick = n => {
+  const all = document.querySelectorAll('svg.g3'); if (!all.length){ gemRun = false; return; }
+  gemT = n;
+  all.forEach((s, i) => gemFa(s, gemDraw));
+  if (document.documentElement.classList.contains('reduce-fx') || document.body.classList.contains('reduce-fx')){ gemRun = false; return; }
+  requestAnimationFrame(gemTick);
+};
+const gemI = (cls = '') => { if (!gemRun){ gemRun = true; setTimeout(() => requestAnimationFrame(gemTick), 0); }
+  return `<svg class="den-ic gem g3 ${cls}" viewBox="-1.25 -1.6 2.5 3.2" data-ph="${(Math.random() * 6).toFixed(2)}">${'<polygon fill="#12080d" stroke="none"/>' + '<polygon/>'.repeat(8)}</svg>`; };
 const chip = (cls = '') => `<svg class="den-ic ${cls}" viewBox="0 0 48 48"><use href="#den-chip"/></svg>`;
 
 
@@ -76,31 +119,33 @@ tkBtn.addEventListener('click', () => openDen());
 let balStop = null;
 const balSync = () => {   // the in-game balance rolls from what it shows now to the new total
   const b = document.getElementById('lBal'); if (!b) return; if (balStop) balStop();
-  const g0 = b.querySelector('.g'), to = S.gold, from = g0 ? parseInt(g0.textContent.replace(/[^\d-]/g, ''), 10) : to, tk = `<span class="t">${chip()}${tickets()}</span>`;
-  b.innerHTML = `<span class="g">${ico('i-coin')}${fmt(isNaN(from) ? to : from)}</span>${tk}`;
+  const g0 = b.querySelector('.g'), to = S.gold, from = g0 ? parseInt(g0.textContent.replace(/[^\d-]/g, ''), 10) : to, tk = (game === 'lock' ? `<span class="gm">${gemI()}${D().b || 0}</span>` : '') + `<span class="t">${chip()}${tickets()}</span>`;
+  b.innerHTML = `<span class="g">${ico('i-coin')}${fmt(isNaN(from) ? to : from)}</span><span class="row">${tk}</span>`;
   if (isNaN(from) || from === to || document.documentElement.classList.contains('reduce-fx')){ b.querySelector('.g').innerHTML = ico('i-coin') + fmt(to); return; }
   balStop = tween(from, to, 520, v => { const el = b.querySelector('.g'); if (!el || !b.isConnected) return false; el.innerHTML = ico('i-coin') + fmt(Math.round(v)); });
 };
-const goldDelta = d => { S.gold += d; buyUndo = null; save(); renderHeader.tween = true; renderHeader(); balSync(); };
+const goldDelta = (d, g = game) => { S.gold += d; if (g && GAMES[g]) bumpDen(g, GAMES[g].name, d); buyUndo = null; save(); renderHeader.tween = true; renderHeader(); balSync(); };
 const useTicket = n => { D().t = Math.max(0, D().t + n); save(); tkSync(); balSync(); };
 
 
 /* ---------- Den sheet ---------- */
 const GAMES = {
   hack: { name:'Minesweeper', blurb:'Scan the grid, dodge the mines.', cls:'h' },
-  hilo: { name:'Day Trader', blurb:'Read the line. Call the next move.', cls:'l' }
+  hilo: { name:'Day Trader', blurb:'Read the line. Call the next move.', cls:'l' },
+  lock: { name:'Lockpick', blurb:'Not a gamble. Beat the lock.', cls:'k' }
 };
 let ov = null;
 /* the little (i) next to a game name: a short how-to bubble */
 const INFO = {
   hack: 'Each safe scan raises your multiplier. 2 of the 9 blips are mines. Extract before hitting one.',
-  hilo: 'LONG for higher, SHORT for lower. One wrong call liquidates you.'
+  hilo: 'LONG for higher, SHORT for lower. One wrong call liquidates you.',
+  lock: 'Tap when the needle crosses the gap. Miss and cash out what you\u2019ve earned.'
 };
 /* where tickets come from; a source already taken today is greyed out with the faint line-through used on done List items */
 function tixInfo(){
   const k = dayKey(), qs = (S.quests || []).filter(q => q && q.goal);
   const row = (name, n, done) => `<div class="den-tr${done ? ' dn' : ''}"><span>${name}</span><b>${chip()}+${n}</b></div>`;
-  return row('Daily login', 2, typeof dlClaimed === 'function' && dlClaimed()) + row('First pack', 1, D().pk === k) + row('Step goal', 1, qs.length > 0 && qs.every(q => q.goalPaid && q.goalPaid[k]));
+  return row('Daily login', 2, typeof dlClaimed === 'function' && dlClaimed()) + row('First pack', 1, D().pk === k) + row('Step goal', 1, qs.length > 0 && qs.every(q => q.goalPaid && q.goalPaid[k])) + `<div class="den-tr fp"><span>Free entry</span><b>${chipSh()}</b></div>`;   // every 10th play costs no ticket
 }
 function toggleInfo(el){
   const sh = ov && ov.querySelector('.den-sheet'); if (!sh) return;
@@ -112,24 +157,35 @@ function toggleInfo(el){
   if (b.offsetTop + b.offsetHeight > sh.clientHeight - 6){ b.style.top = (r.top - sr.top + sh.scrollTop - b.offsetHeight - 10) + 'px'; b.classList.add('up'); }   // no room below: open above the name
   infoOpen(el, { inside: x => el.contains(x) || b.contains(x), close: () => b.remove() });
 }
-function closeDen(){ if (ov){ if (infoCur && ov.contains(infoCur.icon)) infoClose(); ov.remove(); ov = null; } }
-function openDen(){
+/* fade = a game is opening: the Den fades out while the game fades in (see .den-x / .den-in in den.css) instead of vanishing at once */
+function closeDen(fade){ MK.close(); if (ov){ if (infoCur && ov.contains(infoCur.icon)) infoClose(); const o = ov; ov = null; if (fade){ o.classList.add('den-x'); setTimeout(() => o.remove(), 260); } else o.remove(); } }
+/* stretch / shrink: the new sheet starts at the old sheet's height and eases to its own (class .den-mo in den.css) */
+function morph(sheet, h0){
+  if (!sheet || !h0 || reduced()) return;
+  const h1 = sheet.offsetHeight; if (Math.abs(h1 - h0) < 2) return;
+  sheet.style.height = h0 + 'px'; sheet.style.overflow = 'hidden'; sheet.classList.add('den-mo'); void sheet.offsetHeight;
+  sheet.style.height = h1 + 'px';
+  setTimeout(() => { sheet.style.height = ''; sheet.style.overflow = ''; sheet.classList.remove('den-mo'); }, 400);
+}
+function openDen(fromGame, h0){
   closeDen(); const t = tickets();
-  ov = document.createElement('div'); ov.className = 'den-ov';
+  ov = document.createElement('div'); ov.className = 'den-ov' + (fromGame ? ' den-in' : '');
   const w = D().st.w, lo = D().st.l, tot = w + lo, p = tot ? w / tot * 100 : 50, nt = w - lo;
   const fmt0 = n => n.toLocaleString('en-US'), np = netToday();
-  ov.innerHTML = `<div class="den-sheet"><div class="den-hd"><h2>The Den${infoIcon('Where tickets come from', 'data-g="tix"')}</h2><div class="den-cap"${capped() ? ' hidden' : ''}>${ico('i-coin')}${np > PROFIT_CAP ? `<b class="o">${fmt0(np)}</b><b>/${PROFIT_CAP}</b>` : `<b>${fmt0(np)}/${PROFIT_CAP}</b>`}</div></div><div class="den-tch">${Array.from({ length:10 }, (_, i) => `<span class="den-tc${i < t ? ' on' : ''}">${chip()}</span>`).join('')}${t > 10 ? `<em class="den-more">+${t - 10}</em>` : ''}</div>
+  ov.innerHTML = `<div class="den-sheet"><div class="den-hd"><h2>The Den${infoIcon('Where tickets come from', 'data-g="tix"')}</h2><div class="den-cap"${capped() ? ' hidden' : ''}>${ico('i-coin')}${np > PROFIT_CAP ? `<b class="o">${fmt0(np)}</b><b>/${PROFIT_CAP}</b>` : `<b>${fmt0(np)}/${PROFIT_CAP}</b>`}</div></div><div class="den-tch">${Array.from({ length:FREE_AT }, (_, i) => `<span class="den-tc${i < D().p ? ' on' : ''}">${chip()}</span>`).join('')}<span class="den-tc shat${freeReady() ? ' on' : ''}">${chipSh()}</span></div>
     <div class="den-st"><div class="den-sn w"><i>WON</i><b>${fmt0(w)}</b></div><div class="den-sb"><div class="den-sbd" style="left:${p}%;transform:translateX(${p < 20 ? '-4px' : p > 80 ? 'calc(-100% + 4px)' : '-50%'})">${ico('i-coin')}${nt > 0 ? '+' : nt < 0 ? '−' : ''}${fmt0(Math.abs(nt))}</div><div class="den-spt" style="left:${p}%">▼</div><div class="den-sbar"><i class="${tot ? 'a' : 'z'}" style="width:${p}%"></i><i class="${tot ? 'b' : 'z'}" style="width:${100 - p}%"></i></div></div><div class="den-sn l"><i>LOST</i><b>${fmt0(lo)}</b></div></div>
-    <div class="den-gl${capped() ? ' lock' : ''}">${Object.keys(GAMES).map(g => `<button class="den-gc ${GAMES[g].cls}" data-g="${g}" type="button"><span class="den-gic">${gIcon(g)}</span><span class="den-gtx"><b>${GAMES[g].name}${infoIcon('How to play', `data-g="${g}"`)}</b><em>${GAMES[g].blurb}</em></span><span class="den-gb">BEST<br>${D().best[g] ? '×' + D().best[g].toFixed(1) : '—'}</span></button>`).join('')}${capped() ? `<div class="den-lim"><div>${ico('i-coin')}<b class="${np > PROFIT_CAP ? 'o' : ''}">${fmt0(np)}</b><b>/${PROFIT_CAP}</b></div><small>${cd(nextMid(), 'resets in ')}</small></div>` : ''}</div>
+    <div class="den-gl${capped() ? ' lock' : ''}${S.leftHand ? ' lh' : ''}">${Object.keys(GAMES).map(g => `<button class="den-gc ${GAMES[g].cls}" data-g="${g}" type="button"><span class="den-gic">${gIcon(g)}</span><span class="den-gtx"><b>${GAMES[g].name}${infoIcon('How to play', `data-g="${g}"`)}</b><em>${GAMES[g].blurb}</em></span><span class="den-gb">BEST<br>${D().best[g] ? (g === 'lock' ? 'LV ' + D().best[g] : '×' + D().best[g].toFixed(1)) : '—'}</span></button>`).join('')}${capped() ? `<div class="den-lim"><div>${ico('i-coin')}<b class="${np > PROFIT_CAP ? 'o' : ''}">${fmt0(np)}</b><b>/${PROFIT_CAP}</b></div><small>${cd(nextMid(), 'resets in ')}</small></div>` : ''}<button class="den-edge" type="button" aria-label="Black Market"><i></i><span>BLACK MARKET</span></button></div>
   </div>`;
   ov.addEventListener('click', e => {
     const inf = e.target.closest('.info-btn'), ib = ov.querySelector('.den-ib');
     if (inf){ e.stopPropagation(); toggleInfo(inf); return; }
     if (ib){ infoClose(); if (e.target.closest('.den-ib')) return; }
-    const b = e.target.closest('.den-gc'); if (b && !capped()){ closeDen(); openGame(b.dataset.g); return; }
+    if (e.target.closest('.den-edge')){ MK.open(); return; }
+    const b = e.target.closest('.den-gc'); if (b && !capped()){ const h0 = ov.firstChild.offsetHeight; closeDen(true); openGame(b.dataset.g, h0); return; }
     if (e.target === ov) closeDen();
   });
   document.body.appendChild(ov);
+  morph(ov.firstChild, h0);
 }
 
 
@@ -165,7 +221,7 @@ function cleanSaved(g){   // a saved round is checked before it is used; anythin
     ok = o.ice.size === TRAPS && ice.length === TRAPS && o.k < SAFE && op.length === o.k && new Set(op).size === op.length && !op.some(i => o.ice.has(i))
       && pos && pos.length === N && pos.every(p => Array.isArray(p) && p.length === 3 && p.every(v => isFinite(v) && v > -1000 && v < 2000))
       && Array.isArray(l.a) && l.a.length === N && l.a.every(isFinite) && num(l.H) >= 100 && num(l.H) <= 600;
-    if (ok){ o.lastI = op[op.length - 1]; ly = { pos:pos.map(p => p.map(Number)), H:+l.H, a:l.a.map(Number) }; }
+    if (ok){ o.lastI = op[op.length - 1]; ly = +l.H === HACK_H ? { pos:pos.map(p => p.map(Number)), H:+l.H, a:l.a.map(Number) } : null; }   // a round saved with the old taller field gets a fresh layout (blips are by number, so the round itself is unchanged)
   } else if (ok){
     o.n = Math.round(num(r.n, -1)); ok = o.n >= 0 && o.n <= 100;
     o.hist = (Array.isArray(r.hist) ? r.hist : []).slice(-8).map(h => ({ n:Math.max(0, Math.min(100, Math.round(num(h && h.n)))), w:!!(h && h.w) }));
@@ -180,49 +236,62 @@ function restoreRun(g, s){
     const total = run.k; run.k = 0; run.opened.forEach(i => { run.k++; face(i, false, true); }); run.k = total;   // the opened blips come back without their ring effects
     [...$('#lGrid').children].forEach(n => { n.disabled = n.classList.contains('open'); });
   } else {
-    const nn = $('#lNum'); nn.style.color = ''; nn.textContent = run.n; chStart();
+    const nn = $('#lNum'); nn.style.color = ''; nn.textContent = run.n; nn.classList.remove('idle'); chStart();
     const to = Math.min(5, fracIdx(run.m)); renderTh(to, Math.max(1, muOf(to) + Math.max(0, run.m - 10) * (to >= 5 ? 1 : 0)));
   }
   bar(); readouts();
 }
 
-function openGame(g){
+function openGame(g, h0){
   closeGame(true); game = g; run = null;
-  gov = document.createElement('div'); gov.className = 'den-ov';
+  gov = document.createElement('div'); gov.className = 'den-ov den-in';
   gov.innerHTML = '<div class="den-sheet den-gsheet"></div>';
   pg = document.createElement('div'); pg.id = 'lDen'; pg.className = 'den-pg ' + g;
   gov.firstChild.appendChild(pg);
-  gov.addEventListener('click', e => { if (e.target === gov && !(run && !run.over)) closeGame(); });
+  gov.addEventListener('click', e => { if (e.target === gov && !(run && !run.over) && !(game === 'lock' && (LKG.held() || (LKG.get() && LKG.get().run)))) closeGame(); });   // Lockpick: stray taps beside / below the shrinking panel don't close it during a run or the payout hold
   document.body.appendChild(gov);
   if (g === 'hack'){ tn = document.createElement('div'); tn.className = 'den-tens'; tn.innerHTML = '<i></i>'; document.body.appendChild(tn); }
-  const keep = cleanSaved(g); segK = 0; paint(); if (keep) restoreRun(g, keep);
+  const keep = g === 'lock' ? null : cleanSaved(g); segK = 0; paint(); if (keep) restoreRun(g, keep);
+  morph(gov.firstChild, h0);
 }
 function closeGame(quiet){
   if (!pg) return;
   if (run && !run.over) snapRun(); else if (run) clearSaved();   // leaving mid-run: the round is kept exactly as it is
+  if (game === 'lock') LKG.stop();
   if (thRaf) thRaf(); th = null; clearTimeout(resetT); resetId++; if (tn){ tn.remove(); tn = null; }
-  gov.remove(); gov = null; pg = null; run = null;
-  if (!quiet) openDen();
+  const h0 = quiet ? 0 : gov.firstChild.offsetHeight;
+  if (quiet) gov.remove();
+  else { const o = gov; const lp = o.querySelector('#lDen'); if (lp) lp.removeAttribute('id'); o.classList.add('den-x'); setTimeout(() => o.remove(), 260); }   // fades out while the Den fades in
+  gov = null; pg = null; run = null;
+  if (!quiet) openDen(true, h0);
 }
-const hideSave = () => { snapRun(); flushSave(); };
+const hideSave = () => { snapRun(); LKG.snap(); flushSave(); };
 addEventListener('pagehide', hideSave); document.addEventListener('visibilitychange', () => { if (document.hidden) hideSave(); });
 
 function paint(){
-  const g = game, isH = g === 'hack';
+  const g = game, isH = g === 'hack', isK = g === 'lock';
   pg.innerHTML = `<div class="den-head"><button class="den-back" type="button" aria-label="Back to the Den"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><span class="den-gic sm">${gIcon(g)}</span><h3>${GAMES[g].name}</h3><div class="den-bal" id="lBal"></div></div>
-  <div class="den-body">${isH ? hackBody() : hiloBody()}</div>
+  <div class="den-body">${isH ? hackBody() : isK ? LKG.body() : hiloBody()}</div>
   <div class="den-barwrap" id="lBar"></div>`;
-  if (isH) buildGrid(); else { buildTh(); chStart(); }
+  if (isH) buildGrid(); else if (isK){ LKG.init(); heatSheet(0); } else { buildTh(); chStart(); }
   bar(); readouts(); balSync();
 }
 const hackBody = () => `<div class="den-board sn fr-full"><i class="den-sweep"></i><div class="den-grid free" id="lGrid"></div></div>
-  <div class="den-seg" id="lSeg"><div class="den-sf" id="lSf"></div><i class="den-se"></i><div class="den-stx"><small id="lSl">RISK CHANCE</small><b id="lSn">—</b></div></div>`;
+  <div class="lab-rb" id="lSeg"><div class="rb-top"><small>RISK CHANCE</small><em id="lSs">OK</em></div><div class="rb-mid"><div class="rb-t" id="lSn" data-t="—">—</div><div class="rb-st" id="lSt"></div></div><div class="rb-tape"><b class="tp"></b><b class="cv"></b></div></div>`;
 /* Higher / Lower screen: a 20-segment parallelogram thermometer on the side (right side in left-hand mode), number, two buttons */
 const hiloBody = () => `<div class="den-lrow${S.leftHand ? ' rt' : ''}"><div class="den-th" id="lLad"><div class="den-trk"></div></div>
-  <div class="den-lmid"><div class="den-disp" id="lDisp"><svg id="lChart" aria-hidden="true"></svg><div class="den-dh"><b id="lNum">–</b><i id="lDelta"></i></div></div>
+  <div class="den-lmid"><div class="den-disp" id="lDisp"><svg id="lChart" aria-hidden="true"></svg><div class="den-dh"><b id="lNum" class="idle">–</b><i id="lDelta"></i></div></div>
     <button class="den-hb up" id="lUp" type="button" disabled><span id="oh">LONG —</span></button>
     <button class="den-hb dn" id="lDn" type="button" disabled><span id="ol">SHORT —</span></button></div></div>`;
-const RUNGS = [1, 2, 4, 6, 8, 10], TN = 20, TPER = TN / 5, THC = t => `hsl(${hue(Math.min(1, Math.max(0, t)))},95%,55%)`;
+/* synthwave heat ladders: Minesweeper (cyan -> blue -> magenta -> pink-red, no violet): one stop per scan 0..6, blended linearly in RGB; t = 0..1 */
+const HEAT_E = [[46,230,214],[127,240,230],[232,255,252],[255,214,224],[255,138,160],[255,92,120],[255,59,92]];   // Day Trader: cyan -> white-hot -> red
+const HEAT = [[46,230,214],[46,194,255],[79,141,255],[255,79,216],[255,61,154],[255,61,110],[255,59,92]];
+const heatRgb = t => { const x = Math.min(1, Math.max(0, t)) * 6, i = Math.min(5, Math.floor(x)), f = x - i, L = game === 'hilo' ? HEAT_E : HEAT, a = L[i], b = L[i + 1]; return a.map((v, j) => Math.round(v + (b[j] - v) * f)); };
+const heatColor = t => `rgb(${heatRgb(t)})`, heatA = (t, a) => `rgba(${heatRgb(t)},${a})`;
+const THC = heatColor;
+/* the sheet border, title, icon box and board border follow the heat (class l-heat + --heat); the last-tile red state keeps priority */
+function heatSheet(t){ const sh = gov && gov.firstChild; if (!sh) return; sh.classList.toggle('l-heat', t > 0); sh.style.setProperty('--heat', heatRgb(t).join(',')); }
+const RUNGS = [1, 2, 4, 6, 8, 10], TN = 20, TPER = TN / 5;
 const fracIdx = mu => { let i = 0; RUNGS.forEach((r, k) => { if (mu >= r - .005) i = k; }); return i >= RUNGS.length - 1 ? RUNGS.length - 1 : i + (mu - RUNGS[i]) / (RUNGS[i + 1] - RUNGS[i]); };
 const muOf = fi => { const i = Math.min(4, Math.floor(fi + 1e-9)); return RUNGS[i] + (RUNGS[i + 1] - RUNGS[i]) * (fi - i); };
 let th = null, thF = 0, thRaf = null;
@@ -237,6 +306,7 @@ function buildTh(){
 function renderTh(f, mu){
   if (!th) return; thF = f; th.segs.forEach((el, k) => { el.style.transform = `scaleY(${Math.max(0, Math.min(1, f * TPER - k))})`; });
   th.ticks.forEach((t, i) => t.classList.toggle('rch', f >= i - 1e-6 && f > 0));
+  heatSheet(Math.min(1, f / 5));
   const c = THC(f / 5); th.bub.style.display = f > 0 ? 'block' : 'none'; th.bub.textContent = '×' + mu.toFixed(2); th.bub.style.color = c; th.bub.style.borderColor = c; th.bub.style.bottom = (f * 20) + '%';
 }
 function animTh(from, to, dur, ease, frame, done){
@@ -270,11 +340,19 @@ function scan(){
   };
   tick();
 }
+const HACK_H = 204;   // height of the Minesweeper radar field in px (the Den and all games are one size, see --den-h in den.css)
 let lay = null;   // where the nine blips sit this round: { pos:[[x,y,size]...], H, a:[angle of each blip from the centre] }
 function newLayout(board){
-  const W = Math.max(240, board.clientWidth - 20 || 330), H = 300, sz = 64, pts = [], r = Math.random; let tries = 0;
-  while (pts.length < N && tries++ < 3000){ const x = sz / 2 + 6 + r() * (W - sz - 12), y = sz / 2 + 6 + r() * (H - sz - 12); if (pts.every(p => Math.hypot(p[0] - x, p[1] - y) > sz * 1.12)) pts.push([x, y]); }   // nine blips scattered at random, kept apart
-  while (pts.length < N) pts.push([W / 2 + (r() - .5) * 60, H / 2 + (r() - .5) * 60]);
+  const W = Math.max(240, board.clientWidth - 20 || 330), H = HACK_H, sz = 60, D = sz * 1.1, r = Math.random;
+  const x0 = sz / 2 + 6, x1 = W - sz / 2 - 6, y0 = sz / 2 + 6, y1 = H - sz / 2 - 6, pts = [];
+  for (let i = 0; i < N; i++) pts.push([x0 + r() * (x1 - x0), y0 + r() * (y1 - y0)]);   // nine blips scattered at random, then pushed apart until none touch (the field is small, so random retries alone fail)
+  for (let it = 0; it < 120; it++){
+    for (let a = 0; a < N; a++) for (let b = a + 1; b < N; b++){
+      const dx = pts[b][0] - pts[a][0], dy = pts[b][1] - pts[a][1], d = Math.hypot(dx, dy) || .01;
+      if (d < D){ const f = (D - d) / 2 / d; pts[a][0] -= dx * f; pts[a][1] -= dy * f; pts[b][0] += dx * f; pts[b][1] += dy * f; }
+    }
+    pts.forEach(p => { p[0] = Math.min(x1, Math.max(x0, p[0])); p[1] = Math.min(y1, Math.max(y0, p[1])); });
+  }
   return { pos:pts.map(p => [p[0] - sz / 2, p[1] - sz / 2, sz]), H, a:pts.map(p => (Math.atan2(p[0] - W / 2, -(p[1] - H / 2)) * 180 / Math.PI + 360) % 360) };
 }
 function buildGrid(hidden, keep){
@@ -286,6 +364,7 @@ function buildGrid(hidden, keep){
 function bar(){
   const w = $('#lBar'); if (!w) return;
   const t = tickets(), st = stakeNow(), live = run && !run.over;
+  if (game === 'lock'){ LKG.bar(w, capped()); return; }
   if (live){ snapRun();
     const val = pay(run.stake, run.m), can = run.k > 0;
     w.innerHTML = `<button class="den-cash" id="lCash" type="button"${can ? '' : ' disabled'}>${can ? `${game === 'hilo' ? 'TAKE PROFIT' : 'EXTRACT'} · <span class="g">${coinI()}${fmt(val)}</span>` : (game === 'hack' ? 'SCAN A BLIP' : 'CALL TO START')}</button>`;
@@ -293,19 +372,23 @@ function bar(){
   }
   if (run && run.maxed && game === 'hilo'){ w.innerHTML = '<button class="den-go den-rst" id="lReset" type="button">NEW MARKET</button>'; return; }
   if (capped()){ w.innerHTML = `<div class="den-go off"><span>DAILY LIMIT REACHED</span></div>`; return; }
-  const i = STAKES.indexOf(st), poor = S.gold < st, noTk = t <= 0;   // short on gold / tickets: that number turns red and the button fades
-  w.innerHTML = `<div class="den-go${poor || noTk ? ' short' : ''}" id="lGo"><button class="den-ar" data-d="-1" type="button" aria-label="Lower stake"${i <= 0 ? ' disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><button class="den-mid" id="lPlay" type="button"><span class="g${poor ? ' red' : ''}">${coinI()}${st}</span><span class="t${noTk ? ' red' : ''}">${chip()}1</span></button><button class="den-ar" data-d="1" type="button" aria-label="Higher stake"${i >= STAKES.length - 1 ? ' disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></div>`;
+  const i = STAKES.indexOf(st), poor = S.gold < st, free = freeReady(), noTk = t <= 0 && !free;   // short on gold / tickets: that number turns red and the button fades
+  w.innerHTML = `<div class="den-go${poor || noTk ? ' short' : ''}" id="lGo"><button class="den-ar" data-d="-1" type="button" aria-label="Lower stake"${i <= 0 ? ' disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><button class="den-mid" id="lPlay" type="button"><span class="g${poor ? ' red' : ''}">${coinI()}${st}</span><span class="t${noTk || free ? ' red' : ''}">${free ? chipSh() + '0' : chip() + '1'}</span></button><button class="den-ar" data-d="1" type="button" aria-label="Higher stake"${i >= STAKES.length - 1 ? ' disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></div>`;
 }
 /* Higher / Lower button: word + × on the left half, the number on the right half, so both numbers line up */
 const hbHtml = w => v => `<span class="hw"><i class="tri">${w === 'LONG' ? '▲' : '▼'}</i>${w}${v == null ? '' : ' ×'}</span><span class="hn">${v == null ? '—' : v.toFixed(2)}</span>`;
 function hbSet(el, w, v){ if (!el) return; if (v == null){ if (el._r) el._r(); el._v = el._cur = null; el.innerHTML = hbHtml(w)(null); } else tweenM(el, v, hbHtml(w), 420); }
 function readouts(){
+  if (game === 'lock') return;
   if (game === 'hack'){
     const live = run && !run.over, k = run ? run.k : 0;
     if (live) segK = k;   // after a round ends the bar holds its last fill until the board resets
     const sn = $('#lSn'); if (!sn) return;
-    sn.textContent = live && k < SAFE ? Math.round(TRAPS / (N - k) * 100) + '%' : '—';   // chance that the next blip is a mine: mines left / blips left
-    const last = live && k === SAFE - 1; $('#lSl').textContent = 'RISK CHANCE'; $('#lSeg').classList.toggle('last', !!last);
+    const pct = live && k < SAFE ? Math.round(TRAPS / (N - k) * 100) + '%' : '—';   // chance that the next blip is a mine: mines left / blips left
+    sn.textContent = pct; sn.dataset.t = pct; $('#lSt').textContent = live && k < SAFE ? (SAFE - k === 1 ? 'FINAL BLIP' : (SAFE - k) + ' SAFE BLIPS') : '';
+    const last = live && k === SAFE - 1, hit = !!(run && run.hit);
+    $('#lSs').textContent = hit ? 'HIT' : last ? '! DANGER !' : segK ? 'CAUTION' : 'OK';
+    $('#lSeg').classList.toggle('hot', last || hit); $('#lSeg').classList.toggle('hit', hit);
     setTension(segK, last);
   } else {
     const live = run && !run.over, u = $('#lUp'), d = $('#lDn'); if (!u) return;
@@ -316,16 +399,18 @@ function readouts(){
   }
 }
 /* danger: the NEXT TILE box fills as safe tiles open (max at the 6th), heartbeat edges on the last 3, red radar sweep on the last tile */
-const STEPS = 6, hue = t => Math.round(175 - 175 * Math.pow(t, .8));
+const STEPS = 6;
 function setTension(k, last){
   const t = Math.min(1, k / STEPS), seg = $('#lSeg'), board = $('.den-board'); if (!seg) return;
-  seg.style.setProperty('--c', `hsl(${hue(t)},95%,55%)`); seg.style.setProperty('--p', (2 - 1.4 * t) + 's'); seg.style.setProperty('--a', .25 + .75 * t);
-  $('#lSf').style.transform = `scaleX(${t})`;
+  const risk = Math.round(200 / (N - Math.min(k, SAFE))), r = Math.min(100, risk);
+  seg.style.setProperty('--cc', heatColor(t)); seg.style.setProperty('--r', (r / 100).toFixed(3));
+  seg.style.setProperty('--P', (1.7 / (1 + r / 70)).toFixed(2) + 's'); seg.style.setProperty('--D', (5.5 - r / 100 * 4).toFixed(1) + 's');
+  heatSheet(t);
   if (board && board.classList.contains('red') !== !!last) dangerMode(!!last, board);
   if (tn){ tn.style.opacity = run && !run.over && k >= 4 ? (.12 + .2 * ((k - 4) / 2)) : 0; tn.style.setProperty('--p', (1.7 - 1.1 * t) + 's'); }
 }
 /* full clear: the bar and its border turn gold (instead of staying red) until the board resets */
-const winGold = () => { const seg = $('#lSeg'); if (seg) seg.style.setProperty('--c', 'hsl(44,100%,58%)'); };
+const winGold = () => { const seg = $('#lSeg'); if (seg) seg.style.setProperty('--cc', 'hsl(44,100%,58%)'); };
 const tensOff = () => { if (tn) tn.style.opacity = 0; const b = $('.den-board'); if (b) dangerMode(false, b); };
 /* last tile: the tab border, title, scan bar and the opened blips turn red */
 function dangerMode(on, board){
@@ -339,6 +424,7 @@ function resetBoard(){
   segK = 0; setTension(0, false);
 }
 function step(d){
+  if (game === 'lock') return;
   const i = STAKES.indexOf(stakeNow()), j = Math.max(0, Math.min(STAKES.length - 1, i + d));
   if (j === i) return; D().stake[game] = STAKES[j]; save(); bar();
 }
@@ -346,9 +432,13 @@ function step(d){
 /* ---------- start / end ---------- */
 function start(){
   const t = tickets(), st = stakeNow(), go = $('#lGo');
-  if (capped()) return;
-  if (t <= 0 || S.gold < st){ deny(go); return; }
-  goldDelta(-st); useTicket(-1); clearTimeout(resetT); resetId++;
+  if (capped() || (game === 'lock' && LKG.held())) return;
+  if (game === 'lock'){ const free = freeReady(); if (t <= 0 && !free){ deny(go); return; }
+    if (free){ D().p = 0; save(); balSync(); } else { useTicket(-1); D().p = Math.min(FREE_AT, D().p + 1); save(); }
+    LKG.start(); return; }
+  const free = freeReady();
+  if ((t <= 0 && !free) || S.gold < st){ deny(go); return; }
+  goldDelta(-st); if (free){ D().p = 0; save(); balSync(); } else { useTicket(-1); D().p = Math.min(FREE_AT, D().p + 1); save(); } clearTimeout(resetT); resetId++;
   if (game === 'hack'){ segK = 0;
     const ice = new Set(); while (ice.size < TRAPS) ice.add(Math.floor(Math.random() * N));
     run = { stake:st, ice, k:0, m:1, over:false, opened:[] };
@@ -357,13 +447,13 @@ function start(){
     const reveal = () => { if (run !== me || !$('#lGrid')) return; buildGrid(true); [...$('#lGrid').children].forEach(n => n.disabled = false); scan(); };
     scanClear(); old.forEach((n, i) => scanT.push(setTimeout(() => n.classList.add('hid'), i * 45)));
     scanT.push(setTimeout(reveal, old.length ? old.length * 45 + 450 : 0));
-  } else { if (thRaf) thRaf(); run = { stake:st, n:Math.floor(Math.random() * 101), k:0, m:1, over:false, hist:[] }; renderTh(0, 1); const nn = $('#lNum'); nn.style.color = ''; nn.textContent = run.n; setDisp(''); chStart(true); }
+  } else { if (thRaf) thRaf(); run = { stake:st, n:Math.floor(Math.random() * 101), k:0, m:1, over:false, hist:[] }; renderTh(0, 1); const nn = $('#lNum'); nn.style.color = ''; nn.textContent = run.n; nn.classList.remove('idle'); setDisp(''); chStart(true); }
   bar(); readouts();
 }
 function payout(defer){
   const full = Math.floor(run.stake * run.m), amt = pay(run.stake, run.m), cur = netToday(); if (!defer) goldDelta(amt); run.over = true; clearSaved();
   const net = amt - run.stake, o = D(); if (net > 0) o.st.w += net; else o.st.l += -net;
-  o.pn = Math.max(0, cur + full - run.stake);
+  if (!CAP_TEST_FREEZE) o.pn = Math.max(0, cur + full - run.stake);
   o.best[game] = Math.max(o.best[game] || 0, run.m); save(); return amt;
 }
 /* cash-out celebration: coin burst + flash + big "+N G" count-up (transform/opacity only; skipped with Reduce effects) */
@@ -443,7 +533,7 @@ function cash(auto){
 function lose(){
   if (run && !run.over){ const o = D(); o.st.l += run.stake; save(); }
   if (game === 'hilo'){ loseHilo(); return; }
-  run.over = true; clearSaved();
+  run.over = true; run.hit = true; clearSaved();
   { const bd = $('.den-board'); if (bd){ const q = document.createElement('div'); q.className = 'den-liq'; q.innerHTML = '<small>SIGNAL LOST</small>'; bd.appendChild(q); if (q.animate && !reduced()) q.animate([{ opacity:0, transform:'scale(.9)' }, { opacity:1, transform:'none', offset:.12 }, { opacity:1, offset:.8 }, { opacity:0 }], { duration:1600, fill:'both' }); setTimeout(() => q.remove(), 1600); } }
   bar(); readouts(); tensOff(); scheduleReset(1800);
 }
@@ -551,7 +641,7 @@ function countCashBtn(from, to){
 /* win pop: a soft bloom behind the number every win; the full pop (panel ring + ring on the ladder step) only when you reach a new step */
 function hiPop(prevOn){
   if (!gov || !gov.animate || reduced()) return;
-  const on = Math.floor(fracIdx(run.m) + 1e-6), cross = on !== prevOn, col = THC(Math.min(1, on / 5)), colA = a => `hsla(${hue(Math.min(1, on / 5))},95%,55%,${a})`;
+  const on = Math.floor(fracIdx(run.m) + 1e-6), cross = on !== prevOn, col = THC(Math.min(1, on / 5)), colA = a => heatA(Math.min(1, on / 5), a);
   const d = $('#lDisp'); if (!d) return; const r = d.getBoundingClientRect();
   const fx = document.createElement('div'); fx.className = 'den-fx'; gov.appendChild(fx);
   const add = css => { const e = document.createElement('i'); e.className = 'den-bfx'; e.style.cssText = css; fx.appendChild(e); return e; };
@@ -569,7 +659,7 @@ function hiPop(prevOn){
 function resetHilo(){
   if (!run || !run.maxed) return; const b = $('#lReset'); if (b) b.disabled = true;
   const n = $('#lNum'), v = run.n, f0 = thF, id = ++resetId, gold = [255, 201, 74], grey = [95, 116, 114];
-  const fin = () => { if (!pg || id !== resetId) return; run = null; n.style.color = ''; n.textContent = '–'; setDisp(''); chEmpty(); if (n.animate) n.animate([{ opacity:0 }, { opacity:1 }], { duration:320 }); bar(); readouts(); };
+  const fin = () => { if (!pg || id !== resetId) return; run = null; n.style.color = ''; n.textContent = '–'; n.classList.add('idle'); setDisp(''); chEmpty(); if (n.animate) n.animate([{ opacity:0 }, { opacity:1 }], { duration:320 }); bar(); readouts(); };
   if (reduced() || !n.animate){ renderTh(0, 1); fin(); return; }
   animTh(f0, 0, 590, k => k, (f, k) => { const p = f0 ? f / f0 : 0; renderTh(f, Math.max(1, muOf(Math.max(0, f)))); n.textContent = Math.round(v * p); chFade(p); n.style.color = `rgb(${gold.map((r, i) => Math.round(grey[i] + (r - grey[i]) * p))})`; },
     () => { n.textContent = 0; setTimeout(fin, 260); });
@@ -579,13 +669,16 @@ function loseHilo(){
   run.over = true; run.lost = true; clearSaved();
   { const d = $('#lDisp'); if (d){ const q = document.createElement('div'); q.className = 'den-liq'; q.innerHTML = `<small>LIQUIDATED</small>`; d.appendChild(q); if (q.animate && !reduced()) q.animate([{ opacity:0, transform:'scale(.9)' }, { opacity:1, transform:'none', offset:.15 }, { opacity:1, offset:.8 }, { opacity:0 }], { duration:1500, fill:'both' }); setTimeout(() => q.remove(), 1500); } } const cb = $('#lCash'); if (cb) cb.disabled = true; readouts();
   const n = $('#lNum'), v = run.n, f0 = thF, red = [255, 59, 92], grey = [95, 116, 114], id = ++resetId;
-  const fin = () => { if (!pg || id !== resetId) return; n.style.color = ''; n.textContent = '–'; setDisp(''); chEmpty(); if (n.animate) n.animate([{ opacity:0 }, { opacity:1 }], { duration:320 }); bar(); readouts(); };
+  const fin = () => { if (!pg || id !== resetId) return; n.style.color = ''; n.textContent = '–'; n.classList.add('idle'); setDisp(''); chEmpty(); if (n.animate) n.animate([{ opacity:0 }, { opacity:1 }], { duration:320 }); bar(); readouts(); };
   if (reduced() || !n.animate){ renderTh(0, 1); fin(); return; }
   setTimeout(() => { if (!pg || id !== resetId) return;
     animTh(f0, 0, 590, k => k, (f, k) => { const p = f0 ? f / f0 : 0; renderTh(f, Math.max(1, muOf(Math.max(0, f)))); n.textContent = Math.round(v * p); chFade(p); n.style.color = `rgb(${red.map((r, i) => Math.round(grey[i] + (r - grey[i]) * p))})`; },
       () => { n.textContent = 0; setTimeout(fin, 260); });
   }, 500);
 }
+/* Lockpick lives in lockpick.js; it gets the Den's helpers here */
+const LKG = makeLockpick({ $, D, save, tickets, freeReady, chip, chipSh, useTicket, balSync, goldDelta, gem:gemI, heatSheet, bar, reduced, coin:coinI, HEAT, HEAT_E, CAP_TEST_FREEZE, netToday, tween, fly:(el, amt, done) => { const r = el.getBoundingClientRect(); setTimeout(() => flyToBal({ left:r.left, top:r.top, width:r.width, height:r.height }, amt, done), 1300); }, heatE:() => false, game:() => game, pg:() => pg });
+const MK = makeMarket({ D, gem:gemI, gemPaint, reduced, nextMid });   // the Black Market shop (edge tab on the Den page)
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
   if (!pg || !pg.contains(e.target)) return;
@@ -613,7 +706,7 @@ render = function(){ const r = _render.apply(this, arguments); try { tkSync(); i
 
 /* phone back button (called first by handleBack): game -> Den -> closed */
 window.PsychDen = {
-  back(){ if (pg){ closeGame(); return true; } if (ov){ closeDen(); return true; } return false; },
+  back(){ if (MK.isOpen()){ MK.close(); return true; } if (pg){ closeGame(); return true; } if (ov){ closeDen(); return true; } return false; },
   count: tickets,
   icon: (cls = '') => chip(cls),
   /* earn tickets: saved at once, but the header count waits (tkHold) until land() so it can roll when the flying tickets arrive */

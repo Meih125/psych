@@ -66,6 +66,7 @@ function initActions(){
     if (act === 'hxundo'){ const q = byId(el.dataset.q); if (q) reopen(q, el.dataset.k || undefined); return; }
     if (act === 'claimall'){ const q = byId(el.dataset.q); if (q) claimAll(q, rect); return; }
     if (act === 'claimday'){ const q = byId(el.dataset.q); if (q) claimDay(q, el.dataset.day, rect); return; }
+    if (act === 'goalnow'){ const q = byId(el.dataset.q); if (q) claimGoal(q, el.dataset.day, rect, { onBar:true }); return; }   // the Goal button on the Quests step card
     if (act === 'goalclaim'){ const q = byId(el.dataset.q); if (q) claimGoal(q, el.dataset.day, rect); return; }
     const item = el.closest('.item'); if (!item) return;
     const q = byId(item.dataset.id); if (!q) return;

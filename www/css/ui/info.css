@@ -40,3 +40,5 @@
 #form label > .info-btn,#form .lbl > .info-btn,.den-gc .info-btn{margin-left:6px}
 .den-gc.l .info-btn.open{--ic:rgb(var(--den-gold))}
 @keyframes fadeIn{from{opacity:0}}
+/* one look for every small hint line in a bubble = the quest-form tip ("Resets at midnight."): JetBrains Mono 12px, regular, light grey */
+.cy-tip,.info-pop .sh-tip,.info-pop .info-foot,.info-pop .tip-t,.info-pop .bm-tip{font-family:var(--f-num) !important;font-size:12px !important;font-style:normal !important;font-weight:400 !important;line-height:1.4 !important;letter-spacing:0 !important;color:#cfdedc !important}

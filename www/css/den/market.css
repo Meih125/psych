@@ -1,0 +1,121 @@
+/* Black Market (js/den/market.js): the Den's shop. Prefix bm-. Numbers are for a 380 px wide screen; market.js scales the stage. */
+:root{--bm-sat:var(--safe-area-inset-top,env(safe-area-inset-top,0px));--bm-sab:var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px))}
+/* edge tab on the Den (the only change to the Den page) */
+.den-gl .den-gc{width:calc(100% - 24px)}
+.den-edge{position:absolute;right:-14px;top:50%;margin-top:-85px;width:30px;height:170px;display:grid;place-items:center;padding:0;border:1px solid rgba(255,59,92,.65);border-right:0;background:linear-gradient(90deg,rgba(255,59,92,.2),rgba(255,59,92,.06));clip-path:polygon(0 12px,12px 0,100% 0,100% 100%,12px 100%,0 calc(100% - 12px));cursor:pointer;transition:transform .08s,filter .08s}
+.den-gl.lh .den-gc{margin-left:24px}
+.den-gl.lh .den-edge{right:auto;left:-14px;border-right:1px solid rgba(255,59,92,.65);border-left:0;background:linear-gradient(270deg,rgba(255,59,92,.2),rgba(255,59,92,.06));clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%)}
+.den-edge:active{transform:scale(.96);filter:brightness(1.3)}
+.den-edge span{writing-mode:vertical-rl;transform:rotate(180deg);font:800 10px var(--f-title);letter-spacing:.3em;color:#ffb4bf}
+.den-edge i{position:absolute;top:10px;left:50%;margin-left:-3px;width:6px;height:6px;border-radius:50%;background:#ff3b5c;box-shadow:0 0 8px #ff3b5c;animation:bmPl 1.8s ease-in-out infinite}
+@keyframes bmPl{50%{opacity:.3}}
+.reduce-fx .den-edge i{animation:none}
+/* the screen */
+.bm-fr{--bm-sat:0px;--bm-sab:0px;position:absolute;inset:0;overflow:hidden;background:#050507;border:1px solid rgba(214,180,110,.25);clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));isolation:isolate;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+/* the Black Market is a card on the Den backdrop, about the height of the Den sheet (443px) (not a full screen page) */
+.bm-ov{position:fixed;inset:0;z-index:31;background:none}
+/* the card is exactly the Den sheet's box and slides out of the side its edge tab is on (like a phone edge panel); the clip hides the part still outside */
+.bm-clip{position:absolute;overflow:hidden;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+.bm-fr.pre .bm-it,.bm-fr.pre .bm-gem,.bm-fr.pre .bm-land{opacity:0}   /* hidden until the drop animation starts, so the cards never show before it */
+.bm-ov .bm-fr{animation:bmSlideIn .42s cubic-bezier(.2,.8,.2,1) backwards}
+.bm-ov.out .bm-fr{animation:bmSlideOut .3s cubic-bezier(.5,0,.9,.5) forwards}
+.bm-ov.lh{--bm-from:-100%}.bm-ov{--bm-from:100%}
+@keyframes bmSlideIn{from{transform:translateX(var(--bm-from))}}
+@keyframes bmSlideOut{to{transform:translateX(var(--bm-from))}}
+.reduce-fx .bm-ov .bm-fr,.reduce-fx .bm-ov.out .bm-fr{animation:none}.reduce-fx .bm-ov.out{display:none}
+.bm-fr::before{content:"";position:absolute;inset:0;z-index:0;background:radial-gradient(70% 34% at 50% 0%,rgba(255,236,205,.09),transparent 72%),#07070a}
+.bm-fr::after{content:"";position:absolute;inset:0;z-index:30;pointer-events:none;opacity:.18;mix-blend-mode:overlay;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* header */
+.bm-hd{position:absolute;left:0;right:0;top:0;z-index:20;padding:calc(12px + var(--bm-sat)) 14px 0}
+.bm-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bm-bk{width:34px;height:34px;display:grid;place-items:center;padding:0;border:1px solid rgba(255,255,255,.14);color:#cfc9d4;font:700 18px var(--f-num);background:rgba(255,255,255,.03);transition:transform .08s,filter .08s}
+.bm-bk:active{transform:scale(.92);filter:brightness(1.3)}
+.bm-bal{display:flex;align-items:center;gap:6px;font:700 13px var(--f-num);color:#fff;padding:0 4px}
+.bm-rst{font:500 10.5px var(--f-num);letter-spacing:.08em;color:#55525b;margin-right:8px;white-space:nowrap}.bm-rst b{font-weight:500}
+.bm-bv{display:inline-block;transform-origin:right center}
+.bm-bal.deny svg.g3{animation:bmDeny .3s}.bm-bal.deny .bm-bv{animation:bmDeny .3s,bmDenyN .6s ease-out}
+.bm-bal.bup .bm-bv{animation:bmUp .6s}
+@keyframes bmDeny{25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+@keyframes bmDenyN{0%,40%{color:#ff3b5c;text-shadow:0 0 10px rgba(255,59,48,.8)}}
+@keyframes bmUp{30%{color:#8dffb8;transform:scale(1.35)}100%{color:#fff;transform:none}}
+.bm-ttl{text-align:center;margin-top:14px;transition:opacity .3s}.bm-fr.pv .bm-ttl{opacity:0}
+.bm-tt{display:inline-block;position:relative;font:800 20px var(--f-title);letter-spacing:.34em;padding-left:.34em;color:#3a0610;isolation:isolate}
+.bm-tt span{position:relative}
+.bm-tt::before,.bm-tt::after{content:attr(data-t);position:absolute;left:0;top:0;padding-left:.34em;white-space:nowrap;pointer-events:none}
+.bm-tt::before{z-index:2;color:transparent;-webkit-text-stroke:1px #ff3b5c;transform:translate(3px,-2px)}
+.bm-tt::after{z-index:-1;color:#ff3b5c;opacity:.28;transform:translate(-2px,2px)}
+/* stage */
+.bm-stage{position:absolute;left:0;right:0;top:calc(86px + var(--bm-sat));bottom:0;z-index:5}
+.bm-ft{position:absolute;left:0;right:0;bottom:0;height:calc(92px + var(--bm-sab));z-index:6;text-align:center;padding-top:34px;box-sizing:border-box;background:linear-gradient(180deg,transparent,rgba(7,7,10,.9) 45%,#07070a 78%);transition:opacity .25s;pointer-events:none;font:500 11px var(--f-num);letter-spacing:.08em;color:#5c5961}
+.bm-ft em{display:block;font-style:normal;font-size:10px;font-weight:500;color:#45434a;margin-top:5px;letter-spacing:.08em}
+.bm-fr.pv .bm-ft{opacity:0}
+.bm-nmz{position:absolute;left:0;right:0;bottom:var(--bm-sab);height:44px;display:grid;place-items:center;z-index:31;opacity:0;pointer-events:none;transition:opacity .3s;font:800 14px var(--f-title);letter-spacing:.34em;padding-left:.34em;color:#f4e9ea;text-shadow:0 0 14px rgba(255,59,92,.8)}.bm-fr.pv .bm-nmz{opacity:1}
+.bm-dim{position:absolute;inset:0;z-index:20;background:rgba(2,2,4,.78);opacity:0;pointer-events:none;transition:opacity .35s}.bm-fr.pv .bm-dim{opacity:1;pointer-events:auto}
+/* cards */
+.bm-it{position:absolute;aspect-ratio:5/7;transform:translate(var(--tx,0px),calc(var(--ty,0px) + var(--ly,0px))) scale(var(--s,1));transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .7s;cursor:pointer;z-index:8;--rc:235,60,50;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+.bm-it.sel{--ly:-12px}.bm-it.view{z-index:30;--s:var(--ps);--ly:0px}
+.bm-it.view .bm-cd{box-shadow:0 26px 40px #000d!important}
+.bm-it.sel .bm-cd{box-shadow:0 0 0 2px rgb(var(--rc)),0 0 14px 3px rgba(var(--rc),.95),0 0 38px 8px rgba(var(--rc),.75),0 0 84px 20px rgba(var(--rc),.45),0 26px 40px #000d}
+.bm-cd{position:absolute;inset:0;border-radius:5px;overflow:hidden;box-shadow:0 0 0 1.5px rgba(var(--rc),.95),0 0 12px 1px rgba(var(--rc),.75),0 0 32px 4px rgba(var(--rc),.5),0 0 72px 14px rgba(var(--rc),.26),0 14px 22px #000a;background:#000;animation:bmFl 5.5s ease-in-out infinite;animation-delay:var(--dl,0s)}
+@keyframes bmFl{50%{transform:translateY(-6px)}}
+.bm-cd img{width:100%;height:100%;display:block;object-fit:cover}
+.bm-cd::after{content:"";position:absolute;top:-10%;bottom:-10%;left:-60%;width:50%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.4),transparent);transform:translateX(0) skewX(-12deg);animation:bmSw 5.5s linear infinite;animation-delay:var(--dl,0s);opacity:.9}
+@keyframes bmSw{0%,55%{transform:translateX(0) skewX(-12deg)}100%{transform:translateX(560%) skewX(-12deg)}}
+.bm-nw{display:none;position:absolute;right:-10px;top:-6px;z-index:4;white-space:nowrap;pointer-events:none;transform:rotate(8deg);transform-origin:100% 0;animation:bmFlr 5.5s ease-in-out infinite,nwSheen 3s ease-in-out infinite;animation-delay:var(--dl,0s),0s}
+@keyframes bmFlr{50%{transform:rotate(8deg) translateY(-6px)}}
+.bm-it.isnew .bm-nw{display:block}.bm-it.sold .bm-nw,.bm-it.view .bm-nw{display:none}
+/* monoliths */
+.bm-mono{position:absolute;z-index:3;overflow:visible;border-top:1px solid rgba(240,196,87,.45);background:linear-gradient(90deg,#0e0e12,#050506 38%,#08080a 72%,#121217);box-shadow:inset 1px 0 0 rgba(255,255,255,.16),inset -1px 0 0 rgba(255,255,255,.05)}
+.bm-mono::before{content:"";position:absolute;left:0;right:0;top:-12px;height:12px;clip-path:polygon(9% 0,91% 0,100% 100%,0 100%);background:linear-gradient(180deg,#3f3f49,#17171c)}
+.bm-mono::after{content:"";position:absolute;inset:0;pointer-events:none;left:14%;width:15%;background:linear-gradient(180deg,rgba(255,255,255,.17),rgba(255,255,255,0) 72%);transform:skewX(-7deg)}
+.bm-vn{position:absolute;inset:0;display:block;pointer-events:none;background-repeat:no-repeat;background-size:100% 100%}
+/* gems on the stones */
+.bm-gem{position:absolute;z-index:5;width:28px;height:36px;margin-left:-14px;transform-origin:50% 100%;opacity:var(--o);--o:1;transition:opacity .6s}
+.bm-gem.gb{--o:.62}.bm-gem.gb svg.g3{transform:scale(.88);transform-origin:50% 100%}.bm-gem.gb::after{filter:opacity(.6)}
+.bm-land.gb{width:46px;height:11px;margin-left:-23px}
+.bm-gem svg.g3{width:100%;height:100%;display:block;overflow:visible;filter:drop-shadow(0 0 7px rgba(255,59,92,.65))}
+.bm-gem::after{content:"";position:absolute;left:50%;bottom:-6px;width:56px;height:10px;margin-left:-28px;background:radial-gradient(ellipse,rgba(255,59,92,.55),transparent 70%);animation:bmGl 3.2s ease-in-out infinite}
+@keyframes bmGl{50%{opacity:.45}}
+.bm-gem.off{--o:.3}.bm-gem.gb.off{--o:.2}.bm-gem.off::after{animation:none;opacity:0}
+.bm-land{position:absolute;z-index:4;width:70px;height:16px;margin-left:-35px;border-radius:50%;border:1.5px solid rgba(255,59,92,.85);opacity:0;pointer-events:none}
+@keyframes bmLring{0%{transform:scale(.3);opacity:.95}100%{transform:scale(1.8);opacity:0}}
+.bm-land.hit{animation:bmLring .7s ease-out}
+.bm-gem.catch{animation:bmCatch .45s ease-out}@keyframes bmCatch{0%{transform:scale(1);filter:brightness(1)}35%{transform:scale(1.4);filter:brightness(2.2)}100%{transform:scale(1);filter:brightness(1)}}
+/* opening: gems fall onto the stones, cards fade in after they land */
+.bm-fr.anim .bm-gem{animation:bmGdrop 1.1s cubic-bezier(.4,0,.6,1) backwards;animation-delay:calc(var(--gd) + .2s)}
+@keyframes bmGdrop{0%{transform:translateY(-560px) rotate(-20deg) scale(1.6);opacity:0}12%{opacity:1}62%{transform:translateY(0) rotate(8deg) scale(1)}72%{transform:translateY(0) scale(1.1,.82)}84%{transform:translateY(-9px)}100%{transform:none;opacity:var(--o)}}
+@keyframes bmGdropB{0%{transform:translateY(-560px) rotate(-20deg) scale(1.6);opacity:0}12%{opacity:.5}62%{transform:translateY(0) rotate(8deg) scale(1);opacity:.5}72%{transform:translateY(0) scale(1.1,.82)}84%{transform:translateY(-9px)}100%{transform:none;opacity:var(--o)}}
+@keyframes bmTrailB{0%,55%{opacity:.4}66%,100%{opacity:0}}
+.bm-fr.anim .bm-gem.gb{animation-name:bmGdropB}.bm-fr.anim .bm-gem.gb::before{animation-name:bmTrailB}
+.bm-fr.anim .bm-gem::before{content:"";position:absolute;left:50%;bottom:24px;width:3px;height:170px;margin-left:-1.5px;opacity:0;background:linear-gradient(transparent,rgba(255,59,92,.9));animation:bmTrail 1.1s backwards;animation-delay:calc(var(--gd) + .2s)}
+@keyframes bmTrail{0%,55%{opacity:1}66%,100%{opacity:0}}
+.bm-fr.anim .bm-land{animation:bmLring .8s ease-out backwards;animation-delay:calc(var(--gd) + .2s + .68s)}
+.bm-fr.anim .bm-gem.off{animation:none}.bm-fr.anim .bm-gem.off::before{display:none}.bm-fr.anim .bm-gem.off+.bm-land{display:none}
+.bm-fr.anim .bm-it{animation:bmCin .6s ease-out backwards;animation-delay:calc(var(--gd) + .2s + .85s)}
+@keyframes bmCin{from{opacity:0}}
+.bm-fr.anim .bm-it.sold{animation:none}
+/* the purchase: a small gem flies from the balance to the stone */
+.bm-fly{position:absolute;left:0;top:0;width:16px;height:20px;margin:-10px 0 0 -8px;z-index:60;pointer-events:none;filter:drop-shadow(0 0 6px rgba(255,59,92,.9))}.bm-fly svg{width:100%;height:100%;display:block}
+/* sold: the card settles, dims and an ink stamp slams down */
+.bm-it.sold{--ty:6px}.bm-it.sold .bm-cd{filter:grayscale(.7) brightness(.3);animation:bmThud .95s both;transition:filter .7s .5s}.bm-it.sold .bm-cd::after{display:none}
+@keyframes bmThud{0%,50%{transform:none}58%{transform:translateY(6px) scale(.985)}76%{transform:translateY(-1px)}100%{transform:none}}
+.bm-seal,.bm-shock{display:none;position:absolute;pointer-events:none}
+.bm-seal svg{display:block;width:100%;height:100%;overflow:visible}
+.bm-seal{filter:drop-shadow(0 0 4px rgba(255,74,90,.55)) drop-shadow(0 3px 5px rgba(0,0,0,.7))}
+.bm-it.sold .bm-seal{display:block;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;z-index:6;animation:bmStamp .95s cubic-bezier(.3,.7,.2,1) both}
+@keyframes bmStamp{0%{transform:translateY(-70px) scale(2.6) rotate(-16deg);opacity:0}38%{opacity:1}52%{transform:translateY(0) scale(1.02) rotate(-5deg);opacity:1}60%{transform:scale(1.14,.86) rotate(-5deg)}76%{transform:scale(.97,1.03) rotate(-4deg)}100%{transform:scale(1) rotate(-4deg);opacity:1}}
+.bm-it.sold .bm-shock{display:block;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;border:2px solid rgba(255,74,90,.8);z-index:5;animation:bmShock .95s both}
+@keyframes bmShock{0%,50%{transform:scale(.6);opacity:0}54%{transform:scale(.9);opacity:.9}100%{transform:scale(2.8);opacity:0}}
+/* already sold when the shop opens: shown at rest, nothing replays */
+.bm-it.sold.rest .bm-cd{animation:none;transition:none}.bm-it.sold.rest .bm-seal{animation:none;transform:rotate(-4deg)}.bm-it.sold.rest .bm-shock{display:none}
+/* Reduce effects: no fall, bob, sheen, ripples, flying gem or slam */
+.reduce-fx .bm-fr.anim .bm-gem{animation:bmCin .6s ease-out backwards;animation-delay:calc(var(--gd) + .2s)}
+.reduce-fx .bm-fr.anim .bm-gem::before,.reduce-fx .bm-land{display:none}
+.reduce-fx .bm-fr.anim .bm-it{animation-delay:calc(var(--gd) + .4s)}
+.reduce-fx .bm-cd,.reduce-fx .bm-nw{animation:none}.reduce-fx .bm-cd::after{display:none}
+.reduce-fx .bm-it.sold .bm-cd{animation:none}
+.reduce-fx .bm-it.sold .bm-seal{animation:bmCin .4s both;transform:rotate(-4deg)}.reduce-fx .bm-it.sold .bm-shock{display:none}
+.reduce-fx .bm-gem.catch{animation:none}
+.bm-tt .info-btn{position:absolute;left:100%;top:50%;margin:-9px 0 0 8px;z-index:3;letter-spacing:0;padding:0}
+.bm-tip{display:flex;align-items:center;gap:6px;white-space:nowrap}.bm-tip .den-ic.gem{width:13px;height:17px}
+.reduce-fx .bm-bal.deny svg.g3{animation:none}.reduce-fx .bm-bal.deny .bm-bv{animation:bmDenyN .6s ease-out}.reduce-fx .bm-bal.bup .bm-bv{animation:none}

@@ -38,8 +38,8 @@ let formSize = 'full', formSizeSet = false;
 function sizeOkForm(){
   const k = getRadio('kind'), q = editingId && byId(editingId);
   if (q && S.quests.some(c => c.parent === q.id)) return false;
-  if ((k === 'standard' || k === 'counter') && $('#fParent').value) return false;
-  return k === 'standard' || k === 'scaling' || k === 'counter' || k === 'avoid' || k === 'bounty' || (k === 'target' && +$('#fNeed').value <= 10);
+  if ((k === 'standard' || k === 'counter' || k === 'record' || k === 'tally' || k === 'pair') && $('#fParent').value) return false;
+  return k === 'standard' || k === 'scaling' || k === 'counter' || k === 'avoid' || k === 'bounty' || k === 'record' || k === 'tally' || k === 'pair' || (k === 'target' && +$('#fNeed').value <= 10);
 }
 function renderFormSize(){
   const el = $('#khSize'); if (!el) return;

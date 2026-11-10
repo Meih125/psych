@@ -99,7 +99,14 @@ function mktFreeze(i){
     if (b){ b.classList.toggle('on', on); if (!S.reduceFx) replay(b, 'pop'); }
   });
 }
-// a small copy flies to the Collection tab, which pops with +rarity
+// the Collection tab pops with +rarity (after a Market buy the flight ends here; the Black Market calls it alone)
+function mktUp(id){
+  const tab = document.querySelector('.tab[data-tab="collection"]'); if (!tab) return;
+  const c = CARD_BY_ID[id];
+  replay(tab, 'pop'); setTimeout(() => tab.classList.remove('pop'), 500);
+  const up = document.createElement('i'); up.className = 'mkt-up'; up.dataset.k = c.rarity; up.textContent = '+' + RARITY[c.rarity].name; tab.appendChild(up); setTimeout(() => up.remove(), 1000);
+}
+// a small copy flies to the Collection tab, which then pops with +rarity
 function mktFly(art, id){
   const tab = document.querySelector('.tab[data-tab="collection"]'), tg = tab && tab.querySelector('svg'); if (!tg) return;
   const r = art.getBoundingClientRect(), t = tg.getBoundingClientRect(), tm = getComputedStyle(art).transform; let ang = 0;
@@ -107,10 +114,7 @@ function mktFly(art, id){
   const w = art.offsetWidth, h = art.offsetHeight, cx = r.left + r.width / 2, cy = r.top + r.height / 2, c = CARD_BY_ID[id];
   const el = document.createElement('div'); el.className = 'mkt-fly'; el.style.cssText = `left:${cx - w / 2}px;top:${cy - h / 2}px;width:${w}px;height:${h}px;box-shadow:0 0 10px 1px rgba(${RARITY[c.rarity].glow},.6)`; el.innerHTML = `<img src="${cardImg(id)}" alt="">`; document.body.appendChild(el);
   const dx = t.left + t.width / 2 - cx, dy = t.top + t.height / 2 - cy, s = Math.max(.1, 22 / w);
-  el.animate([{ transform:`translate(0,0) rotate(${ang}deg) scale(1)`, opacity:1 }, { opacity:1, offset:.78 }, { transform:`translate(${dx}px,${dy}px) rotate(${ang}deg) scale(${s})`, opacity:0 }], { duration:MOTION.slow - 40, delay:80, easing:'cubic-bezier(.5,0,.2,1)', fill:'both' }).onfinish = () => {
-    el.remove(); replay(tab, 'pop'); setTimeout(() => tab.classList.remove('pop'), 500);
-    const up = document.createElement('i'); up.className = 'mkt-up'; up.dataset.k = c.rarity; up.textContent = '+' + RARITY[c.rarity].name; tab.appendChild(up); setTimeout(() => up.remove(), 1000);
-  };
+  el.animate([{ transform:`translate(0,0) rotate(${ang}deg) scale(1)`, opacity:1 }, { opacity:1, offset:.78 }, { transform:`translate(${dx}px,${dy}px) rotate(${ang}deg) scale(${s})`, opacity:0 }], { duration:MOTION.slow - 40, delay:80, easing:'cubic-bezier(.5,0,.2,1)', fill:'both' }).onfinish = () => { el.remove(); mktUp(id); };
 }
 function mktBuy(i, btn){
   const m = mktEnsure(), id = m.ids[i]; if (!id || mktSold(m, i)) return;

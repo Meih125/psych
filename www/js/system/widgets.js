@@ -33,7 +33,7 @@ function wShapeOf(w){
 }
 // is a spot half-size? (in a 2-wide widget every spot is half; in a 4-wide one, a row of two)
 const wHalfSpot = (w, r) => wWidth(w) === 2 || (w.rows[r] || []).length === 2;
-const wFits = (q, half) => !!q && (!half || canHalf(q));
+const wFits = (q, half) => !!q && (!half || (canHalf(q) && !HALF_OPT_IN.includes(q.kind)));   // widgets have no half Record / Tally / List yet
 const STREAK_COL = ['#f2f7f6', '#3fd47a', '#1ea4e6', '#b46ae0', '#f08a24', '#ff3b3b'];
 function wSlot(q){
   if (!q) return null;
@@ -119,7 +119,7 @@ function wBoard(){
   const rowsOf = sec => {
     const rows = []; let open = null;
     sec.tiles.forEach(t => {
-      if (t.w){ open = null; rows.push([cell(t.q, false)]); return; }
+      if (t.w || (t.q && t.q.kind === 'pair')){ open = null; rows.push([cell(t.q, false)]); return; }   // a List is always a full tile on the widgets
       const sl = t.gap ? null : cell(t.q, true);
       if (open && t.c === 1){ open[1] = sl; open = null; return; }
       const r = t.c === 1 ? [null, sl] : [sl, null]; rows.push(r); open = t.c === 1 ? null : r;

@@ -63,7 +63,7 @@ function claimSet(set, el){
   if (sdc){
     if (S.setClaims[set] || !sdc.list.every(sc => S.scenes[sc.id])) return;
     S.setClaims[set] = true;
-    earnTag = { k:'scenes:' + set, n:'All ' + sdc.name.toLowerCase() };
+    earnTag = { k:'scenes:' + set, n:'All ' + sdc.name.toLowerCase() + 's' };
     return grant({ xp:scenePay(set), gold:scenePay(set) }, el.getBoundingClientRect(), null, null, 1.6);
   }
   const list = keyCards(set);
@@ -95,7 +95,7 @@ function setupPuzzle(){
   const rso = new ResizeObserver(() => { tw = 0; }); rso.observe(tr);
   const draw = () => { const t = third(); off = ((off % t) + t) % t; tr.style.transform = `translate3d(${-(off + t).toFixed(2)}px,0,0)`; };
   const frame = now_ => {
-    if (!el.isConnected || !vis){ looping = false; return; }   // off screen: stop until it scrolls back into view
+    if (!el.isConnected || !vis || BG_PAUSED){ looping = false; return; }   // off screen: stop until it scrolls back into view
     const dt = Math.min(.05, (now_ - last) / 1000); last = now_;
     if (!down){
       if (Math.abs(vel) > 8){ off += vel * dt; vel *= Math.pow(.04, dt); } else vel = 0;
@@ -105,7 +105,7 @@ function setupPuzzle(){
   };
   const start = () => { if (looping) return; looping = true; last = performance.now(); requestAnimationFrame(frame); };
   const io = new IntersectionObserver(es => { vis = es[es.length - 1].isIntersecting; if (vis) start(); }); io.observe(el);
-  setupPuzzle.obs = [rso, io];
+  setupPuzzle.obs = [rso, io]; setupPuzzle.resume = () => { if (vis) start(); };   // back from a Lockpick run (bgPause)
   start();
   const stopHold = () => { clearTimeout(holdT); hold = 1; holdT = setTimeout(() => { hold = 0; }, 1500); };
   // hold then drag a piece to reorder (saved in S.pzOrder)
@@ -146,3 +146,5 @@ function setupPuzzle(){
   el.addEventListener('wheel', e => { const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; off += d; stopHold(); e.preventDefault(); }, { passive:false });
   el.addEventListener('click', e => { if (moved){ e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
 }
+
+addEventListener('bgresume', () => { if (setupPuzzle.resume) setupPuzzle.resume(); });

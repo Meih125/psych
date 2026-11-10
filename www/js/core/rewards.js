@@ -5,11 +5,19 @@ function levelInfo(total){ let L = 1, r = Math.min(XP_CAP, Math.max(0, +total ||
 var earnTag = null;   // set just before grant() / give() to say where the reward came from (cleared after)
 const qTag = (q, extra) => q ? Object.assign({ k:'q:' + q.id, n:q.name, kind:q.kind }, extra) : null;
 function stepsTag(q, key){ return key === dayKey() ? { k:'st:today', n:'Today', kind:'steps' } : { k:'st:early', n:'Earlier days', kind:'steps', day:key }; }
+const denNet = L => Math.min(0, L.reduce((a, r) => a + (r.kind === 'den' ? r.gold : 0), 0));
+// The Den's gold for "Earned today": stakes count minus, wins plus (one row per game, its net can be below 0)
+function bumpDen(g, name, gold){
+  if (!gold) return; const k = dayKey(); if (!S.today || S.today.day !== k) S.today = { day:k, xp:0, gold:0, src:[] };
+  const L = Array.isArray(S.today.src) ? S.today.src : (S.today.src = []); let r = L.find(x => x.k === 'den:' + g);
+  if (!r) L.push(r = { k:'den:' + g, n:name, kind:'den', xp:0, gold:0, c:0 });
+  r.gold += gold; S.today.gold += gold;
+}
 function bumpToday(xp, gold, tag){
   const k = dayKey(); if (!S.today || S.today.day !== k) S.today = { day:k, xp:0, gold:0, src:[] };
-  S.today.xp = Math.max(0, S.today.xp + xp); S.today.gold = Math.max(0, S.today.gold + gold);
-  if (!(xp || gold) || !tag) return;
   const L = Array.isArray(S.today.src) ? S.today.src : (S.today.src = []);
+  S.today.xp = Math.max(0, S.today.xp + xp); S.today.gold = Math.max(denNet(L), S.today.gold + gold);   // the Den can pull the total below 0, nothing else can
+  if (!(xp || gold) || !tag) return;
   let r = L.find(x => x.k === tag.k);
   if (!r){ if (xp < 0 || gold < 0) return; r = { k:tag.k, n:tag.n, kind:tag.kind, xp:0, gold:0, c:0 }; L.push(r); }
   if (tag.n) r.n = tag.n;

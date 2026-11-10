@@ -54,6 +54,8 @@ function denTest(src){
   const swap = (a, b) => { if (!src.includes(a)){ console.error('make-preview: den.js changed, test patch not applied: ' + a.slice(0, 50)); process.exit(1); } src = src.replace(a, b); };
   swap('if (run.ice.has(i)){ face(i, true);', 'if (run.ice.has(i) && !(window.__dT && __dT.noMine)){ face(i, true);');
   swap('  let nx = Math.floor(Math.random() * 101);\n', '  let nx = Math.floor(Math.random() * 101);\n  if (window.__dT && __dT.hiWin) nx = dir > 0 ? run.n + 1 + Math.floor(Math.random() * (100 - run.n)) : Math.floor(Math.random() * run.n);\n');
+  swap('heatE:() => false', 'heatE:() => !!(window.__dT && __dT.heatE)');
+  swap('/* ---------- events ---------- */', 'window.__LKG = LKG;\nwindow.__dGem = n => { D().b = Math.min(1e9, D().b + n); save(); balSync(); if (MK.isOpen()){ MK.close(); setTimeout(() => MK.open(), 480); } };   // test bar: +5 Gems (reopens the Black Market so it shows them)\n/* ---------- events ---------- */');
   return src;
 }
 
@@ -67,6 +69,7 @@ html = html
     let tag = `<script>${safeScript(src)}</script>`;
     if (f === FIRST_JS) tag = `<script>${safeScript(imgMap)}</script>\n` + (demo ? `<script>${safeScript(demo)}</script>\n` : '') + tag;
     if (f === 'js/main.js' && seed) tag += `\n<script>${seed}</script>`;
+    if (f === 'js/main.js' && !CLEAN) tag += `\n<script>${safeScript(fs.readFileSync(path.join(__dirname, 'goal-test.js'), 'utf8'))}</script>`;   // test bar: goal claim button
     if (/den\.js$/.test(f) && !CLEAN) tag += `\n<script>${safeScript(fs.readFileSync(path.join(__dirname, 'den-test.js'), 'utf8'))}</script>`;   // after the demo seed, so the Den sees the seeded save
     return tag;
   });

@@ -7,3 +7,4 @@
 @font-face{font-family:'JetBrains Mono';font-style:normal;font-display:swap;font-weight:500;src:url(jetbrains-mono-latin-500-normal.woff2) format('woff2')}
 @font-face{font-family:'JetBrains Mono';font-style:normal;font-display:swap;font-weight:700;src:url(jetbrains-mono-latin-700-normal.woff2) format('woff2')}
 @font-face{font-family:'Lora';font-style:italic;font-display:swap;font-weight:700;src:url(lora-latin-700-italic.woff) format('woff')}
+@font-face{font-family:'NewTag';font-style:italic;font-display:swap;font-weight:700;src:url(pagella-bold-italic-new.woff) format('woff')}   /* TeX Gyre Pagella Bold Italic, cut down to the letters N, E, W (the NEW tag) */

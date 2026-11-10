@@ -144,6 +144,7 @@ function submitRecord(q, input, rect){
   if (!isVisible(q)) return;
   const v = round2(parseFloat(input.value));
   if (!isFinite(v) || v <= 0 || v > VALUE_CAP){ shake(input); return; }
+  input.value = ''; if (input.blur) input.blur();   // the box is empty (and the keyboard closes) once it is recorded
   buyUndo = null;
   const prevBest = q.best, prevPaid = q.paidTo, lower = q.better === 'lower';
   q.entries.push({ t:now(), v });
@@ -209,18 +210,21 @@ function claimDay(q, key, rect){
 // daily goal bonus: claimed from the gold coin under a day on the Progress chart
 // 2× the goal or more pays the bonus that many times (×2, ×3 …) in the one claim
 const goalMult = (q, v) => q && q.goal ? Math.max(1, Math.floor(v / q.goal)) : 1;
-function claimGoal(q, key, rect){
+// onBar (Quests step card): "Goal claimed!" floats up from the button, then the ticket pops on the step bar and flies to the header
+function claimGoal(q, key, rect, opts){
   q.goalPaid ||= {};
   if (q.goalPaid[key] || !q.goal || (valsOf(q)[key] || 0) < q.goal) return;
   buyUndo = null;
   q.goalPaid[key] = true;
+  const bar = opts && opts.onBar ? document.querySelector('.qb-sum .qb-bar') : null, barR = bar ? bar.getBoundingClientRect() : null;   // read before the redraw
   const m = goalMult(q, valsOf(q)[key] || 0);
   celebrate.swirl = true;   // only the coin swirls
   earnTag = { k:'goal', n:'Goal bonus', kind:'goal', day:key };
   grant({ xp:(q.goalXp || 0) * m, gold:(q.goalGold || 0) * m }, rect, null, null, m > 1 ? 1.4 + Math.min(1.2, m * .15) : 1.4);
   const tg = window.PsychDen ? PsychDen.add(1) : 0;   // a Den ticket pops out of the claimed goal, then flies up with the coins
-  const tr = typeof rect === 'function' ? rect() : rect;
-  if (tg){ if (QUIET || !tr) PsychDen.land(tg); else setTimeout(() => PsychDen.pop(tr, tg), 250); }
+  const tr = barR || (typeof rect === 'function' ? rect() : rect);
+  if (opts && opts.onBar && rect && !QUIET) floatText({ left:rect.left, width:rect.width, top:rect.top - 46, height:rect.height }, 'Goal claimed!', 'big');
+  if (tg){ if (QUIET || !tr) PsychDen.land(tg); else setTimeout(() => PsychDen.pop(tr, tg), barR ? 700 : 250); }
 }
 // Undo takes the reward back (gold may go below zero; a lost level takes its level reward too, paid again on re-reaching it)
 // and plays the claim backwards: XP and gold fly from the header back onto the quest.

@@ -38,7 +38,7 @@
 .cvp-dn button{flex:1;padding:9px 0;border-radius:4px;font:700 12px var(--f-num);color:#8fa6a3;border:1px solid rgba(255,255,255,.14);background:none}
 .cvp-t span{color:#7ff3e6}
 .ur-slots i.on:not(.ur){background:rgba(255,255,255,.03)}
-:is(.sh-buy,.btn-main,.btn-plain,.post,.cc-chip,.pk-tile,.set-claim,.hx-undo,.chip,.open-all,.av-slip,.rec-btn,.tl-add):active:not(:disabled){transform:scale(.95);filter:brightness(1.15)}
+:is(.sh-buy,.btn-main,.btn-plain,.post,.cc-chip,.pk-tile,.set-claim,.hx-undo,.chip,.open-all,.av-slip,.rec-btn):active:not(:disabled){transform:scale(.95);filter:brightness(1.15)}
 .sh-dots i.on{width:6px;background:rgba(210,240,236,.22)}
 .inv-dots button.on{width:7px;background:rgba(210,240,236,.22);box-shadow:none}
 .pki-buy .sh-qty button{width:30px;height:100%;background:none;border:0;color:#cfe;font:700 16px var(--f-num)}
@@ -63,9 +63,8 @@
 .den-ar svg,.den-back svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 .den-back svg{width:20px;height:20px}
 .den-pop small{display:block;font:800 12px var(--f-title);letter-spacing:.3em;color:#fff;text-shadow:0 0 12px rgba(var(--den-gold),.9)}
-.den-stx small{display:block;margin-bottom:2px;font:700 9.5px var(--f-num);letter-spacing:.2em;color:var(--bone-faint,#5f7472)}
 .den-ftx .ty span{display:inline-block}
-.reduce-fx .den-se,.reduce-fx .den-tens i{animation:none}
+.reduce-fx .den-tens i{animation:none}
 .den-sbd svg{width:12px;height:12px}
 .den-disp svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .den-liq small{font:800 18px var(--f-title);letter-spacing:.22em;color:rgb(var(--den-red));text-shadow:0 0 14px rgba(var(--den-red),.7)}

@@ -86,24 +86,41 @@ function tallyCountUp(id, from, to, D = 650){
 function updateTally(input){
   const q = byId(input.dataset.tallyin); if (!q) return;
   const card = input.closest('.tally-card'), pv = tallyPreview(q, input.value);
+  if (card.classList.contains('tl-half')){ card.querySelector('[data-act="tally"]').classList.toggle('off', !(parseFloat(input.value) > 0)); return; }   // half tile: just the ADD button
   card.querySelector('.tl-rew').innerHTML = rewardsHtml(pv.xp, pv.gold).replace('class="rewards"', `class="rewards"${pv.units ? '' : ' style="opacity:.45"'}`);
   const note = card.querySelector('.tl-note'); note.textContent = tallyNote(q, pv); note.classList.toggle('on', !!pv.v);
   card.querySelector('.tl-meter').innerHTML = tallyMeterHtml(q, pv, null);
   card.querySelector('[data-act="tally"]').classList.toggle('off', !(parseFloat(input.value) > 0));
 }
+// Half tile: the total ticks up, then a big reward stamp covers the tile and the coins and gems fly to the purse from it
+var TL_STAMP_AT = 450, TL_STAMP_FLY = 600;
+function tallyStamp(id, xp, gold){
+  setTimeout(() => {
+    const t = document.querySelector(`.tl-total[data-qid="${id}"]`), card = t && t.closest('.tally-card'); if (!card) return;
+    TL.start = performance.now(); TL.until = TL.start + 2500;   // background redraws wait while it plays
+    const s = document.createElement('div'); s.className = 'tl-stamp'; s.innerHTML = `<div class="tl-big">${rewPair(xp, gold, fmtShort)}</div>`;
+    card.appendChild(s);
+    s.querySelector('.tl-big').animate([{ transform:'scale(.88)', opacity:0 }, { transform:'scale(1)', opacity:1 }], { duration:650, delay:120, easing:'cubic-bezier(.22,.8,.3,1)', fill:'both' });
+    s.animate([{ opacity:0 }, { opacity:1, offset:.2 }, { opacity:1, offset:.78 }, { opacity:0 }], { duration:2400, fill:'both' }).onfinish = () => s.remove();
+  }, TL_STAMP_AT);
+}
 function claimTally(q, input, rect){
   const pv = tallyPreview(q, input.value);
   if (!pv.v){ shake(input); return; }
   buyUndo = null;
-  const pc = q.carry || 0;
-  const laps = pv.units && rect;   // the fill-up show (not for widget entries or Reduce effects)
-  tlFrom = { id:q.id, base:Math.min(1, pc / (q.chunk || 1)), total:q.total || 0, units:pv.units, xp:pv.xp, gold:pv.gold, laps };
+  input.value = ''; if (input.blur) input.blur();   // empty again once added
+  const pc = q.carry || 0, half = !!(input.closest && input.closest('.tl-half'));
+  const stamp = half && pv.units && rect && !S.reduceFx && !QUIET;
+  const laps = !half && pv.units && rect;   // the fill-up show (not for widget entries or Reduce effects)
+  tlFrom = { id:q.id, base:Math.min(1, pc / (q.chunk || 1)), total:q.total || 0, units:pv.units, xp:pv.xp, gold:pv.gold, laps, quick:stamp };
   q.carry = pv.left; q.total = round2((q.total || 0) + pv.v); q.count = (q.count || 0) + 1;
   logClaim(q.log ||= [], pv.xp, pv.gold); Object.assign(q.log[q.log.length - 1], { v:pv.v, pc });
   // with the laps, the reward flies from the tile's reward numbers once the bar is done
   const from = () => { const el = document.querySelector(`.tl-total[data-qid="${q.id}"]`); const r = el && el.closest('.tally-card').querySelector('.tl-rew .rewards'); return r ? r.getBoundingClientRect() : rect; };
   earnTag = qTag(q, { amt:pv.v });
-  grant({ xp:pv.xp, gold:pv.gold }, laps ? from : rect, q.id, null, 1 + Math.min(1.6, pv.units / 6), laps ? tallyLapsMs(pv.units) : 0);
+  if (stamp) tallyStamp(q.id, pv.xp, pv.gold);
+  const fromStamp = () => { const el = document.querySelector(`.tl-total[data-qid="${q.id}"]`), b = el && el.closest('.tally-card').querySelector('.tl-big'); return b ? b.getBoundingClientRect() : rect; };
+  grant({ xp:pv.xp, gold:pv.gold }, stamp ? fromStamp : laps ? from : rect, q.id, null, 1 + Math.min(1.6, pv.units / 6), stamp ? TL_STAMP_AT + TL_STAMP_FLY : laps ? tallyLapsMs(pv.units) : 0);
 }
 
 function initTally(){

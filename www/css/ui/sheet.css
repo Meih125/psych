@@ -24,7 +24,7 @@
 .modal{background:rgba(2,6,7,.6)}
 .sheet{background:rgba(14,26,28,.94);border:1px solid var(--line-hi);border-bottom:0;border-radius:10px 10px 0 0;box-shadow:0 -14px 40px rgba(0,0,0,.6);scrollbar-color:rgba(200,230,225,.25) transparent}
 .sheet h2{text-align:left;font-weight:600;font-size:20px;color:#f2f7f6;text-shadow:none}
-.btn-main{border-radius:4px;border:1px solid rgba(var(--acc-rgb),.7);font-family:var(--f-title);font-weight:700;font-size:14.5px;letter-spacing:.6px;color:#ff8a45;background:rgba(var(--acc-rgb),.1);box-shadow:0 0 14px rgba(var(--acc-rgb),.18);text-shadow:none}
+.btn-main{border-radius:3px;clip-path:var(--cut7);border:1px solid rgba(var(--acc-rgb),.7);font-family:var(--f-title);font-weight:700;font-size:14.5px;letter-spacing:.6px;color:#ff8a45;background:rgba(var(--acc-rgb),.1);text-shadow:none}
 .btn-main:active{transform:scale(.98)}
 .btn-plain{border:1px solid var(--line-hi);background:rgba(255,255,255,.04);color:#cfdedc;font-weight:600;font-size:13px}
 .modal.center{background:rgba(2,6,7,.66)}

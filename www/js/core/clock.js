@@ -1,11 +1,16 @@
 /* One shared 1-second clock, idle detection, and date/time helpers (all in phone time).
    Every repeating job (countdowns, banner, step sync, backup check) runs off this clock, which stops while the app is hidden. */
-var TICKS = [], tickN = 0, tickT = 0;
+var TICKS = [], tickN = 0, tickT = 0, BG_PAUSED = false;
 function every(sec, fn){ TICKS.push({ sec, fn }); }
 function tickRun(){ tickN++; for (const k of TICKS) if (tickN % k.sec === 0){ try { k.fn(); } catch(e){ console.error('tick', e); } } }
 // ticks land just after each new second, on the next frame, so countdowns step evenly
-function tickStart(){ if (tickT || document.hidden) return; const go = () => { tickT = setTimeout(go, 1000 - (Date.now() % 1000) + 4); requestAnimationFrame(tickRun); }; tickT = setTimeout(go, 1000 - (Date.now() % 1000) + 4); }
+function tickStart(){ if (tickT || document.hidden || BG_PAUSED) return; const go = () => { tickT = setTimeout(go, 1000 - (Date.now() % 1000) + 4); requestAnimationFrame(tickRun); }; tickT = setTimeout(go, 1000 - (Date.now() % 1000) + 4); }
 function tickStop(){ clearTimeout(tickT); tickT = 0; }
+// Lockpick (a timing game) pauses everything outside the Den while a run is on: CSS animations (html.bg-pause), this clock and the sets strip; all resume when the run ends
+function bgPause(on){
+  on = !!on; if (on === BG_PAUSED) return; BG_PAUSED = on; document.documentElement.classList.toggle('bg-pause', on);
+  if (on) tickStop(); else { tickStart(); requestAnimationFrame(tickRun); dispatchEvent(new Event('bgresume')); }
+}
 // idle: 30 s without input pauses looping glows (html.idle) so the screen can stop redrawing; any input resumes them
 var lastInput = Date.now();
 function wake(){ lastInput = Date.now(); if (document.documentElement.classList.contains('idle')) document.documentElement.classList.remove('idle'); }

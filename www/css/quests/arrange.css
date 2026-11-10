@@ -21,3 +21,10 @@
 .ar-slot.add{font-size:22px;font-weight:400;color:#5f7472}
 .ar-t{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab}
 .ar-t.fol{margin-left:calc(22px * var(--fd, 1))}
+
+/* a half List and its column of half tiles */
+.ar-stk{grid-column:span 2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch}   /* Arrange only: every List in a column stretches (so adding a tile under it does not make it jump smaller) so it is easy to tell the columns apart */
+.ar-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.ar-slot.end{min-height:30px;font-size:16px;font-weight:400;color:#5f7472}
+
+.ar-t.tall{flex:1}

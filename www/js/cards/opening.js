@@ -68,7 +68,7 @@ function flipCard(i, quiet, lite){
   o.flipped.add(i);
   const c = o.cards[i];
   btn.classList.add('flipped');
-  btn.querySelector('.pk-tag').innerHTML = o.fresh[c.id] ? 'NEW' : `<em>×${ownedCard(c.id)}</em>`;
+  { const tg = btn.querySelector('.pk-tag'); tg.classList.toggle('nw', !!o.fresh[c.id]); tg.innerHTML = o.fresh[c.id] ? 'NEW' : `<em>×${ownedCard(c.id)}</em>`; }
   // effects fire as the card turns face up (about halfway through the flip)
   setTimeout(() => { if (opening) revealFX(btn, rkey(c), lite); }, 180);
   if (o.flipped.size === o.cards.length) finishReveal();
@@ -337,7 +337,7 @@ function oaTap(i){
   if (!o.flipped.has(i)){
     o.flipped.add(i);
     const btn = $(`#pack .oa-stage .oa-c[data-i="${i}"]`), c = o.cards[i];
-    btn.classList.add('flipped'); btn.querySelector('.oa-tag').innerHTML = o.fresh[c.id] ? 'NEW' : '';
+    btn.classList.add('flipped'); { const tg = btn.querySelector('.oa-tag'); tg.classList.toggle('nw', !!o.fresh[c.id]); tg.innerHTML = o.fresh[c.id] ? 'NEW' : ''; }
     setTimeout(() => { if (opening === o) revealFX(btn, rkey(c)); }, 160);
   } else oaNext();
 }
@@ -372,7 +372,7 @@ function oaSummary(){
   ov.innerHTML = `<div class="oa"><div class="oa-h"><b>${fmt(o.cards.length / o.item.cards)} ${esc(o.item.name)}s</b><span>${o.cards.length} cards${oaGroups(o).length < o.cards.length ? ' · ' + oaGroups(o).length + ' unique · ' + (o.cards.length - oaGroups(o).length) + ' duplicates' : ' · all unique'}</span></div>
     <div class="oa-grid">${oaGroups(o).map(g => oaCardHTML(g.c, g.i).replace('class="oa-c', 'class="oa-c flipped').replace('</button>', g.n > 1 ? `<span class="oa-q">×${g.n}</span></button>` : '</button>')).join('')}</div>  
     <div class="oa-foot">${hintHtml()}</div></div>`;
-  ov.querySelectorAll('.oa-c').forEach(b => { const c = o.cards[+b.dataset.i]; b.querySelector('.oa-tag').innerHTML = o.fresh[c.id] ? 'NEW' : ''; b.addEventListener('click', e => { e.stopPropagation(); inspectCard(c.id); }); });
+  ov.querySelectorAll('.oa-c').forEach(b => { const c = o.cards[+b.dataset.i]; { const tg = b.querySelector('.oa-tag'); tg.classList.toggle('nw', !!o.fresh[c.id]); tg.innerHTML = o.fresh[c.id] ? 'NEW' : ''; } b.addEventListener('click', e => { e.stopPropagation(); inspectCard(c.id); }); });
   // tap anywhere but a card (that opens the card) to go on: new scenes first, if any, then close
   o.done = false; setTimeout(() => { if (opening === o) o.done = true; }, 600);   // a short pause so the double-tap that got here doesn't skip it
   const best = ov.querySelector('.oa-c'); const top = o.cards[0]; if (best && rkey(top) !== 'common') setTimeout(() => revealFX(best, rkey(top)), 200);
