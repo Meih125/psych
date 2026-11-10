@@ -22,6 +22,7 @@ function handleBack(){
   if ($('#modal').classList.contains('open')) return closeSheet();
   if ($('#wPick').classList.contains('open')) return $('#wPick').classList.remove('open');
   if ($('#widgets').classList.contains('open')) return closeWidgets();
+  if ($('#pn').classList.contains('open')) return closePatchNotes();   // Settings > Patch notes sits on top of Settings
   if ($('#settings').classList.contains('open')) return closeSettings();
   if (arranging){ arranging = false; return render(); }
   if (S.tab !== 'quests'){ const from = TAB_ORDER.indexOf(S.tab); S.tab = 'quests'; save(); render(); window.scrollTo({ top:0 }); pageSlide(0 - from); return; }   // the page slides back the way it came

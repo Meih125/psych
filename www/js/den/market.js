@@ -94,7 +94,7 @@ window.makeMarket = env => {
     return out + '<div class="bm-dim"></div>';
   }
   function layout(){
-    const stg = fr.querySelector('.bm-stage'), W = stg.clientWidth, H = stg.clientHeight, s = Math.max(.8, Math.min(1.25, W / 380));
+    const stg = fr.querySelector('.bm-stage'), W = stg.clientWidth, H = stg.clientHeight, s = Math.max(.6, Math.min(1.25, W / 380));
     zoom = { W, s };
     stg.innerHTML = stageHtml(W, H, s);
     shown = bal(); fr.querySelector('.bm-bv').textContent = bmFmt(shown);
@@ -226,16 +226,24 @@ window.makeMarket = env => {
     if (replay) anim(); else if (poor()) applyPoor(true);
   }
 
+  // the Black Market sits exactly over the Den card; measured again whenever the window changes size
+  function place(){
+    if (!bo || !fr) return;
+    const dsh = document.querySelector('.den-ov:not(.den-x) .den-sheet'), dr = dsh && dsh.getBoundingClientRect();
+    const bw = dr ? dr.width : Math.min(348, innerWidth - 32), bh = dr ? dr.height : 446, bl = dr ? dr.left : (innerWidth - bw) / 2, bt = dr ? dr.top : (innerHeight - bh) / 2;
+    const cl = bo.firstChild, moved = cl.style.width !== bw + 'px' || cl.style.height !== bh + 'px';
+    cl.style.cssText = `left:${bl}px;top:${bt}px;width:${bw}px;height:${bh}px`;
+    if (moved && zoom) layout();
+  }
   function open(){
     if (fr) return;
     settle(); gen++; fl = 0;
     fr = document.createElement('div'); fr.className = 'bm-fr pre';
     fr.innerHTML = `<div class="bm-hd"><div class="bm-top"><button class="bm-bk" type="button" aria-label="Back to the Den">‹</button><div class="bm-bal"><span class="bm-rst">Resets in <b class="bm-cd2">--:--:--</b></span>${gem()}<span class="bm-bv">0</span></div></div><div class="bm-ttl"><div class="bm-tt" data-t="BLACK MARKET"><span>BLACK</span> <span>MARKET</span>${infoIcon('Where Gems come from')}</div></div></div><div class="bm-stage"></div><div class="bm-ft"><span>Tap to select</span><em>Hold to view</em></div><div class="bm-nmz"></div>`;
-    const dsh = document.querySelector('.den-ov:not(.den-x) .den-sheet'), dr = dsh && dsh.getBoundingClientRect();   // the Den card's box
-    const bw = dr ? dr.width : Math.min(348, innerWidth - 32), bh = dr ? dr.height : 446, bl = dr ? dr.left : (innerWidth - bw) / 2, bt = dr ? dr.top : (innerHeight - bh) / 2;
     bo = document.createElement('div'); bo.className = 'bm-ov' + (S.leftHand ? ' lh' : '');
-    const cl = document.createElement('div'); cl.className = 'bm-clip'; cl.style.cssText = `left:${bl}px;top:${bt}px;width:${bw}px;height:${bh}px`;
-    cl.appendChild(fr); bo.appendChild(cl); document.body.appendChild(bo);
+    const cl = document.createElement('div'); cl.className = 'bm-clip';
+    cl.appendChild(fr); bo.appendChild(cl); document.body.appendChild(bo); place();
+    addEventListener('resize', place); if (window.visualViewport) visualViewport.addEventListener('resize', place);   // zooming or resizing the window moves the Den card, so the Black Market follows it
     bo.addEventListener('click', e => { if (e.target === bo) close(); });   // a tap beside the card goes back to the Den
     day = dayKey(); layout(); tick();
     fr.addEventListener('click', e => {
@@ -248,6 +256,7 @@ window.makeMarket = env => {
   function close(){
     if (!fr) return;
     infoClose(); const f = fr; fr = null; cancel(); clearTimeout(animT); clearTimeout(refT); clearTimeout(idleT); poorT.forEach(clearTimeout); poorT = []; gen++; fl = 0; settle();
+    removeEventListener('resize', place); if (window.visualViewport) visualViewport.removeEventListener('resize', place);
     document.removeEventListener('pointerdown', down); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', cancel); document.removeEventListener('contextmenu', noMenu);
     const o = bo; bo = null; o.classList.add('out'); setTimeout(() => o.remove(), 320);
   }

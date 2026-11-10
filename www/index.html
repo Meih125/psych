@@ -27,6 +27,7 @@
 <link rel="stylesheet" href="css/ui/date-picker.css">
 <link rel="stylesheet" href="css/cards/opening.css">
 <link rel="stylesheet" href="css/system/settings.css">
+<link rel="stylesheet" href="css/system/patchnotes.css">
 <link rel="stylesheet" href="css/quests/arrange.css">
 <link rel="stylesheet" href="css/system/widgets.css">
 <link rel="stylesheet" href="css/cards/inspect.css">
@@ -301,6 +302,7 @@
       <div class="group-title">App</div>
       <div class="up-row"><div class="up-v" id="upInfo"></div><button type="button" class="up-btn" id="upBtn">Check</button></div>
       <ul class="up-notes" id="upNotes" hidden></ul>
+      <div class="up-row pn-row" id="pnRow"><div class="up-v">Patch notes<small>All versions, with snippets</small></div><span class="pn-ch">›</span></div>
     </div>
     <div class="group">
       <div class="group-title">Step sync</div>
@@ -332,6 +334,7 @@
       <div class="field"><button type="button" class="btn-plain btn-danger" id="resetAll">Restore starter quests</button></div>
     </div>
     <div class="actions"><button type="button" class="btn-plain" id="closeSettings">Back</button></div>
+    <div class="pn-scr" id="pn"><div class="pn-top"><button type="button" class="pn-bk" id="pnBack" aria-label="Back">‹</button><h2>Patch notes</h2></div><div class="pn-body" id="pnBody"></div></div>
   </div>
 </div>
 
@@ -393,6 +396,8 @@
 <script src="js/system/backup.js"></script>
 <script src="js/system/native.js"></script>
 <script src="js/system/updates.js"></script>
+<script src="js/system/patchnotes-data.js"></script>
+<script src="js/system/patchnotes.js"></script>
 <script src="js/events/daily-login.js"></script>
 <script src="js/events/birthday.js"></script>
 <script src="js/system/widgets.js"></script>

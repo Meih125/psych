@@ -167,7 +167,7 @@ function recordHistory(q){
 function goalDays(q){
   if (!q || !q.goal || !(q.goalXp || q.goalGold)) return [];
   const V = valsOf(q), today = dayKey();
-  return Object.keys(V).filter(k => k <= today && V[k] >= q.goal && !(q.goalPaid && q.goalPaid[k]));
+  return Object.keys(V).filter(k => k <= today && goalDue(q, k, V[k]) > 0);
 }
 function progressChips(){
   const qs = S.quests.filter(q => q.kind !== 'steps' && q.kind !== 'bounty' && isTracked(q));

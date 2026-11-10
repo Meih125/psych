@@ -143,9 +143,9 @@ const INFO = {
 };
 /* where tickets come from; a source already taken today is greyed out with the faint line-through used on done List items */
 function tixInfo(){
-  const k = dayKey(), qs = (S.quests || []).filter(q => q && q.goal);
+  const k = dayKey();
   const row = (name, n, done) => `<div class="den-tr${done ? ' dn' : ''}"><span>${name}</span><b>${chip()}+${n}</b></div>`;
-  return row('Daily login', 2, typeof dlClaimed === 'function' && dlClaimed()) + row('First pack', 1, D().pk === k) + row('Step goal', 1, qs.length > 0 && qs.every(q => q.goalPaid && q.goalPaid[k])) + `<div class="den-tr fp"><span>Free entry</span><b>${chipSh()}</b></div>`;   // every 10th play costs no ticket
+  return row('Daily login', 2, typeof dlClaimed === 'function' && dlClaimed()) + row('First pack', 1, D().pk === k) + row('Each step goal', 1, false) + `<div class="den-tr fp"><span>Free entry</span><b>${chipSh()}</b></div>`;   // every 10th play costs no ticket
 }
 function toggleInfo(el){
   const sh = ov && ov.querySelector('.den-sheet'); if (!sh) return;
@@ -717,18 +717,19 @@ window.PsychDen = {
   take(n){ const o = D(); o.t = Math.max(0, o.t - Math.max(0, Math.round(n))); save(); tkSync(); },   // a reward was undone
   packFirst(){ const o = D(), k = dayKey(); if (o.pk === k) return 0; o.pk = k; return this.add(1); },   // 1 ticket for the first pack opened each day
   /* a ticket fades in and pops at a spot (e.g. the claimed step goal), then flies up to the header count */
-  pop(from, n){
-    if (reduced() || !document.body.animate){ this.fly(from, n); return; }
+  // each = true (goal claims): the popped ticket is one icon, then it flies up as n tickets in a row (up to 5) so ×2, ×3 … show
+  pop(from, n, each){
+    if (reduced() || !document.body.animate){ this.fly(from, n, each); return; }
     const el = document.createElement('div'); el.className = 'fly den-ftk den-ptk'; el.innerHTML = chip(); document.body.appendChild(el);
     const x = from.left + from.width / 2 - 17, y = from.top + from.height / 2 - 17;
     el.style.transform = `translate(${x}px,${y}px)`;
-    el.animate([{ transform:`translate(${x}px,${y}px) scale(.3)`, opacity:0 }, { transform:`translate(${x}px,${y}px) scale(1.3)`, opacity:1, offset:.5 }, { transform:`translate(${x}px,${y}px) scale(1)`, opacity:1 }], { duration:480, easing:'ease-out', fill:'both' }).onfinish = () => setTimeout(() => { el.remove(); PsychDen.fly(from, n); }, 260);
+    el.animate([{ transform:`translate(${x}px,${y}px) scale(.3)`, opacity:0 }, { transform:`translate(${x}px,${y}px) scale(1.3)`, opacity:1, offset:.5 }, { transform:`translate(${x}px,${y}px) scale(1)`, opacity:1 }], { duration:480, easing:'ease-out', fill:'both' }).onfinish = () => setTimeout(() => { el.remove(); PsychDen.fly(from, n, each); }, 260);
   },
   spend(n){ const o = D(); if (o.t < n) return false; o.t -= n; save(); tkSync(); return true; },
   /* tickets fly from a screen rectangle up into the header count (like the coins into the purse); the count rolls when the first one lands */
-  fly(from, n){
+  fly(from, n, each){
     const tgt = tkBtn.querySelector('svg'); if (!tgt || reduced() || !document.body.animate){ this.land(n); return; }
-    flyArc(from, tgt.getBoundingClientRect(), Math.min(3, Math.max(1, n)), { html: chip(), cls: 'fly den-ftk', stagger: 80, onLand: i => { if (i === 0) PsychDen.land(n); } });
+    flyArc(from, tgt.getBoundingClientRect(), Math.min(each ? 5 : 3, Math.max(1, n)), { html: chip(), cls: 'fly den-ftk', stagger: 80, onLand: i => { if (i === 0) PsychDen.land(n); } });
   }
 };
 })();

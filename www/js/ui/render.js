@@ -163,8 +163,8 @@ function tabHl(anim){
 // a step goal bonus waiting to be claimed (the Progress tab's dot; day-to-day step claims don't count)
 function goalWaiting(q){
   if (!q || !q.goal || !(q.goalXp || q.goalGold)) return false;
-  const V = valsOf(q), P = q.goalPaid || {};
-  return Object.keys(V).some(k => (V[k] || 0) >= q.goal && !P[k]);
+  const V = valsOf(q);
+  return Object.keys(V).some(k => goalDue(q, k, V[k] || 0) > 0);
 }
 function colClaimable(){
   if (Object.values(SCENE_DEF).some(x => x.list.length && x.list.every(sc => S.scenes[sc.id]) && !S.setClaims[x.key])) return true;

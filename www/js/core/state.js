@@ -107,7 +107,8 @@ function sanitizeState(){
       q.extra.forEach(r => { if (Array.isArray(r.log)) r.log = cleanLog(r.log); });
     }
     if (Array.isArray(q.slips)) q.slips = q.slips.filter(okT).map(Number);
-    ['paid','goalPaid','vals'].forEach(k => { if (obj(q[k])) for (const d in q[k]){ const v = +q[k][d]; if (!isFinite(v)) delete q[k][d]; else q[k][d] = v; } });
+    ['paid','goalPaid','vals'].forEach(k => { if (obj(q[k])) for (const d in q[k]){ if (k === 'goalPaid' && q[k][d] === true) continue;   // old saves: paid in full
+      const v = +q[k][d]; if (!isFinite(v)) delete q[k][d]; else q[k][d] = v; } });
     ['best','paidTo','start'].forEach(k => { if (q[k] != null && !isFinite(+q[k])) q[k] = null; });
     if (q.kind === 'pair'){
       ['a','b'].forEach(h => { if (!obj(q[h])) q[h] = { name:h === 'a' ? 'Quest A' : 'Quest B', xp:0, gold:0, log:[] }; });

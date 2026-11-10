@@ -1,0 +1,56 @@
+/* Patch notes screen (Settings > Patch notes): a version timeline, notes with an orb, and snippet cards that open. */
+/* Patch notes open inside the Settings card (like a Den game inside the Den card): the card keeps its size and the two views cross-fade */
+.pn-scr{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s,visibility 0s .22s}
+.pn-scr.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .22s}
+.sheet.pn-on{overflow:hidden}
+.sheet > :not(.pn-scr){transition:opacity .22s,visibility 0s}
+.sheet.pn-on > :not(.pn-scr){opacity:0;visibility:hidden;transition:opacity .22s,visibility 0s .22s}
+.pn-top{flex:none;display:flex;align-items:center;gap:8px;padding:14px 12px 8px}
+.pn-top h2{flex:1;margin:0;font:700 20px var(--f-title);letter-spacing:.5px;color:#f2f7f6;text-align:left}
+.pn-bk{width:34px;height:34px;padding:0;border:1px solid rgba(46,230,214,.3);background:rgba(255,255,255,.04);color:var(--bone);font-size:20px;line-height:1;cursor:pointer;clip-path:var(--cut7);transition:transform .08s,filter .08s}
+.pn-bk:active{transform:scale(.92);filter:brightness(1.3)}   /* the same press as the Den and Black Market back buttons */
+.pn-body{flex:1;overflow-y:auto;padding:4px 12px 18px;scrollbar-width:none}
+.pn-body::-webkit-scrollbar{display:none}
+.pn-row{display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:14px}
+.pn-row .pn-ch{margin-left:auto;color:var(--bone-faint);font-size:24px;line-height:1}
+.pn-empty{color:var(--bone-dim);padding:20px}
+/* timeline */
+.pn-vr{position:relative;margin:0 0 12px 14px;padding-left:16px;border-left:2px solid rgba(46,230,214,.22)}
+.pn-vr:before{content:'';position:absolute;left:-6px;top:6px;box-sizing:border-box;width:10px;height:10px;border-radius:50%;background:#071214;border:2px solid #2ee6d6}   /* the 2px line sits at x -2..0, so its centre is -1; the node (10px) is centred on it */
+.pn-vr.latest:before{background:#2ee6d6;box-shadow:0 0 8px #2ee6d6}
+.pn-vh{display:flex;align-items:flex-start;gap:8px;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer;font-family:inherit}
+.pn-vn{font:700 17px var(--f-num);color:#2ee6d6}
+.pn-vd{font:500 11px var(--f-num);color:var(--bone-faint);margin-top:3px}
+.pn-vt{display:block;font:500 12.5px var(--f-body);color:var(--bone-dim);margin-top:1px}
+.pn-vc{margin-left:auto;color:var(--bone-faint);transition:transform .25s;font-size:18px}
+.pn-vr.open .pn-vc{transform:rotate(90deg)}
+/* folding: the height eases between 0 and the content (grid row 0fr -> 1fr) instead of snapping */
+.pn-vl,.pn-fx{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.3,.7,.2,1)}
+.pn-vr.open > .pn-vl,.pn-fr.open > .pn-fx{grid-template-rows:1fr}
+.pn-in{min-height:0;overflow:hidden}
+.pn-vl > .pn-in > .pn-pad{padding-top:8px}
+.pn-fx > .pn-in > .pn-pad{padding:0 10px 10px}
+.pn-pill{display:inline-block;font:700 10px var(--f-num);letter-spacing:.6px;padding:1px 7px;border:1px solid #2ee6d6;color:#2ee6d6;vertical-align:1px;clip-path:polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))}
+/* orbs: new = green, changed = amber, fixed = grey */
+.pn-kd{flex:none;display:block;width:8px;height:8px;border-radius:50%}
+.pn-kd.new{background:#4be39a}.pn-kd.chg{background:#ffc94a}.pn-kd.fix{background:#7d8f8d}
+/* plain lines */
+.pn-ls{margin:8px 0 4px}
+.pn-ls:first-child{margin-top:0}
+.pn-ln{display:flex;gap:9px;align-items:flex-start;padding:5px 2px;font:500 12.5px/1.35 var(--f-body);color:var(--bone-dim)}
+.pn-ln .pn-kd{margin-top:5px}.pn-ln b{font:600 12.5px var(--f-body);color:#dbe8e6}.pn-ln em{font-style:normal}
+/* snippet cards */
+.pn-fr{margin:0 0 6px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);clip-path:var(--cut7)}
+.pn-fh{display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;background:none;border:0;color:inherit;text-align:left;cursor:pointer;font-family:inherit}
+.pn-fh b{display:block;font:600 13.5px var(--f-title);line-height:1.25;color:#e9f2f0}
+.pn-fh small{display:block;font:500 12px var(--f-body);color:var(--bone-dim);margin-top:1px}
+.pn-cv{flex:none;margin-left:auto;color:var(--bone-faint);transition:transform .25s}.pn-fr.open .pn-cv{transform:rotate(90deg)}
+.pn-media{position:relative;border:1px solid rgba(46,230,214,.25);background:#030708;overflow:hidden;line-height:0}
+.pn-media img{width:100%;display:block;max-height:340px;object-fit:contain;background:#030708}
+.pn-media.noimg{height:90px;display:grid;place-items:center;line-height:1;color:var(--bone-faint);font:500 12px var(--f-num)}
+.pn-sub{margin:8px 0 6px;font:500 11px var(--f-num);color:var(--bone-faint)}
+.pn-how{margin:9px 0 0;padding:0;list-style:none;counter-reset:pns}
+.pn-how li{counter-increment:pns;display:flex;gap:8px;font:500 12.5px/1.35 var(--f-body);color:#cfdedc;margin:0 0 5px}
+.pn-how li:before{content:counter(pns);flex:none;width:12px;color:#2ee6d6;font:700 12px/1.35 var(--f-num)}
+.reduce-fx .pn-scr,.reduce-fx .sheet > :not(.pn-scr){transition:none !important}
+.reduce-fx .pn-vc,.reduce-fx .pn-cv,.reduce-fx .pn-vl,.reduce-fx .pn-fx{transition:none}

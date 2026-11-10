@@ -20,7 +20,9 @@
 #resetProgress{text-transform:uppercase;letter-spacing:1.2px}
 .toggle > span:has(#fStreakInfo){display:inline-flex;align-items:center}
 .up-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.up-v{font:600 13.5px var(--f-body);color:#e9f2f0}
+.up-v{font:600 13.5px var(--f-body);color:#e9f2f0;line-height:1.4}
+.up-v small{line-height:1.4}
+.group-title + .up-row{margin-top:8px}   /* same gap under the title as Step sync and Backup have */
 .up-v small.up-new{color:#2ee6d6}
 .up-notes{margin:10px 0 0;padding:10px 12px 10px 28px;border:1px solid rgba(46,230,214,.18);background:rgba(46,230,214,.04);font:500 12.5px/1.5 var(--f-body);color:#b9cbc9}
 .up-notes[hidden]{display:none}

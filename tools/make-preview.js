@@ -10,7 +10,7 @@ const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..'), www = path.join(root, 'www');
 const args = process.argv.slice(2), LITE = args.includes('--lite'), CLEAN = args.includes('--clean');
 const out = path.join(root, 'Psych-preview.html');
-const MIME = { '.webp':'image/webp', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.svg':'image/svg+xml',
+const MIME = { '.gif':'image/gif', '.webp':'image/webp', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.svg':'image/svg+xml',
                '.woff2':'font/woff2', '.woff':'font/woff', '.ttf':'font/ttf' };
 const dataUri = f => `data:${MIME[path.extname(f).toLowerCase()] || 'application/octet-stream'};base64,${fs.readFileSync(f).toString('base64')}`;
 const read = f => fs.readFileSync(path.join(www, f), 'utf8');
@@ -66,6 +66,8 @@ html = html
   .replace(/<script src="([\w\/.-]+\.js)"><\/script>/g, (m, f) => {
     let src = inlinePaths(read(f));
     if (/den\.js$/.test(f)) src = denTest(src);
+    // patch notes pictures are named by file only ("v150-lockpick.jpg"), so point their lookup at the pictures inside this file
+    if (/patchnotes\.js$/.test(f)) src = src.replace("let pnImgSrc = f => 'img/notes/' + encodeURI(f);", "let pnImgSrc = f => window.__IMG['img/notes/' + f] || 'img/notes/' + f;");
     let tag = `<script>${safeScript(src)}</script>`;
     if (f === FIRST_JS) tag = `<script>${safeScript(imgMap)}</script>\n` + (demo ? `<script>${safeScript(demo)}</script>\n` : '') + tag;
     if (f === 'js/main.js' && seed) tag += `\n<script>${seed}</script>`;

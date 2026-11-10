@@ -1,0 +1,323 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>In-game patch notes tool</title>
+<style>/*FONTS*/</style>
+<style>/*GAMECSS*/</style>
+<style>
+:root{--f-title:'Montserrat',system-ui,sans-serif;--f-body:'Inter',system-ui,sans-serif;--f-num:'JetBrains Mono',ui-monospace,monospace;--bone:#eef4f3;--bone-dim:#9db2b0;--bone-faint:#5f7472;--cut7:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px));--line:#1d2c2f;--line2:#2b4146;--cy:#2ee6d6;--am:#e9b44f}
+html,body{margin:0;background:#04080a;color:#c3d6d2;font:14px/1.5 var(--f-body)}
+button,input{font:inherit;color:inherit}
+.bar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;background:#070f11;border-bottom:1px solid var(--line)}
+.bar h1{margin:0 auto 0 0;font:700 14px var(--f-num);letter-spacing:.5px;color:var(--am)}
+.bar small{color:var(--bone-faint);font:500 11.5px var(--f-body)}
+.btn{padding:7px 12px;border:1px solid var(--line2);background:#0b1719;color:#cfe3df;border-radius:5px;font:600 12px var(--f-num);cursor:pointer}
+.btn:hover:not(:disabled){border-color:var(--cy)}.btn:disabled{opacity:.35;cursor:default}
+.btn.pri{background:var(--cy);border-color:var(--cy);color:#021012}
+.cols{display:flex;gap:24px;max-width:1180px;margin:0 auto;padding:16px;align-items:flex-start}
+#ed{flex:1;min-width:0}
+.phwrap{position:sticky;top:64px;flex:none;width:403px}
+.phwrap h3{margin:0 0 6px;font:700 11px var(--f-num);letter-spacing:.6px;color:var(--bone-faint);text-transform:uppercase}
+.ph{position:relative;width:401px;height:min(824px,calc(100vh - 110px));border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#050a0b}
+#pv.pn-scr{position:absolute;inset:0;opacity:1;visibility:visible;pointer-events:auto;transition:none}
+#pv .pn-bk{pointer-events:none}
+@media(max-width:940px){.cols{flex-direction:column}.phwrap{position:static}}
+/* versions */
+.ver{margin:0 0 14px;border:1px solid var(--line2);border-radius:8px;background:#08121400}
+.vh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px;background:#0b1719;border-radius:8px 8px 0 0}
+.ver.shut .vh{border-radius:8px}
+.vh .tg{width:26px;height:26px;border:0;background:none;color:var(--bone-dim);font-size:18px;cursor:pointer;transition:transform .2s}
+.ver:not(.shut) .tg{transform:rotate(90deg)}
+.fld{background:#050a0b;border:1px solid var(--line2);border-radius:4px;padding:6px 8px;color:#e8f3f1;min-width:0}
+.fld:focus{outline:none;border-color:var(--cy)}
+.vh .vv{width:74px;font:700 14px var(--f-num);color:var(--cy)}.vh .vdt{width:84px;font:500 12px var(--f-num)}.vh .vtg{flex:1;min-width:150px}
+.cnt{font:500 11px var(--f-num);color:var(--bone-faint)}
+.vb{padding:10px}.ver.shut .vb{display:none}
+.nlist{min-height:14px}
+.nt{position:relative;margin:0 0 8px;padding:8px;border:1px solid var(--line2);border-radius:6px;background:#0a1416}
+.nt.dragging{opacity:.35}
+.nt.drop-before:before,.nt.drop-after:after{content:'';position:absolute;left:0;right:0;height:3px;background:var(--cy);border-radius:2px;box-shadow:0 0 8px var(--cy)}
+.nt.drop-before:before{top:-6px}.nt.drop-after:after{bottom:-6px}
+.nlist.drop-end{box-shadow:inset 0 -3px 0 var(--cy)}
+.nr{display:flex;align-items:center;gap:8px}
+.grip{flex:none;width:18px;text-align:center;color:var(--bone-faint);cursor:grab;user-select:none;font-size:16px;line-height:1}
+.nr .t{flex:1;min-width:0;font:600 13px var(--f-title)}
+.nd{display:block;width:100%;box-sizing:border-box;margin:6px 0 0;font:500 12px var(--f-body);color:#9db2b0}
+.orbs{flex:none;display:flex;gap:5px}
+.ob{width:20px;height:20px;padding:0;border-radius:50%;border:2px solid transparent;background:none;cursor:pointer;position:relative}
+.ob:before{content:'';position:absolute;inset:3px;border-radius:50%}
+.ob.new:before{background:#4be39a}.ob.chg:before{background:#ffc94a}.ob.fix:before{background:#7d8f8d}
+.ob.on{border-color:#e8f3f1}
+.sw{flex:none;display:flex;align-items:center;gap:6px;cursor:pointer;font:600 11.5px var(--f-num);color:var(--bone-dim);user-select:none}
+.sw input{position:absolute;opacity:0;pointer-events:none}
+.sw i{position:relative;width:32px;height:18px;border-radius:9px;background:#13232a;border:1px solid var(--line2);transition:.2s}
+.sw i:after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#7f9593;transition:.2s}
+.sw input:checked+i{background:rgba(46,230,214,.25);border-color:var(--cy)}.sw input:checked+i:after{left:16px;background:var(--cy)}
+.sw input:focus-visible+i{outline:2px solid var(--cy)}
+.x{flex:none;min-width:26px;height:26px;padding:0 6px;border:1px solid transparent;background:none;color:var(--bone-faint);cursor:pointer;border-radius:4px;font-size:13px}
+.x:hover{color:#ff7a86;border-color:#5a2a30}.x.arm{color:#fff;background:#b3303c;border-color:#b3303c;font:700 11px var(--f-num)}
+.sn{margin:8px 0 0 26px;padding:8px;border:1px dashed var(--line2);border-radius:6px}
+.slot{position:relative;display:grid;place-items:center;min-height:90px;border:1px solid var(--line2);background:#030708;border-radius:4px;overflow:hidden;cursor:pointer;text-align:center;color:var(--bone-faint);font:500 12px var(--f-num)}
+.slot:focus,.slot.over{outline:2px solid var(--cy);outline-offset:1px}
+.slot.empty{border-style:dashed}
+.slot small{display:block;margin-top:4px;font:500 11px var(--f-body)}
+.slot img{display:block;width:100%;max-height:260px;object-fit:contain}
+.slot .meta{position:absolute;left:0;bottom:0;padding:2px 6px;background:rgba(0,0,0,.7);font:500 10.5px var(--f-num);color:#9db2b0}
+.slot .meta.big{color:#ffb07a}
+.sn-b{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 0}
+.sn-b .btn{padding:5px 9px;font-size:11px}
+.img2{margin:6px 0 0;font:500 11.5px var(--f-num);color:var(--bone-dim)}
+.steps h6{margin:10px 0 4px;font:700 10.5px var(--f-num);letter-spacing:.6px;color:var(--bone-faint);text-transform:uppercase}
+.st{display:flex;align-items:center;gap:6px;margin:0 0 4px}
+.st b{flex:none;width:18px;height:18px;border-radius:50%;background:rgba(46,230,214,.15);color:var(--cy);font:700 10.5px/18px var(--f-num);text-align:center}
+.st .fld{flex:1;font:500 12.5px var(--f-body)}
+.add{display:inline-block;margin:2px 0 0;padding:6px 10px;border:1px dashed var(--line2);background:none;color:var(--bone-dim);border-radius:5px;font:600 11.5px var(--f-num);cursor:pointer}
+.add:hover{border-color:var(--cy);color:var(--cy)}
+.help{margin:0 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:#08121400;color:#8fb1ab;font-size:12.5px}
+.help b{color:#e8f3f1}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(10px);z-index:99;padding:9px 14px;background:#0d2326;border:1px solid var(--cy);border-radius:6px;opacity:0;pointer-events:none;transition:.25s;font-size:13px}
+#toast.on{opacity:1;transform:translateX(-50%)}
+#toast.bad{border-color:#ff7a86}
+.vopt{font:500 11.5px var(--f-num);color:var(--bone-dim)}.vopt input{width:52px;padding:3px 5px;background:#050a0b;border:1px solid var(--line2);border-radius:4px;color:#e8f3f1;font:500 12px var(--f-num)}
+#busy{position:fixed;inset:0;z-index:90;display:grid;place-items:center;background:rgba(2,6,7,.7)}#busy[hidden]{display:none}
+#busy .bx{width:300px;padding:16px;border:1px solid var(--cy);border-radius:8px;background:#081315;text-align:center}
+#busy b{display:block;margin:0 0 10px;font:600 13px var(--f-num);color:#e8f3f1}#busy i{display:block;height:6px;margin:0 0 12px;background:#13232a;border-radius:3px;overflow:hidden}#busy u{display:block;height:100%;width:0;background:var(--cy);transition:width .15s}
+.dot{display:none;width:8px;height:8px;border-radius:50%;background:var(--am)}.dot.on{display:inline-block}
+</style></head><body>
+<div class="bar"><h1>IN-GAME PATCH NOTES TOOL</h1><small id="dirty"></small>
+<span class="vopt" title="Used when you give a video (mp4). It is turned into a GIF here, in the browser.">Video to GIF: width <input id="gw" type="number" value="320" min="120" max="720" step="20"> px · <input id="gf" type="number" value="10" min="4" max="20"> fps</span>
+<button class="btn" id="undo" disabled>Undo</button><button class="btn" id="redo" disabled>Redo</button>
+<button class="btn pri" id="save">Save file</button></div>
+<div class="cols"><section id="ed"></section>
+<aside class="phwrap"><h3>Live preview, same code as the game</h3><div class="ph"><div class="pn-scr" id="pv"><div class="pn-top"><button type="button" class="pn-bk">‹</button><h2>Patch notes</h2></div><div class="pn-body" id="pvBody"></div></div></div></aside></div>
+<input type="file" id="file" accept="image/*,video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v" hidden><div id="busy" hidden><div class="bx"><b id="busyT">Making a GIF…</b><i><u id="busyP"></u></i><button class="btn" id="busyX">Cancel</button></div></div><div id="toast"></div>
+<script id="pn-state" type="application/json">/*STATE*/</script>
+<script>/*GAMEJS*/</script>
+<script>/*GIFJS*/</script>
+<script>
+const SRC = '<!doctype html>' + document.documentElement.outerHTML;   // this file as it was opened, so Save can write a copy with the new notes inside
+const $ = (s, r = document) => r.querySelector(s);
+const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const ST = JSON.parse($('#pn-state').textContent);
+let V = ST.versions; const IM = ST.images;
+pnImgSrc = f => IM[f] || '';
+const KIND = { new:'New (green)', chg:'Changed (amber)', fix:'Fixed (grey)' };
+const shut = new Set(V.slice(1).map(v => v.v));   // versions folded in the editor
+let dirty = false, hist = [], fut = [], typing = false, pickAt = null, hoverSlot = null, drag = null, dropTo = null, tt = 0;
+const snap = () => JSON.stringify(V);
+function toast(m, bad){ const t = $('#toast'); t.textContent = m; t.classList.toggle('bad', !!bad); t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 3200); }
+function setDirty(d){ dirty = d; $('#dirty').textContent = d ? 'Unsaved changes' : ''; }
+function history(){ hist.push(snap()); if (hist.length > 80) hist.shift(); fut = []; $('#undo').disabled = false; $('#redo').disabled = true; }
+function mut(fn, fk){ history(); fn(); setDirty(true); renderEd(fk); renderPv(); }
+function restore(s){ V = JSON.parse(s); setDirty(true); renderEd(); renderPv(); $('#undo').disabled = !hist.length; $('#redo').disabled = !fut.length; }
+$('#undo').onclick = () => { if (!hist.length) return; fut.push(snap()); restore(hist.pop()); };
+$('#redo').onclick = () => { if (!fut.length) return; hist.push(snap()); restore(fut.pop()); };
+document.addEventListener('keydown', e => {
+  if (!(e.ctrlKey || e.metaKey) || e.target.closest('input,textarea')) return;
+  if (e.key === 'z' && !e.shiftKey){ e.preventDefault(); $('#undo').click(); }
+  else if (e.key === 'y' || (e.key === 'z' && e.shiftKey)){ e.preventDefault(); $('#redo').click(); }
+  else if (e.key === 's'){ e.preventDefault(); $('#save').click(); }
+});
+window.addEventListener('beforeunload', e => { if (dirty){ e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------- editor ---------- */
+const kb = b => Math.round(b / 1024);
+const bytesOf = u => Math.round((u.length - u.indexOf(',') - 1) * 0.75);
+function slotHtml(n){
+  if (!n.img || !IM[n.img]) return `<div class="slot empty" tabindex="0" data-slot>No snippet yet<small>Click here, then Ctrl+V to paste a picture. Or drop a picture or an mp4 here, or use Choose file.</small></div>`;
+  const b = bytesOf(IM[n.img]), big = b > 400 * 1024;
+  return `<div class="slot" tabindex="0" data-slot><img src="${IM[n.img]}" alt=""><span class="meta${big ? ' big' : ''}">${E(n.img)} · ${kb(b)} KB${big ? ' · big for the app' : ''} · Ctrl+V replaces it</span></div>`;
+}
+function noteHtml(n, vi, ni){
+  const a = `data-vi="${vi}" data-ni="${ni}"`;
+  const sn = !n.snip ? '' : `<div class="sn">${slotHtml(n)}
+    <div class="sn-b"><button class="btn" data-a="pick" ${a}>Choose file…</button>${n.img ? `<button class="btn" data-a="rmImg" ${a}>Remove picture</button>` : ''}</div>
+    ${n.img2 ? `<div class="img2">Result picture: ${E(n.img2)} <button class="x" data-a="rmImg2" ${a} title="Remove">✕</button></div>` : ''}
+    <div class="steps"><h6>Steps</h6>${(n.how || []).map((h, si) => `<div class="st"><b>${si + 1}</b><input class="fld" data-f="step" ${a} data-si="${si}" value="${E(h)}" placeholder="Step ${si + 1}"><button class="x" data-a="delStep" ${a} data-si="${si}" title="Remove step">✕</button></div>`).join('')}<button class="add" data-a="addStep" ${a}>+ Add step</button></div></div>`;
+  return `<div class="nt" ${a}><div class="nr"><span class="grip" title="Drag to move">⠿</span>
+    <span class="orbs">${['new', 'chg', 'fix'].map(k => `<button class="ob ${k}${n.k === k ? ' on' : ''}" data-a="color" data-c="${k}" ${a} title="${KIND[k]}"></button>`).join('')}</span>
+    <input class="fld t" data-f="t" ${a} data-fk="t-${vi}-${ni}" value="${E(n.t)}" placeholder="Title">
+    <label class="sw"><input type="checkbox" data-a="snip" ${a} ${n.snip ? 'checked' : ''}><i></i>Snippet</label>
+    <button class="x" data-a="delNote" ${a} title="Remove note">✕</button></div>
+    <input class="fld nd" data-f="d" ${a} value="${E(n.d)}" placeholder="Note under the title (the grey text). Optional.">${sn}</div>`;
+}
+function verHtml(v, vi){
+  const c = k => v.notes.filter(n => n.k === k).length, op = !shut.has(v.v);
+  return `<div class="ver${op ? '' : ' shut'}" data-vi="${vi}"><div class="vh"><button class="tg" data-a="fold" data-vi="${vi}" title="Fold">›</button>
+    <input class="fld vv" data-f="ver" data-vi="${vi}" value="${E(v.v)}" title="Version"><input class="fld vdt" data-f="date" data-vi="${vi}" value="${E(v.date)}" title="Date">
+    <input class="fld vtg" data-f="tag" data-vi="${vi}" value="${E(v.tag)}" placeholder="One line about this version">
+    <span class="cnt">${v.notes.length} notes · ${c('new')}/${c('chg')}/${c('fix')}</span><button class="x" data-a="delVer" data-vi="${vi}" title="Remove version">✕</button></div>
+    <div class="vb"><div class="nlist" data-vi="${vi}">${v.notes.map((n, ni) => noteHtml(n, vi, ni)).join('')}</div><button class="add" data-a="addNote" data-vi="${vi}">+ Add note</button></div></div>`;
+}
+function renderEd(fk){
+  const y = scrollY;
+  $('#ed').innerHTML = `<p class="help"><b>How this works:</b> change anything here, press <b>Save file</b> (top right), and send me the file it downloads. I put the new notes into the game. Drag ⠿ to reorder, click an orb to change its colour, switch <b>Snippet</b> on for a note that gets a picture and steps. Paste a picture with Ctrl+V into its empty slot, or give it an <b>mp4</b> (choose it or drop it on the slot) and it is turned into a GIF.</p>
+    <button class="add" data-a="addVer" style="margin:0 0 12px">+ New version</button>${V.map(verHtml).join('')}`;
+  scrollTo(0, y);
+  if (fk){ const el = $(`[data-fk="${fk}"]`); if (el){ el.focus(); el.select && el.select(); } }
+}
+/* ---------- live preview (the game's own pnBody) ---------- */
+let pvQ = 0;
+function renderPv(){ cancelAnimationFrame(pvQ); pvQ = requestAnimationFrame(() => { const b = $('#pvBody'), y = b.scrollTop; b.innerHTML = pnBody(V); b.scrollTop = y; }); }
+function reveal(vi, ni, openCard){
+  const v = V[vi]; if (!v) return; let ch = false;
+  if (!pnOpen.v.has(v.v)){ pnOpen.v.add(v.v); ch = true; }
+  const id = v.v + '-' + ni;
+  if (openCard && !pnOpen.n.has(id)){ pnOpen.n.add(id); ch = true; }
+  if (ch){ const b = $('#pvBody'), y = b.scrollTop; b.innerHTML = pnBody(V); b.scrollTop = y; }
+  const el = $(`#pvBody [data-pn-id="${id}"]`); if (!el) return;
+  const b = $('#pvBody'), r = el.getBoundingClientRect(), br = b.getBoundingClientRect();
+  if (r.top < br.top + 10 || r.bottom > br.bottom - 10) b.scrollTop += r.top - br.top - 60;
+}
+$('#pvBody').addEventListener('click', pnClick);
+pnOpen.v = new Set([V[0] && V[0].v]); 
+
+/* ---------- editing ---------- */
+const at = el => ({ vi: +el.dataset.vi, ni: +el.dataset.ni, si: +el.dataset.si });
+$('#ed').addEventListener('input', e => {
+  const f = e.target.dataset.f; if (!f) return;
+  if (!typing){ history(); typing = true; }
+  const { vi, ni, si } = at(e.target), v = V[vi], val = e.target.value;
+  if (f === 'ver'){ const old = v.v; v.v = val; if (shut.delete(old)) shut.add(val); if (pnOpen.v.delete(old)) pnOpen.v.add(val); }
+  else if (f === 'date') v.date = val; else if (f === 'tag') v.tag = val;
+  else if (f === 't') v.notes[ni].t = val; else if (f === 'd') v.notes[ni].d = val;
+  else if (f === 'step') v.notes[ni].how[si] = val;
+  setDirty(true); renderPv();
+});
+$('#ed').addEventListener('focusout', () => { typing = false; });
+$('#ed').addEventListener('focusin', e => { const n = e.target.closest('.nt'); if (n){ const { vi, ni } = at(n); reveal(vi, ni, !!V[vi].notes[ni].snip); } });
+let armed = null, armT = 0;
+function sure(btn){ if (armed === btn) return true; if (armed) arm(armed, false); armed = btn; btn.dataset.t = btn.textContent; btn.textContent = 'Sure?'; btn.classList.add('arm'); clearTimeout(armT); armT = setTimeout(() => arm(btn, false), 2500); return false; }
+function arm(btn, on){ if (!btn.isConnected) { armed = null; return; } btn.textContent = btn.dataset.t; btn.classList.remove('arm'); if (armed === btn) armed = null; }
+$('#ed').addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  const a = b.dataset.a, { vi, ni, si } = at(b), v = V[vi], n = v && v.notes[ni];
+  if (a === 'snip') return;   // handled by the change event
+  if (a === 'color') return mut(() => { n.k = b.dataset.c; });
+  if (a === 'fold'){ shut.has(v.v) ? shut.delete(v.v) : shut.add(v.v); return renderEd(); }
+  if (a === 'addNote') return mut(() => { v.notes.push({ k:'new', t:'', d:'', snip:0, how:[] }); shut.delete(v.v); }, `t-${vi}-${v.notes.length}`);
+  if (a === 'delNote'){ if (!n.t && !n.d || sure(b)) mut(() => v.notes.splice(ni, 1)); return; }
+  if (a === 'delVer'){ if (sure(b)) mut(() => V.splice(vi, 1)); return; }
+  if (a === 'addVer'){ const l = V[0], p = l ? l.v.split('.').map(Number) : [1, 0, 0]; p[2] = (p[2] || 0) + 1;
+    return mut(() => { const nv = { v:p.join('.'), date:new Date().toLocaleDateString('en-US', { month:'short', day:'numeric' }), tag:'', notes:[] }; V.unshift(nv); shut.delete(nv.v); pnOpen.v.add(nv.v); }); }
+  if (a === 'addStep'){ mut(() => { (n.how ||= []).push(''); }); const x = $(`[data-f="step"][data-vi="${vi}"][data-ni="${ni}"][data-si="${n.how.length - 1}"]`); x && x.focus(); return; }
+  if (a === 'delStep') return mut(() => n.how.splice(si, 1));
+  if (a === 'pick'){ pickAt = { vi, ni }; $('#file').click(); return; }
+  if (a === 'rmImg') return mut(() => { n.img = ''; });
+  if (a === 'rmImg2') return mut(() => { delete n.img2; });
+});
+$('#ed').addEventListener('change', e => {
+  const b = e.target; if (b.dataset.a !== 'snip') return;
+  const { vi, ni } = at(b); mut(() => { const n = V[vi].notes[ni]; n.snip = b.checked ? 1 : 0; if (!n.how) n.how = []; }); reveal(vi, ni, true);
+});
+$('#ed').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.dataset.f === 'step'){ e.preventDefault(); const { vi, ni, si } = at(e.target);
+    mut(() => V[vi].notes[ni].how.splice(si + 1, 0, '')); const x = $(`[data-f="step"][data-vi="${vi}"][data-ni="${ni}"][data-si="${si + 1}"]`); x && x.focus(); }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-slot]')){ e.preventDefault(); const n = e.target.closest('.nt'); pickAt = at(n); $('#file').click(); }
+});
+
+/* ---------- pictures: choose a file, Ctrl+V, or drop ---------- */
+const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 28);
+function nameFor(vi, ni, ext){
+  const base = 'v' + V[vi].v.replace(/\./g, '') + '-' + (slug(V[vi].notes[ni].t) || 'snippet');
+  let nm = base + ext, i = 2; while (IM[nm]) nm = base + '-' + (i++) + ext; return nm;
+}
+const readUri = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(f); });
+async function toJpeg(uri){   // like the existing snippets: 520 px wide, JPEG
+  const im = new Image(); await new Promise((ok, no) => { im.onload = ok; im.onerror = no; im.src = uri; });
+  const w = Math.min(520, im.naturalWidth), h = Math.round(im.naturalHeight * w / im.naturalWidth), c = document.createElement('canvas');
+  c.width = w; c.height = h; const g = c.getContext('2d'); g.fillStyle = '#030708'; g.fillRect(0, 0, w, h); g.drawImage(im, 0, 0, w, h);
+  return c.toDataURL('image/jpeg', 0.86);
+}
+const isVideo = f => /^video\//.test(f.type) || /\.(mp4|mov|m4v|webm)$/i.test(f.name || '');
+/* mp4 -> GIF: play through the video, grab a frame every 1/fps s, let pnGif (tools/pn-gif.js) pack them, in a worker so the page stays alive */
+let busyX = null;
+function busy(t, p){ $('#busy').hidden = false; $('#busyT').textContent = t; $('#busyP').style.width = Math.round(p * 100) + '%'; }
+$('#busyX').onclick = () => { if (busyX) busyX(); };
+async function videoToGif(file){
+  const W = Math.max(120, Math.min(720, +$('#gw').value || 320)), FPS = Math.max(4, Math.min(20, +$('#gf').value || 10)), MAXS = 20;
+  let dead = false, worker = null; busyX = () => { dead = true; if (worker) worker.terminate(); $('#busy').hidden = true; };
+  const url = URL.createObjectURL(file), v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto';
+  try{
+    busy('Reading the video…', 0);
+    await new Promise((ok, no) => { v.onloadeddata = ok; v.onerror = () => no(new Error('video')); v.src = url; });
+    if (!v.videoWidth || !isFinite(v.duration)) throw new Error('video');
+    const dur = Math.min(v.duration, MAXS), w = Math.min(W, v.videoWidth), h = Math.max(1, Math.round(v.videoHeight * w / v.videoWidth)), n = Math.max(1, Math.floor(dur * FPS));
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d', { willReadFrequently:true }), frames = [];
+    for (let i = 0; i < n; i++){
+      if (dead) return;
+      await new Promise(ok => { v.onseeked = ok; v.currentTime = Math.min(i / FPS, Math.max(0, v.duration - 0.01)); });
+      g.drawImage(v, 0, 0, w, h); frames.push(g.getImageData(0, 0, w, h).data); busy(`Reading the video… ${i + 1}/${n}`, (i + 1) / n * 0.5);
+    }
+    const delay = Math.round(100 / FPS); let gif;
+    busy('Making the GIF…', 0.5);
+    try{
+      const src = `${pnGif.toString()}\nonmessage=e=>{const d=e.data,g=pnGif(d.frames,d.w,d.h,d.delay,p=>postMessage({p}));postMessage({gif:g},[g.buffer])}`;
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type:'text/javascript' })));
+      gif = await new Promise((ok, no) => { worker.onmessage = e => e.data.gif ? ok(e.data.gif) : busy('Making the GIF…', 0.5 + e.data.p * 0.5); worker.onerror = no; worker.postMessage({ frames, w, h, delay }, frames.map(f => f.buffer)); });
+    } catch (err){ if (dead) return; gif = pnGif(frames, w, h, delay); }   // no worker here: do it on the page
+    if (dead) return;
+    const uri = await readUri(new Blob([gif], { type:'image/gif' }));
+    return { uri, info:`${n} frames, ${w}x${h}, ${FPS} fps${v.duration > MAXS ? `, first ${MAXS} s only` : ''}` };
+  } catch (err){ if (!dead) toast('This browser could not read that video. An mp4 saved as H.264 works in Chrome.', true); return null; }
+  finally { URL.revokeObjectURL(url); if (worker) worker.terminate(); busyX = null; $('#busy').hidden = true; }
+}
+async function setImage(vi, ni, file){
+  if (!file) return;
+  if (isVideo(file)){
+    const r = await videoToGif(file); if (!r) return;
+    const nm = nameFor(vi, ni, '.gif');
+    mut(() => { IM[nm] = r.uri; const n = V[vi].notes[ni]; n.img = nm; n.snip = 1; if (!n.how) n.how = []; });
+    reveal(vi, ni, true); const k = kb(bytesOf(r.uri)); toast(`GIF made: ${r.info}, ${k} KB.${k > 1500 ? ' That is big for the app. Try a smaller width or fewer fps.' : ''}`, k > 1500); return;
+  }
+  if (!file.type.startsWith('image/')) return toast('That is not a picture or a video.', true);
+  try{
+    let uri = await readUri(file); const gif = file.type === 'image/gif';
+    if (!gif) uri = await toJpeg(uri);
+    const nm = nameFor(vi, ni, gif ? '.gif' : '.jpg');
+    mut(() => { IM[nm] = uri; const n = V[vi].notes[ni]; n.img = nm; n.snip = 1; if (!n.how) n.how = []; });
+    reveal(vi, ni, true); toast(`Picture added (${kb(bytesOf(uri))} KB).`);
+  } catch (err){ toast('Could not read that picture.', true); }
+}
+$('#file').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f && pickAt) setImage(pickAt.vi, pickAt.ni, f); });
+$('#ed').addEventListener('mouseover', e => { hoverSlot = e.target.closest('[data-slot]'); });
+$('#ed').addEventListener('mouseleave', () => { hoverSlot = null; });
+document.addEventListener('paste', e => {
+  const files = [...(e.clipboardData && e.clipboardData.files || [])].filter(f => f.type.startsWith('image/') || isVideo(f));
+  if (!files.length) return;
+  const ae = document.activeElement, slot = (ae && ae.closest && ae.closest('[data-slot]')) || hoverSlot;
+  if (!slot){ toast('Click the snippet slot first, then Ctrl+V.', true); return; }
+  e.preventDefault(); const p = at(slot.closest('.nt')); setImage(p.vi, p.ni, files[0]);
+});
+$('#ed').addEventListener('dragover', e => {
+  const s = e.target.closest('[data-slot]');
+  if (s && e.dataTransfer.types.includes('Files')){ e.preventDefault(); s.classList.add('over'); return; }
+  if (!drag) return; e.preventDefault(); clearDrop();
+  const row = e.target.closest('.nt'), list = e.target.closest('.nlist') || (row && row.parentElement);
+  if (row && row !== drag.el){ const r = row.getBoundingClientRect(), after = e.clientY > r.top + r.height / 2; row.classList.add(after ? 'drop-after' : 'drop-before'); const p = at(row); dropTo = { vi:p.vi, idx:p.ni + (after ? 1 : 0) }; }
+  else if (list && !row){ list.classList.add('drop-end'); const vi = +list.dataset.vi; dropTo = { vi, idx:V[vi].notes.length }; }
+});
+$('#ed').addEventListener('dragleave', e => { const s = e.target.closest('[data-slot]'); if (s) s.classList.remove('over'); });
+$('#ed').addEventListener('drop', e => {
+  const s = e.target.closest('[data-slot]');
+  if (s && e.dataTransfer.files.length){ e.preventDefault(); s.classList.remove('over'); const p = at(s.closest('.nt')); setImage(p.vi, p.ni, e.dataTransfer.files[0]); return; }
+  if (!drag || !dropTo) return; e.preventDefault();
+  const from = drag, to = dropTo; drag = null; clearDrop();
+  mut(() => { const [n] = V[from.vi].notes.splice(from.ni, 1); let i = to.idx; if (to.vi === from.vi && from.ni < i) i--; V[to.vi].notes.splice(i, 0, n); });
+});
+function clearDrop(){ dropTo = null; document.querySelectorAll('.drop-before,.drop-after,.drop-end').forEach(x => x.classList.remove('drop-before', 'drop-after', 'drop-end')); }
+$('#ed').addEventListener('mousedown', e => { const g = e.target.closest('.grip'); if (g) g.closest('.nt').draggable = true; });
+document.addEventListener('mouseup', () => document.querySelectorAll('.nt[draggable="true"]').forEach(x => { if (!drag) x.draggable = false; }));
+$('#ed').addEventListener('dragstart', e => { const row = e.target.closest && e.target.closest('.nt'); if (!row || !row.draggable) return; drag = { el:row, ...(({ vi, ni }) => ({ vi, ni }))(at(row)) }; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'note'); setTimeout(() => row.classList.add('dragging'), 0); });
+document.addEventListener('dragend', () => { if (drag) drag.el.draggable = false; drag = null; clearDrop(); document.querySelectorAll('.dragging').forEach(x => x.classList.remove('dragging')); });
+
+/* ---------- save ---------- */
+$('#save').onclick = () => {
+  const used = new Set(); V.forEach(v => v.notes.forEach(n => { if (n.img) used.add(n.img); if (n.img2) used.add(n.img2); }));
+  const images = {}; used.forEach(k => { if (IM[k]) images[k] = IM[k]; });
+  const empty = V.reduce((s, v) => s + v.notes.filter(n => !n.t.trim()).length, 0);
+  const json = JSON.stringify({ versions:V, images }).replace(/</g, '\\u003c');
+  const html = SRC.replace(/(<script id="pn-state" type="application\/json">)[\s\S]*?(<\/script>)/, (m, a, b) => a + json + b);
+  const url = URL.createObjectURL(new Blob([html], { type:'text/html' })), a = document.createElement('a');
+  a.href = url; a.download = 'patchnotes-tool.html'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+  setDirty(false); toast(empty ? `Saved. ${empty} note(s) have no title.` : 'Saved. Send me patchnotes-tool.html.', !!empty);
+};
+renderEd(); renderPv();
+</script></body></html>

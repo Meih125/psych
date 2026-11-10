@@ -119,3 +119,4 @@
 .bm-tt .info-btn{position:absolute;left:100%;top:50%;margin:-9px 0 0 8px;z-index:3;letter-spacing:0;padding:0}
 .bm-tip{display:flex;align-items:center;gap:6px;white-space:nowrap}.bm-tip .den-ic.gem{width:13px;height:17px}
 .reduce-fx .bm-bal.deny svg.g3{animation:none}.reduce-fx .bm-bal.deny .bm-bv{animation:bmDenyN .6s ease-out}.reduce-fx .bm-bal.bup .bm-bv{animation:none}
+@media (max-width:340px){.bm-tt{font-size:16px;letter-spacing:.26em;padding-left:.26em}}

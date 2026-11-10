@@ -21,7 +21,7 @@ function resetProgress(){
     else q.doneUntil = 0;
   });
 }
-const closeSettings = () => $('#settings').classList.remove('open');
+const closeSettings = () => { closePatchNotes(); $('#settings').classList.remove('open'); };   // closing Settings also leaves Patch notes
 function renderSync(){
   const on = S.sync && S.sync.connected;
   $('#syncDot').classList.toggle('on', !!on);

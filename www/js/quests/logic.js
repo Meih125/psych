@@ -208,23 +208,26 @@ function claimDay(q, key, rect){
   grant({ xp:d.xp, gold:d.gold }, rect, null);
 }
 // daily goal bonus: claimed from the gold coin under a day on the Progress chart
-// 2× the goal or more pays the bonus that many times (×2, ×3 …) in the one claim
+// Every full goal walked in a day is one bonus (6,000 goal: 6,000 steps = 1, 12,000 = 2 …). q.goalPaid[day] counts the ones already claimed
+// (old saves kept `true` = paid in full). Claim at 6,000 and again at 12,000, or wait: claiming at 12,000 pays both (×2) in one tap.
 const goalMult = (q, v) => q && q.goal ? Math.max(1, Math.floor(v / q.goal)) : 1;
+const goalPaidN = (q, k, v) => { const p = q.goalPaid && q.goalPaid[k]; return p === true ? Math.max(1, goalMult(q, v)) : Math.max(0, Math.floor(+p || 0)); };
+const goalDue = (q, k, v) => q && q.goal && v >= q.goal ? Math.max(0, Math.floor(v / q.goal) - goalPaidN(q, k, v)) : 0;
 // onBar (Quests step card): "Goal claimed!" floats up from the button, then the ticket pops on the step bar and flies to the header
 function claimGoal(q, key, rect, opts){
   q.goalPaid ||= {};
-  if (q.goalPaid[key] || !q.goal || (valsOf(q)[key] || 0) < q.goal) return;
+  const day = valsOf(q)[key] || 0, m = goalDue(q, key, day);
+  if (!m) return;
   buyUndo = null;
-  q.goalPaid[key] = true;
+  q.goalPaid[key] = goalPaidN(q, key, day) + m;
   const bar = opts && opts.onBar ? document.querySelector('.qb-sum .qb-bar') : null, barR = bar ? bar.getBoundingClientRect() : null;   // read before the redraw
-  const m = goalMult(q, valsOf(q)[key] || 0);
   celebrate.swirl = true;   // only the coin swirls
   earnTag = { k:'goal', n:'Goal bonus', kind:'goal', day:key };
   grant({ xp:(q.goalXp || 0) * m, gold:(q.goalGold || 0) * m }, rect, null, null, m > 1 ? 1.4 + Math.min(1.2, m * .15) : 1.4);
-  const tg = window.PsychDen ? PsychDen.add(1) : 0;   // a Den ticket pops out of the claimed goal, then flies up with the coins
+  const tg = window.PsychDen ? PsychDen.add(m) : 0;   // a Den ticket per goal claimed (×2, ×3 …: one ticket carrying ×N) pops out of the claim, then flies up with the coins
   const tr = barR || (typeof rect === 'function' ? rect() : rect);
   if (opts && opts.onBar && rect && !QUIET) floatText({ left:rect.left, width:rect.width, top:rect.top - 46, height:rect.height }, 'Goal claimed!', 'big');
-  if (tg){ if (QUIET || !tr) PsychDen.land(tg); else setTimeout(() => PsychDen.pop(tr, tg), barR ? 700 : 250); }
+  if (tg){ if (QUIET || !tr) PsychDen.land(tg); else setTimeout(() => PsychDen.pop(tr, tg, true), barR ? 700 : 250); }
 }
 // Undo takes the reward back (gold may go below zero; a lost level takes its level reward too, paid again on re-reaching it)
 // and plays the claim backwards: XP and gold fly from the header back onto the quest.

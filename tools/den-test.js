@@ -12,6 +12,7 @@ window.__dT = { noMine:false, hiWin:false, heatE:false };   // heatE: Lockpick u
     const btns = [
       mk('dTix', '+5 Tickets', () => PsychDen.gain(5)),
       mk('dGem', '+5 Gems', () => __dGem(5)),
+      mk('dAll', 'Own all cards', () => { CARDS.forEach(c => { if (!ownedCard(c.id)) S.cards[c.id] = 1; S.cardsGot[c.id] = Math.max(cardTotal(c.id), ownedCard(c.id)); }); Object.values(SCENE_DEF).forEach(d => d.list.forEach(sc => { S.scenes[sc.id] = Math.max(S.scenes[sc.id] || 0, 1); })); buyUndo = null; save(); render(); showToast('You own every card, Chapter and Realm', false); }),   // Chapters (Tarot) and Realms (Hand of Destiny) live in S.scenes
       mk('dMine', 'No mines: off', tog('noMine', 'No mines')),
       mk('dWin', 'Hilo win: off', tog('hiWin', 'Hilo win')),
       mk('dHeat', 'Lock heat E: off', tog('heatE', 'Lock heat E'))

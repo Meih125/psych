@@ -44,7 +44,7 @@ function qbSummary(){
   const vis = S.quests.filter(ringQuest);
   const done = vis.filter(isDone).length, T = S.today && S.today.day === dayKey() ? S.today : { xp:0, gold:0 };
   const sq = firstSteps(), st = sq ? stepDue(sq, dayKey()).steps : 0, due = sq ? dueTotals(sq) : { keys:[] };
-  const goalReady = sq && sq.goal && st >= sq.goal && !(sq.goalPaid && sq.goalPaid[dayKey()]);   // today's goal can be claimed here (older days: Progress)
+  const goalReady = sq && sq.goal && goalDue(sq, dayKey(), st) > 0;   // today's goal can be claimed here (older days: Progress)
   return `<div class="qb-sumw"><div class="qb-sum"${sq ? ` data-holdedit="${sq.id}"` : ''}>${qbRing(done, vis.length)}<div class="qb-st">
     <div class="ln"><span class="ep-lab">Earned today<span class="info earn-i" data-act="earn">${infoIcon('Where it came from', '', earnOpen)}</span></span><b><span class="xp-r">${ico('i-gem')}<i class="et" data-v="${T.xp}">${fmt(T.xp)}</i></span><span class="gold-r">${ico('i-coin')}<i class="et" data-v="${T.gold}">${fmt(T.gold)}</i></span></b></div>
     ${sq ? `<div class="ln qb-stp"><span>Steps</span><b>${fmt(st)}${sq.goal ? ' / ' + fmt(sq.goal) : ''}</b></div><div class="qb-bar"><i style="width:${sq.goal ? Math.min(100, st / sq.goal * 100) : 0}%"></i></div>` : ''}
@@ -206,11 +206,11 @@ function qbTally(q, wide){
   const pv = tallyPreview(q, ''), total = q.total || 0, ph = 'Amount';
   if (fr) requestAnimationFrame(() => { tallyCountUp(q.id, fr.total, total, fr.laps ? tallyLapsMs(fr.units) : fr.quick ? 450 : 650); if (fr.laps) tallyLaps(q.id, fr); });
   if (!wide){   // half: total + carry in the corner, amount box + ADD on one line, rewards and the step size under it
-    const carry = q.carry ? `<span class="tl-cr">${fmtU(q, q.carry)} carried over</span>` : '';
+    const carry = q.carry ? `<span class="tl-cr">${CURRENCY.includes(unitOf(q)) ? fmtU(q, q.carry) : fmt(q.carry)} carried over</span>` : '';
     return `<article class="card qb-t tally-card tl-half">
       <div class="qb-top">${qbIcon(q)}<span class="tl-tot"><span class="qb-next">Total <b class="tl-total" data-qid="${q.id}">${fr ? fmtU(q, fr.total) : fmtU(q, total)}</b></span>${carry}</span></div><h4 class="qb-h2">${esc(q.name)}</h4>${qbNote(q)}
       <div class="qb-in tl-in tl-h"><input type="number" min="0" step="any" inputmode="decimal" placeholder="${ph}" data-tallyin="${q.id}" aria-label="Amount"><button class="tl-dot off" data-act="tally" aria-label="Add">ADD</button></div>
-      ${qbHF(qbRew(q.xpPer, q.goldPer), `<span class="qb-next">every ${esc(fmtU(q, q.chunk))}</span>`)}
+      ${qbHF(qbRew(q.xpPer, q.goldPer), `<span class="qb-next">/ ${esc(fmtU(q, q.chunk))}</span>`)}
     </article>`;
   }
   return `<article class="card qb-t wide tally-card">

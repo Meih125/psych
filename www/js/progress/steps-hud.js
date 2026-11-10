@@ -25,13 +25,13 @@ function stepsHud(){
   const short = v => v >= 10000 ? (Math.floor(v / 100) / 10) + 'k' : fmt(v);
   const cols = days.map((t, i) => {
     const v = vals[i], k = dayKey(t), fut = ti >= 0 && i > ti, n = segOf(v);
-    const met = q && goal && v >= goal, paid = met && q.goalPaid && q.goalPaid[k], bonus = met && (q.goalXp || q.goalGold);
+    const met = q && goal && v >= goal, due = met ? goalDue(q, k, v) : 0, paid = met && !due, bonus = met && (q.goalXp || q.goalGold);
     const cls = fut ? 'fut' : met ? (bonus && !paid ? 'gold' : 'green') : 'on';
     const act = met && bonus && !paid && !fut ? ` data-act="goalclaim" data-q="${q.id}" data-day="${k}"` : '';
     // goal hit and claimed: a light band runs up the lit segments (--s height, --c day)
     const segs = Array.from({ length:N }, (_, s) => `<i class="${s < n ? cls : ''}${s === gi ? ' goal' : ''}"${s < n && cls === 'green' ? ` style="--s:${s}"` : ''}></i>`).join('');
     // while a 2×+ goal bonus waits, the day name gives way to its ×N (back to the day once claimed)
-    const m = act ? goalMult(q, v) : 1, dn = m > 1 ? `<span class="sh-d sh-xn"><small>×</small>${m}</span>` : `<span class="sh-d">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]}</span>`;
+    const m = act ? due : 1, dn = m > 1 ? `<span class="sh-d sh-xn"><small>×</small>${m}</span>` : `<span class="sh-d">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]}</span>`;
     return `<div class="sh-col${act ? ' tap' : ''}${i === ti ? ' td' : ''}${cls === 'green' ? ' met' : ''}"${act}><span class="sh-v">${fut ? '' : short(v)}</span><div class="sh-segs">${segs}</div>${dn}</div>`;
   }).join('');
   const fd = t => new Date(t).toLocaleDateString(undefined, { month:'short', day:'numeric' });
