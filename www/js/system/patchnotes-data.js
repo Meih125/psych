@@ -5,11 +5,11 @@
 const PATCH_NOTES = [
 {"v":"1.5.2","date":"Nov 12","tag":"Card stars and Lockpick training","notes":[
 {"k":"new","t":"Added card levels and stars","d":"Every card has a level from 1 to 16. Extra copies level them up.","snip":1,"img":"v152-added-card-levels-and-stars.jpg","how":[]},
-{"k":"new","t":"Added the Level up screen","d":"Shows every card that levelled up after gaining cards.","snip":1,"how":[]},
-{"k":"new","t":"Added set stars","d":"Each set claim raises the set's level. Higher stars pay more.","snip":0,"how":[]},
-{"k":"new","t":"Added Lockpick Training","d":"Tap < or > on Start. Free, no reward, best level still counts.","snip":0,"how":[]},
-{"k":"new","t":"Added a step streak flame on Quests","d":"Plus a banner when your streak ends tonight.","snip":0,"how":[]},
-{"k":"chg","t":"Changed the Collection level mark","d":"A star bar on the bottom edge of each card.","snip":0,"how":[]},
+{"k":"new","t":"Added the Level up screen","d":"Shows every card that levelled up after gaining cards.","snip":1,"img":"v152-added-the-level-up-screen.jpg","how":[]},
+{"k":"new","t":"Added set stars","d":"","snip":1,"img":"v152-added-set-stars.jpg","how":[]},
+{"k":"new","t":"Added Lockpick Training","d":"Tap < or > on Start. Free, no reward, highest level still counts.","snip":1,"img":"v152-added-lockpick-training.jpg","how":[]},
+{"k":"new","t":"Added a step streak flame on Quests","d":"Plus a banner when your streak ends tonight.","snip":1,"img":"v152-added-a-step-streak-flame-on-2.jpg","how":[]},
+{"k":"chg","t":"Changed the Collection level mark","d":"A star bar on the bottom edge of each card.","snip":1,"img":"v152-changed-the-collection-level.jpg","how":[]},
 {"k":"chg","t":"Adjusted Market prices","d":"C 20, R 35, SR 75, SSR 140, UR 220.","snip":0,"how":[]},
 {"k":"chg","t":"Adjusted Lockpick rewards","d":"","snip":0,"how":[]},
 {"k":"fix","t":"Fixed Lockpick spinning after a miss","d":"The needle and ring now stay where they stopped.","snip":0,"how":[]}
