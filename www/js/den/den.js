@@ -433,6 +433,7 @@ function step(d){
 function start(){
   const t = tickets(), st = stakeNow(), go = $('#lGo');
   if (capped() || (game === 'lock' && LKG.held())) return;
+  if (game === 'lock' && LKG.training()){ LKG.start(); return; }   // Training: no ticket, no free play, no reward
   if (game === 'lock'){ const free = freeReady(); if (t <= 0 && !free){ deny(go); return; }
     if (free){ D().p = 0; save(); balSync(); } else { useTicket(-1); D().p = Math.min(FREE_AT, D().p + 1); save(); }
     LKG.start(); return; }
@@ -683,7 +684,7 @@ const MK = makeMarket({ D, gem:gemI, gemPaint, reduced, nextMid });   // the Bla
 document.addEventListener('click', e => {
   if (!pg || !pg.contains(e.target)) return;
   if (e.target.closest('.den-back')){ closeGame(); return; }
-  const ar = e.target.closest('.den-ar'); if (ar){ step(+ar.dataset.d); return; }
+  const ar = e.target.closest('.den-ar'); if (ar){ if (game === 'lock') LKG.train(); else step(+ar.dataset.d); return; }
   if (e.target.closest('#lReset')){ resetHilo(); return; }
   if (e.target.closest('#lPlay')){ if (swiped){ swiped = false; return; } start(); return; }
   if (e.target.closest('#lCash')){ cash(false); return; }

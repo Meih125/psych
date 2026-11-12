@@ -4,7 +4,7 @@
    left to find drops out and the rest share its chance. One card can be frozen (kept): it stays in its slot across days
    until it is bought, moved to another card or unfrozen. A bought card stays on the board, faded, until 00:00.
    The Market always starts folded (mktOpen, not saved); opening it lasts until you leave the Shop tab. Nothing here ever runs in the background. */
-var MKT_PRICE = { common:25, rare:45, epic:80, legendary:135, ultimate:200 };
+var MKT_PRICE = { common:20, rare:35, epic:75, legendary:140, ultimate:220 };
 var mktOpen = false;   // the Market always starts folded; opening it lasts until you leave the Shop tab
 var MKT_ODDS = { common:59.9, rare:25, epic:10, legendary:4, ultimate:1.1 };
 const mktMissing = () => CARDS.filter(c => !c.joker && !cardTotal(c.id));
@@ -121,7 +121,7 @@ function mktBuy(i, btn){
   const price = MKT_PRICE[CARD_BY_ID[id].rarity];
   if (S.gold < price){ deny(btn); return; }
   buyUndo = null;
-  S.gold -= price; gainCard(id); m.bought[i] = true; if (m.fz === i) m.fz = -1;
+  S.gold -= price; gainCard(id); lvSchedule(1100, 'Shop purchase'); m.bought[i] = true; if (m.fz === i) m.fz = -1;
   const jokers = checkJokers(); save();
   renderHeader.tween = true; renderHeader(); renderTabs();
   const cell = document.querySelector(`.mkt .mkt-cell[data-i="${i}"]`), art = cell && cell.querySelector('.mkt-art'); if (!art) return;

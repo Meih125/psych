@@ -1,6 +1,6 @@
 /* Collection tab: set chips, cover cards, grids, search, tile drag. */
 /* ---- Collection 2: pack tabs, category chips (multi-select), overview bars, folding sets ---- */
-var colSets = [], colOpen = {}, colInit = false;   // colOpen[k] === false: that set is folded (remembered in S.colOpen)
+var colSets = [], colOpen = {}, colInit = false, setPop = null;   // setPop: { key, all } the set whose stars just changed (they pop once)   // colOpen[k] === false: that set is folded (remembered in S.colOpen)
 function colRing(f1, f2, c){
   const R = 9, C = 2 * Math.PI * R;
   // first lap = cards owned; once full, a gold lap shows progress to the next claim
@@ -15,8 +15,8 @@ function colInfo(set){
     return { name:sd.name, col:sd.col, got, n, f1:got / n, f2:0, ready:got === n && !S.setClaims[set] };
   }
   const list = CARDS.filter(c => c.set === set), n = list.length, r = list[0].rarity;
-  const got = list.filter(c => ownedCard(c.id)).length, two = list.filter(c => ownedCard(c.id) >= 2).length;
-  return { name:set === 'Joker' && !jokersOpen() ? 'Joker (Locked)' : setLabel(set), list, rar:r, col:set === 'Joker' ? '#b04bff' : RARITY[r].color, got, two, n, f1:got / n, f2:two / n, ready:setReady(set) };
+  const got = list.filter(c => ownedCard(c.id)).length, times = setTimes(set), cnt = setCount(set);   // cnt: cards owned (before the first claim) or at the set's next level (after it)
+  return { name:set === 'Joker' && !jokersOpen() ? 'Joker (Locked)' : setLabel(set), list, rar:r, col:set === 'Joker' ? '#b04bff' : RARITY[r].color, got, cnt, times, n, f1:times ? 1 : got / n, f2:times ? cnt / n : 0, ready:setReady(set) };
 }
 // category header pictures: up to 3 chosen (S.cover[set]), else the 3 newest found, else card backs
 function coverOk(k, id){   // is this picture still something the player has?
@@ -162,11 +162,13 @@ function renderCollection(){
     const poker = k === 'Poker';
     const claim = poker ? '' : scene ? claimBtn(k, I.got === I.n, pay) : claimBtn(k, I.ready, pay, true);
     const payHtml = poker ? '' : claimPay2(pay, !I.ready);
-    const times = setTimes(k), g2 = !scene && !poker;   // the gold bar (2 of each card) shows on every set, dimmed until it has been claimed once; numbers sit at the end of their own bar
+    const times = setTimes(k), stars = !scene && !poker && times > 0;   // set stars appear with the first claim
+    const pop = stars && setPop && setPop.key === k ? (setPop.all ? 'all' : starAt(setLv(k))) : undefined; if (stars && setPop && setPop.key === k) setPop = null;
+    const cnt = scene ? I.got : poker ? I.got : I.cnt;
     html += `<section class="cc-fold${open ? ' open' : ''}${I.ready ? ' ready' : ''}" style="--c:${I.col};--rows:${open ? (k === 'Puzzle' ? (pzGrid ? 3 : 1) : duo ? Math.ceil(I.n / 2) * 1.5 : FAN_SET[k] ? 1.5 : k === 'Poker' ? 4 : Math.ceil(I.n / 3) + 0) : 0}">
       <div class="cc-hd">
-        <div class="cc-pv${wide && !noneOwned ? ' land' : ''} n${noneOwned ? 3 : prev.length}"${noneOwned ? '' : ` data-act="cover" data-set="${esc(k)}"`}>${noneOwned ? [0, 1, 2].map(() => `<img class="bk" src="${cardImg(DECKS[bkDeck][bkUR ? 'backUR' : 'back'])}" alt="">`).join('') : prev.map((id, i) => `<img${/^HD_DUO\d/.test(id) ? ' class="dj"' : ''} src="${cardImg(id)}" style="z-index:${prev.length - i}" alt="">`).join('')}</div>
-        <div class="cc-mid" data-act="colfold" data-set="${esc(k)}"><div class="cc-nm"><b>${esc(I.name)}${g2 && times ? `<small>(${times}x)</small>` : ''}</b></div><div class="cc-br"><div class="cc-bars"><div class="cc-bar"><i style="width:${I.f1 * 100}%"></i></div>${g2 ? `<div class="cc-bar cc-bar2${times ? '' : ' dim'}"><i class="gold" style="width:${I.f2 * 100}%"></i></div>` : ''}</div>${g2 && times ? `<span class="cc-n nx" title="Progress to the next claim (2 of each card)">${I.two}/${I.n}</span>` : `<span class="cc-n">${I.got}/${I.n}</span>`}</div></div>
+        <div class="cc-pv${wide && !noneOwned ? ' land' : ''} n${noneOwned ? 3 : prev.length}"${noneOwned ? '' : ` data-act="cover" data-set="${esc(k)}"`}>${noneOwned ? [0, 1, 2].map(() => `<img class="bk" src="${cardImg(DECKS[bkDeck][bkUR ? 'backUR' : 'back'])}" alt="">`).join('') : prev.map((id, i) => `<img${/^HD_DUO\d/.test(id) ? ' class="dj"' : ''} src="${cardImg(id)}" style="z-index:${prev.length - i}" alt="">`).join('')}${stars ? `<span class="pvst">${starBar(setLv(k), { size:'hs', pop })}</span>` : ''}</div>
+        <div class="cc-mid" data-act="colfold" data-set="${esc(k)}"><div class="cc-nm"><b>${esc(I.name)}</b><span class="cc-n${times && !scene ? ' gold' : ''}">${cnt}/${I.n}</span></div><div class="cc-br"><div class="cc-bars"><div class="cc-bar"><i style="width:${I.f1 * 100}%"></i></div></div></div></div>
         ${poker ? '' : `<div class="cc-act">${claim}${payHtml}</div>`}
       </div>
       ${open ? `<div class="cc-bd">${scene
@@ -203,15 +205,14 @@ const DUO_GLOW = [["255,38,145", "254,255,38"], ["38,222,255", "255,246,38"], ["
 function duoGrid(list){
   const L = [...list].sort((a, b) => a.id.localeCompare(b.id)), pairs = [];
   for (let i = 0; i < L.length; i += 2) pairs.push(L.slice(i, i + 2));
-  const pill = n => n > 1 ? `<span class="qty">×${n}</span>` : '';
   const one = c => { const n = ownedCard(c.id); return n
-    ? `<button class="cs duo-c" data-act="inspect" data-id="${c.id}" data-land="1"><img loading="lazy" decoding="async" src="${landImg(c.id)}" alt="${esc(c.name)}">${pill(n)}</button>`
+    ? `<button class="cs duo-c" data-act="inspect" data-id="${c.id}" data-land="1"><img loading="lazy" decoding="async" src="${landImg(c.id)}" alt="${esc(c.name)}">${lvStrip(cardLv(c.id))}</button>`
     : `<div class="cs duo-c locked"><img loading="lazy" decoding="async" src="${landImg(c.id)}" alt=""></div>`; };
   return `<div class="col-duo">${pairs.map((p, k) => {
     const a = ownedCard(p[0].id), b = p[1] ? ownedCard(p[1].id) : 0, id = 'HD_DUO' + String(k + 1).padStart(2, '0');
     // both owned: the two cards join into one picture (each one's count sits in its own bottom corner)
     return a && b
-      ? `<button class="duo-one" data-act="inspect" data-id="${id}" data-land="1" style="--g1:${DUO_GLOW[k][0]};--g2:${DUO_GLOW[k][1]}"><img loading="lazy" decoding="async" src="${cardImg(id)}" alt="${esc(p[0].name)} and ${esc(p[1].name)}">${a > 1 ? `<span class="qty ql">×${a}</span>` : ''}${b > 1 ? `<span class="qty">×${b}</span>` : ''}</button>`
+      ? `<button class="duo-one" data-act="inspect" data-id="${id}" data-land="1" style="--g1:${DUO_GLOW[k][0]};--g2:${DUO_GLOW[k][1]}"><img loading="lazy" decoding="async" src="${cardImg(id)}" alt="${esc(p[0].name)} and ${esc(p[1].name)}">${lvStrip(cardLv(p[0].id))}${lvStrip(cardLv(p[1].id), 'qr')}</button>`
       : `<div class="duo">${p.map(one).join('')}</div>`; }).join('')}</div>`;
 }
 // Two-card categories (Promo, Joker) overlap like a small fan.
@@ -223,23 +224,23 @@ function fanGrid(list, k){
     if (locked) return `<div class="fc ${cls} lk">${img}<b>LOCKED</b></div>`;
     return n ? `<button class="fc ${cls}" data-act="inspect" data-id="${c.id}">${img}</button>` : `<div class="fc ${cls} off">${img}</div>`;
   };
-  // the ×N pills sit in the two bottom corners of the category, not on the cards
-  const corner = (c, side) => { const n = locked ? 0 : ownedCard(c.id); return n > 1 ? `<span class="qty fq fq-${side}">×${n}</span>` : ''; };
+  // the level badges sit in the two bottom corners of the category, not on the cards
+  const corner = (c, side) => locked || !ownedCard(c.id) ? '' : lvStrip(cardLv(c.id), `fq fq-${side}`);
   return `<div class="col-fan" style="--g1:${g1};--g2:${g2}">${list.map((c, i) => one(c, i ? 'fb' : 'fa')).join('')}${list[0] ? corner(list[0], 'l') : ''}${list[1] ? corner(list[1], 'r') : ''}</div>${locked ? '<div class="jk-note c"><span>Finish the Poker set to unlock.</span></div>' : ''}`;
 }
-// Poker: one line per suit with its own claim; extra copies show as stacked edges + ×N
+// Poker: one line per suit, each a small set of its own (set stars, count, claim)
 function pokerTile(c){
   const n = ownedCard(c.id), rk = RANKS13[pokerIdx(c) % 13];
   const img = `<img src="${cardImg(c.id)}" alt="${n ? esc(c.name) : ''}">`;
-  const st = n > 2 ? ' s2' : n > 1 ? ' s1' : '';
-  return `<div class="pkc${st}">${n ? `<button class="ct r-${c.rarity}" data-act="inspect" data-id="${c.id}">${img}</button>` : `<div class="ct locked r-${c.rarity}">${img}</div>`}<i>${rk}</i>${n > 1 ? `<span class="qty">×${n}</span>` : ''}</div>`;
+  return `<div class="pkc">${n ? `<button class="ct r-${c.rarity}" data-act="inspect" data-id="${c.id}">${img}</button>` : `<div class="ct locked r-${c.rarity}">${img}</div>`}<i>${rk}</i>${n ? lvStrip(cardLv(c.id)) : ''}</div>`;
 }
 function pokerSuits(list){
   return `<div class="pk-suits">${POKER_SUITS.map(([key, name, sym, col]) => {
-    const L = keyCards(key), got = L.filter(c => ownedCard(c.id)).length, two = L.filter(c => ownedCard(c.id) >= 2).length, t = setTimes(key), ready = setReady(key);
-    const cnt = t ? `${got}/13 <span class="nx" title="Progress to the next claim (2 of each card)">${two}/13</span> (${t}x)` : `${got}/13`;
-    const btn = t && !ready ? `<button class="set-claim got" disabled>Claimed</button>` : `<button class="set-claim${ready ? ' ready' : ''}" ${ready ? `data-act="setclaim" data-set="${key}"` : 'disabled'}>Claim</button>`;
-    return `<div class="pk-suit" style="--sc:${col}"><div class="pk-sh"><b><em>${sym}</em> ${name}<small>${cnt}</small></b>${claimPay(POKER_SUIT_PAY, !ready)}${btn}</div><div class="pk-row">${L.map(pokerTile).join('')}</div></div>`;
+    const L = keyCards(key), t = setTimes(key), ready = setReady(key), cnt = setCount(key);
+    const pop = t && setPop && setPop.key === key ? (setPop.all ? 'all' : starAt(setLv(key))) : undefined; if (setPop && setPop.key === key) setPop = null;
+    const st = t ? starBar(setLv(key), { size:'hs', pop }) : '';
+    const btn = claimBtn(key, ready, 0, true);
+    return `<div class="pk-suit" style="--sc:${col}"><div class="pk-sh"><b><em>${sym}</em> ${name}${st}<small class="${t ? 'gold' : ''}">${cnt}/13</small></b>${claimPay(setPay(key), !ready)}${btn}</div><div class="pk-row">${L.map(pokerTile).join('')}</div></div>`;
   }).join('')}</div>`;
 }
 // cards in the player's order (S.order[set]) with big ones (S.big); new cards go last
@@ -252,7 +253,7 @@ function colTile(c){
   if (c.joker && !jokersOpen()) return `<div class="ct locked jl r-common"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt=""><b>LOCKED</b></div>`;
   const n = ownedCard(c.id);
   return n
-    ? `<button class="ct${S.big && S.big[c.id] ? (S.big[c.id] === 2 ? ' big br' : ' big') : ''} r-${c.rarity}${CARD_EDGE[c.id] && (c.rarity === 'ultimate' || c.rarity === 'legendary') ? ' edge' : ''}"${edgeStyle(c.id)} data-act="inspect" data-id="${c.id}"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt="${esc(c.name)}">${n > 1 ? `<span class="qty">×${n}</span>` : ''}</button>`
+    ? `<button class="ct${S.big && S.big[c.id] ? (S.big[c.id] === 2 ? ' big br' : ' big') : ''} r-${c.rarity}${CARD_EDGE[c.id] && (c.rarity === 'ultimate' || c.rarity === 'legendary') ? ' edge' : ''}"${edgeStyle(c.id)} data-act="inspect" data-id="${c.id}"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt="${esc(c.name)}">${lvStrip(cardLv(c.id))}</button>`
     : `<div class="ct locked r-${c.rarity}" data-cid="${c.id}"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt=""></div>`;   // not owned: face up but dark, like the puzzle pieces
 }
 // lower-case, no accents, curly quotes made straight: "Soryu" finds "Sōryū", "its" finds "it's"

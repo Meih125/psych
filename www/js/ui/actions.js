@@ -22,6 +22,7 @@ function initActions(){
     if (act === 'hday'){ if (el.classList.contains('fut') || el.classList.contains('pre')) return; selDay = selDay === el.dataset.day ? null : el.dataset.day; render(); return; }
     if (act === 'wk-prev'){ weekOffset++; render(); return; }
     if (act === 'wk-next'){ weekOffset = Math.max(0, weekOffset - 1); render(); return; }
+    if (act === 'stkbn'){ S.tab = 'progress'; S.pview = 'steps'; weekOffset = 0; save(); render(); window.scrollTo({ top:0 }); return; }   // the streak banner opens Progress > Steps
     if (act === 'progress'){ S.tab = 'progress'; weekOffset = 0; save(); render(); window.scrollTo({ top:0 }); return; }
     if (act === 'info'){ if (infoToggleInline(el)) return; }
     if (act === 'packinfo'){ openPackInfo(el.dataset.item, el); return; }

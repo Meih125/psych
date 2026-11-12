@@ -12,7 +12,6 @@
 .slot.soon h3{color:var(--bone-dim)}
 .slot.soon .price{color:var(--bone-faint)}
 .slot{position:relative}
-.qty{position:absolute;top:8px;right:10px;z-index:2;min-width:32px;padding:2px 7px;text-align:center}
 .slot.empty .art{opacity:.45;filter:grayscale(1)}
 .slot.empty h3,.slot.empty .desc{color:var(--bone-faint)}
 .slot.flash{animation:slotFlash .9s ease-out}
@@ -23,11 +22,9 @@
 .rate span{letter-spacing:.5px}
 .rate small{grid-column:2 / -1;margin-top:-1px;display:block;font-family:var(--f-italic);font-style:italic;font-size:12px;letter-spacing:0;color:var(--bone-faint);text-transform:none}
 .opened{position:absolute;left:12px;bottom:10px;text-align:left;line-height:1;white-space:nowrap}
-.ct .qty{top:auto;left:auto;bottom:6px;right:6px;min-width:0;font-size:10.5px;padding:0 5px;border-radius:9px;background:rgba(8,12,16,.85);border:1px solid rgba(255,255,255,.25);color:var(--bone)}
 .slot .desc{font-family:var(--f-body);font-size:12.5px}
 .price{font-family:var(--f-num);font-weight:700;color:var(--gold);text-shadow:0 0 10px rgba(var(--gold-rgb),.25)}
 .price.short{color:var(--short);text-shadow:none}
-.qty{border-radius:3px;font-family:var(--f-num);font-weight:700;font-size:12px;color:#fff;background:rgba(10,20,22,.85);border:1px solid var(--line-hi);box-shadow:none;text-shadow:none}
 .rate small,.info-foot{font-family:var(--f-body)}
 .opened{font-family:var(--f-title);font-weight:600;letter-spacing:.3px;font-size:10.5px;color:#6f8583}
 .sh{display:flex;flex-direction:column;padding:10px 14px 4px}
@@ -114,16 +111,11 @@
 .sh-d.sh-xn small{font-size:.72em;margin-right:1px}
 .sh-ban.th-hod,.sh-row.th-hod,.u-r.th-hod,.pki.th-hod{--ac:#ffb83a;--acr:255,184,58;--g1:#ffe2a0;--g3:#b8741a}
 .sh-buy.soon{opacity:.6;letter-spacing:.1em;font:700 12px var(--f-num);color:#ffb83a}
-.cs .qty{position:absolute;top:auto;left:auto;right:6px;bottom:6px;min-width:0;font-size:10.5px;padding:0 5px;border-radius:9px;background:rgba(8,12,16,.85);color:var(--bone);border:1px solid rgba(255,255,255,.25)}
-.duo-one .qty{position:absolute;top:auto;left:auto;right:8px;bottom:8px;min-width:0;font-size:11px;padding:0 6px;border-radius:9px;background:rgba(8,12,16,.88);border:1px solid rgba(255,255,255,.28);color:var(--bone)}
-.duo-one .qty.ql{right:auto;left:8px}
-.fc .qty{position:absolute;top:auto;left:auto;right:6px;bottom:6px;min-width:0;font-size:10.5px;padding:0 5px;border-radius:9px;background:rgba(8,12,16,.85);border:1px solid rgba(255,255,255,.25);color:var(--bone)}
 .sh-row{position:relative}
 .sh-latest{position:absolute;top:0;right:16px;z-index:2;padding:1px 9px 2px;border-radius:0 0 6px 6px;font:800 10px var(--f-title);letter-spacing:1.4px;color:#3a0c00;background:linear-gradient(90deg,#ff4a2e,#ff9a2a 55%,#fff1c9);box-shadow:0 0 10px rgba(255,130,40,.55)}
 .reduce-fx .sh-latest{animation:none}
 /* Shop list rows: same HUD style as the quest tiles (cut corners, teal-grey gradient, mono title) */
 .sh-row{border-radius:4px;background:linear-gradient(160deg,rgba(26,46,49,.95),rgba(12,24,26,.95));border-color:rgba(210,240,236,.14);clip-path:var(--cut14)}
-.pkc .qty{position:absolute;z-index:3;top:auto;left:auto;right:2px;bottom:2px;min-width:0;font-size:9.5px;padding:0 4px;border-radius:8px;background:rgba(8,12,16,.88);border:1px solid rgba(255,255,255,.3);color:var(--bone)}
 /* shop rows: the same soft wash as quest tiles, in the pack's own colour */
 .sh-row{isolation:isolate}
 .sh-row::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;background:linear-gradient(180deg,rgba(var(--acr),.12) 0,rgba(var(--acr),.05) 28px,rgba(var(--acr),0) 66px)}

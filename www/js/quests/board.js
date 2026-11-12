@@ -40,6 +40,29 @@ function qbRing(v, max){
     <circle cx="43" cy="43" r="${r}" fill="none" stroke="${full ? '#3fd47a' : '#ff6b1a'}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(c * k).toFixed(1)} ${c.toFixed(1)}"/></svg>
     <div class="qb-rc"><b>${v}/${max}</b><small>DONE</small></div></div>`;
 }
+/* Step streak: the flame tag next to "Steps" and the "streak ends tonight" banner (7 pm on, goal not hit yet). Nothing saved; worked out from the clock and the steps. */
+const STK_FROM = 19;   // banner starts at 7:00 pm device time
+function stkTag(sq){
+  const n = goalStreak(sq); if (!n) return '';
+  const t = flameTier(n);
+  return `<span class="stk">${flameSvg(t, 18, true)}<b style="color:${tierCol(t)[0]}">${n}</b></span>`;
+}
+function stkState(){
+  const sq = firstSteps(); if (!sq || !sq.goal || S.vacation) return null;
+  const n = goalStreak(sq), steps = valsOf(sq)[dayKey()] || 0, d = new Date(now());
+  if (!n || steps >= sq.goal || d.getHours() < STK_FROM) return null;
+  const m = Math.ceil((addDays(startOfDay(), 1) - now()) / 60000);
+  return { n, togo: sq.goal - steps, left: `${Math.floor(m / 60)}h ${pad2(m % 60)}m` };
+}
+function stkBanner(){
+  const b = stkState(); if (!b) return '';
+  return `<div class="qb-rbn" id="stkBn" data-act="stkbn" role="button"><div class="t">Your ${b.n} day streak ends tonight<small>${fmt(b.togo)} ${pl(b.togo, 'step')} to go · ${b.left} left</small></div><b>›</b></div>`;
+}
+function stkTick(){   // every second: show / hide the banner when the clock or the steps change, keep its text fresh
+  const b = stkState(), el = $('#stkBn');
+  if (!!b !== !!el){ if (S.tab === 'quests') render(); return; }
+  if (b && el){ const sm = el.querySelector('small'), tx = `${fmt(b.togo)} ${pl(b.togo, 'step')} to go · ${b.left} left`; if (sm && sm.textContent !== tx) sm.textContent = tx; }
+}
 function qbSummary(){
   const vis = S.quests.filter(ringQuest);
   const done = vis.filter(isDone).length, T = S.today && S.today.day === dayKey() ? S.today : { xp:0, gold:0 };
@@ -47,7 +70,7 @@ function qbSummary(){
   const goalReady = sq && sq.goal && goalDue(sq, dayKey(), st) > 0;   // today's goal can be claimed here (older days: Progress)
   return `<div class="qb-sumw"><div class="qb-sum"${sq ? ` data-holdedit="${sq.id}"` : ''}>${qbRing(done, vis.length)}<div class="qb-st">
     <div class="ln"><span class="ep-lab">Earned today<span class="info earn-i" data-act="earn">${infoIcon('Where it came from', '', earnOpen)}</span></span><b><span class="xp-r">${ico('i-gem')}<i class="et" data-v="${T.xp}">${fmt(T.xp)}</i></span><span class="gold-r">${ico('i-coin')}<i class="et" data-v="${T.gold}">${fmt(T.gold)}</i></span></b></div>
-    ${sq ? `<div class="ln qb-stp"><span>Steps</span><b>${fmt(st)}${sq.goal ? ' / ' + fmt(sq.goal) : ''}</b></div><div class="qb-bar"><i style="width:${sq.goal ? Math.min(100, st / sq.goal * 100) : 0}%"></i></div>` : ''}
+    ${sq ? `<div class="ln qb-stp"><span>Steps${stkTag(sq)}</span><b>${fmt(st)}${sq.goal ? ' / ' + fmt(sq.goal) : ''}</b></div><div class="qb-bar"><i style="width:${sq.goal ? Math.min(100, st / sq.goal * 100) : 0}%"></i></div>` : ''}
     ${sq ? `<div class="qb-sumft"><span class="qb-tm">${stepsSyncTag()}</span>
       <span class="qb-sbtns">${goalReady ? `<button class="qb-sclaim qb-gclaim" data-act="goalnow" data-q="${sq.id}" data-day="${dayKey()}">${window.PsychDen ? PsychDen.icon() : ''}Goal</button>` : ''}${due.keys.length ? `<button class="qb-sclaim" data-act="claimall" data-q="${sq.id}" title="+${fmt(due.xp)} XP, +${fmt(due.gold)} gold">Claim</button>` : ''}</span></div>` : ''}</div></div>${earnOpen ? earnPanel() : ''}</div>`;
 }
@@ -67,7 +90,7 @@ function earnPanel(){
   });
   const steps = [];
   const st = L.find(r => r.k === 'st:today'), early = L.find(r => r.k === 'st:early'), goal = L.find(r => r.k === 'goal');
-  if (st) steps.push(row('#2ee6d6', 'Today', sq ? `${fmt(stepDue(sq, dayKey()).steps)} steps` : '', st.xp, st.gold));
+  if (st) steps.push(row('#2ee6d6', 'Today', sq ? `${fmt(stepDue(sq, dayKey()).steps)} ${pl(stepDue(sq, dayKey()).steps, 'step')}` : '', st.xp, st.gold));
   if (early){ const d = (early.days || []).slice().sort(); steps.push(row('#2ee6d6', 'Earlier days', d.length > 3 ? `${d.length} days` : d.map(short).join(', '), early.xp, early.gold)); }
   if (goal){ const d = (goal.days || []).slice().sort(); steps.push(row('#ffc94a', 'Goal bonus', d.length > 2 ? `${d.length} days` : d.map(k => k === dayKey() ? 'today' : wk(k)).join(', '), goal.xp, goal.gold)); }
   const other = [];
@@ -380,7 +403,7 @@ function questBoard(){
   const html = boardSections().map(({ g, time, cnt, cells }) =>
     `<section class="qb-g${g.key === 'a-due' ? ' due' : ''}"><div class="qb-gh"><b>${g.title}</b>${time ? `<span class="qb-time">${ico('i-hourglass','0 0 16 16')}${time}</span>` : ''}</div>
       <div class="qb-grid">${cells.map(c => c.gap ? '<div class="qb-gap"></div>' : c.stk ? qbStack(c) : qbItem(c)).join('')}</div></section>`).join('');
-  return `<div class="qb">${updateBanner()}${S.vacation ? '<div class="vac-note">Vacation mode · streaks paused</div>' : ''}${qbSummary()}${html}</div>`;
+  return `<div class="qb">${updateBanner()}${stkBanner()}${S.vacation ? '<div class="vac-note">Vacation mode · streaks paused</div>' : ''}${qbSummary()}${html}</div>`;
 }
 
 

@@ -1,0 +1,32 @@
+/* Level-up screen (js/cards/levelup.js) */
+.lvu{position:fixed;inset:0;z-index:90;background:radial-gradient(70% 40% at 50% 14%,rgba(255,170,60,.22),rgba(3,7,8,.97) 70%),rgb(3,7,8);animation:fi .25s}
+.lu-in{position:absolute;inset:0;max-width:440px;margin:0 auto;display:flex;flex-direction:column;align-items:center;padding:calc(30px + var(--safe-area-inset-top,env(safe-area-inset-top,0px))) 16px 0}
+.lvu h2{margin:0;font:700 26px var(--f-title);letter-spacing:3px;color:#fff;text-shadow:0 0 18px rgba(255,170,60,.7)}
+.lu-sub{margin:4px 0 14px;font:500 12px var(--f-body);color:#9db2b0;letter-spacing:.3px;text-align:center;display:flex;flex-direction:column;gap:2px}
+.lu-sub .lu-src{color:#e9b44f;font-weight:700;letter-spacing:1px}
+.lu-body{flex:1;min-height:0;width:100%;overflow:auto;scrollbar-width:none;padding:14px 18px 14px;box-sizing:border-box}
+.lu-body::-webkit-scrollbar{display:none}
+.lu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px 14px;align-content:start}
+.lu-grid.lu-3{align-content:center;padding-bottom:40px}   /* exactly 3 cards sit in the middle too; 4+ start at the top */
+.lu-two{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 12px;padding:6px 8% 12px;align-content:center;padding-bottom:40px}
+.lu-one{display:grid;grid-template-columns:212px;justify-content:center;align-content:center;padding:0 0 40px}   /* one card sits in the middle of the screen */
+.lu-c{display:flex;flex-direction:column;align-items:center;text-align:center;opacity:0;transform:translateY(14px)}
+.lu-c.on{opacity:1;transform:none;animation:luIn .45s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes luIn{from{opacity:0;transform:translateY(16px) scale(.96)}}
+.lu-img{width:100%}
+.lu-img img{width:100%;display:block;border-radius:4px;box-shadow:0 6px 14px rgba(0,0,0,.7)}
+/* rarity glow, same as the Open all list (every rarity glows, Common too) */
+.lu-img img{box-shadow:0 0 14px 3px rgba(var(--rc),.6)}
+.lu-img.r-joker img{box-shadow:-8px 0 16px 3px rgba(165,60,255,.7),8px 0 16px 3px rgba(235,30,70,.65)}
+.lu-c b{display:block;margin:8px 0 0;font:600 13px var(--f-title);color:#fff}
+.lu-one .lu-c b{font-size:16px;margin:12px 0 0}
+.lu-bar{margin-top:7px;min-height:12px}
+.lu-two .lu-bar{margin-top:6px}.lu-one .lu-bar{margin-top:10px}
+.lu-lv{margin-top:6px;font:700 10.5px var(--f-num);color:#cfd8d6}
+.lu-two .lu-lv{font-size:11px}.lu-one .lu-lv{font-size:13px;margin-top:10px}
+.lu-lv i{font-style:normal;color:#e9b44f}
+.lu-lv .cur{color:#fff}
+.lu-lv .mx{color:#e9b44f;font-weight:700;letter-spacing:1px}
+.lu-btn{flex:none;width:100%;padding:14px 0 calc(22px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));visibility:hidden}
+.lvu.rdy .lu-btn{visibility:visible}
+.reduce-fx .lvu,.reduce-fx .lu-c.on{animation:none}

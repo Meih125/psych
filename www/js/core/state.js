@@ -37,6 +37,7 @@ function normalize(){
   if (!S.pity) S.pity = {};
   if (!S.cards) S.cards = {};      // card id -> how many owned
   if (!S.cardsGot) S.cardsGot = {};   // card id -> how many ever collected (set claims take copies away, this never goes down)
+  if (!S.lv) S.lv = {};            // card id -> level 1-16 (missing = the start level of its rarity)
   if (!S.scenes) S.scenes = {};
   if (S.setClaims && S.setClaims.Promo && !S.setClaims.Deity){ S.setClaims.Deity = S.setClaims.Promo; delete S.setClaims.Promo; }   // Tarot's Promo set was renamed Deity (Hand of Destiny has its own Promo)
   if (!S.setClaims) S.setClaims = {};
@@ -53,7 +54,7 @@ function sanitizeState(){
   const fin = (v, d = 0, lo = -Infinity, hi = Infinity) => { v = +v; return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
   const obj = v => v && typeof v === 'object' && !Array.isArray(v);
   S.xp = fin(S.xp, 0, 0, XP_CAP); S.gold = fin(S.gold, 0, -GOLD_CAP, GOLD_CAP);
-  ['steps','dist','sync','inv','pity','cards','cardsGot','scenes','setClaims','cover','newest','big','order','opened','progHide','today','layout','folded','colOpen','den'].forEach(k => { if (k in S && !obj(S[k])) delete S[k]; });
+  ['steps','dist','sync','inv','pity','cards','cardsGot','lv','scenes','setClaims','cover','newest','big','order','opened','progHide','today','layout','folded','colOpen','den'].forEach(k => { if (k in S && !obj(S[k])) delete S[k]; });
   if ('mkt' in S && !obj(S.mkt)) delete S.mkt;   // Market board: deep checks live in mktEnsure()
   delete S.mktShut;
   if ('pzOrder' in S) S.pzOrder = Array.isArray(S.pzOrder) ? S.pzOrder.filter(x => typeof x === 'string').slice(0, 64) : [];   // puzzle piece order (a list, not an object)
@@ -65,6 +66,7 @@ function sanitizeState(){
   if (obj(S.folded)) for (const k in S.folded){ const v = S.folded[k]; if (!obj(v) || v.day !== dayKey()) delete S.folded[k]; }   // hand-set folds last one day
   if (obj(S.dist)) for (const k in S.dist){ const v = +S.dist[k]; if (!/^\d{4}-\d\d-\d\d$/.test(k) || !isFinite(v) || v < 0) delete S.dist[k]; else S.dist[k] = Math.min(1e6, v); }
   ['inv','pity','cards','cardsGot','opened'].forEach(k => { if (obj(S[k])) for (const id in S[k]) S[k][id] = Math.round(fin(S[k][id], 0, 0, 1e6)); });
+  if (obj(S.lv)) for (const id in S.lv){ const v = Math.round(fin(S.lv[id], 0, 0, 16)); if (v < 1) delete S.lv[id]; else S.lv[id] = v; }   // card levels 1-16 (a missing one is the card's start level)
   const seen = new Set();
   S.quests = S.quests.filter(q => obj(q) && KINDS.includes(q.kind)).filter(q => {
     if (typeof q.id !== 'string' || !q.id || seen.has(q.id)) q.id = uid();

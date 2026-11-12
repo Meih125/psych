@@ -6,16 +6,16 @@
    The reward ladder numbers are PLACEHOLDERS (to be decided). The run lives in `lk`, not in the Den's `run`. */
 window.makeLockpick = env => {
   const { $, D, save, tickets, freeReady, chip, chipSh, useTicket, balSync, goldDelta, heatSheet, bar, reduced, HEAT, HEAT_E, CAP_TEST_FREEZE, netToday, tween, fly } = env, game = env.game, pg = env.pg;
-const LK_GOLD = [0, 1, 2, 3, 4, 5, 10, 12, 15, 18, 22, 27, 35, 40, 45, 50, 55, 60, 75], LK_MS = [6, 12, 18], LK_HEAT = 18;   // reward ladder: gold TOTAL paid for reaching each level (past 18: +10 per level); borders at 6 / 12 / 18
-const lkGold = n => n <= 0 ? 0 : n < LK_GOLD.length ? LK_GOLD[n] : 75 + 10 * (n - 18), lkBug = n => n >= 18 ? 3 : n >= 12 ? 1 : 0;   // Gem ("bug"): rewards add up: level 12 earns 1, level 18 earns 2 more (3 in total); the ladder only shows B on those two rows
+const LK_GOLD = [0, 1, 2, 3, 4, 5, 6, 7, 9, 12, 15, 19, 24, 28, 31, 35, 38, 42, 52], LK_MS = [6, 12, 18], LK_HEAT = 18;   // reward ladder: gold TOTAL paid for reaching each level (past 18: +7 per level); borders at 6 / 12 / 18
+const lkGold = n => n <= 0 ? 0 : n < LK_GOLD.length ? LK_GOLD[n] : 52 + 7 * (n - 18), lkBug = n => n >= 18 ? 3 : n >= 12 ? 1 : 0;   // Gem ("bug"): rewards add up: level 12 earns 1, level 18 earns 2 more (3 in total); the ladder only shows B on those two rows
 /* rewards ADD UP: every level you clear adds its own amount (the ladder shows that step; lkGold(n) is the running total that gets paid) */
 const lkStep = n => lkGold(n) - lkGold(n - 1);
-const lkPay = (n, tot) => `<em class="g">${tot}</em>` + (n === 12 || n === 18 ? `<em class="b">${env.gem()}${n === 12 ? 1 : 2}</em>` : '');   // the running total only (+ the B earned on 12 / 18)
+const lkPay = (n, tot) => `<em class="g"><i data-t="${tot}">${train ? 0 : tot}</i></em>` + (n === 12 || n === 18 ? `<em class="b">${env.gem()}<i data-t="${n === 12 ? 1 : 2}">${train ? 0 : n === 12 ? 1 : 2}</i></em>` : '');   // the running total only (+ the B earned on 12 / 18)
 const LK_P = { zone0:78, zoneShrink:.93, zoneMin:7, speed0:170, speedAdd:18, speedMax:450, ringFrom:3, ringBase:25, ringAdd:12, ringMax:150 }, LK_OFF = 2,
   LK_HARD = { blend:7, from:10, zoneShrink:.9, speedAdd:24, speedMax:560, ease:[1.3, 1.2, 1.1] };   // level 10 and up: the original ramp with a wider green zone: x1.3 at 10, x1.2 at 11, x1.1 from 12 (about 30 / 20 / 10% easier); levels 7-9 blend into the level 10 value
 const lkHeat = (t, icy = true) => { const LK_STOPS = [...(icy ? [[150, 225, 255]] : []), ...(env.heatE() ? HEAT_E : HEAT)];   // icy white at level 0, then the Minesweeper heat ladder
   t = Math.min(1, Math.max(0, t)); const n = LK_STOPS.length - 1, x = t * n, i = Math.min(n - 1, Math.floor(x)), f = x - i, A = LK_STOPS[i], B = LK_STOPS[i + 1]; return A.map((v, j) => v + (B[j] - v) * f); };
-let lk = null;
+let lk = null, train = false;   // Training mode (this visit only): free, no reward, the ladder numbers sit at 0
 const lkRad = d => d * Math.PI / 180, lkNorm = a => ((a % 360) + 360) % 360, lkDiff = (a, b) => { const d = Math.abs(lkNorm(a) - lkNorm(b)); return d > 180 ? 360 - d : d; };
 const LK_C = 340, LK_RI = 226, LK_RO = 310;
 
@@ -24,17 +24,18 @@ function lockBody(){
   <div class="lk-chips"><div class="lk-chip">LEVEL<b id="lkLv">0</b></div><div class="lk-chip"><span id="lkBl">BEST</span><b id="lkBest">0</b></div></div>`;
 }
 function lockInit(){
-  lockStop(true);
+  lockStop(true); train = false;
   const cv = document.createElement('canvas'); cv.width = cv.height = 680; $('#lkRs').appendChild(cv);
   lk = { cv, g:cv.getContext('2d'), lvl:0, run:false, over:false, needle:0, dir:1, speed:0, zc:0, zw:0, ring:0, ringSpd:0, za:1, oz:null, fx:0, miss:0, last:performance.now(), HR:lkHeat(0), raf:0 };
-  /* idle: the dial already turns like the second round (needle speed, gap size, spinning ring), so the screen looks alive; Start carries on from the same needle and ring angle */
+  /* idle: the dial already turns like the second round (needle speed, gap size, spinning ring), so the screen looks alive; Start carries on from the same needle and ring angle. After a miss it holds still (lk.over) */
   const d2 = 1 + LK_OFF;
   lk.zw = Math.max(LK_P.zoneMin, LK_P.zone0 * Math.pow(LK_P.zoneShrink, d2)); lk.zc = 60;
   lk.idle = { speed:Math.min(LK_P.speedMax, LK_P.speed0 + d2 * LK_P.speedAdd), ring:Math.min(LK_P.ringMax, LK_P.ringBase + (d2 - LK_P.ringFrom) * LK_P.ringAdd) * (Math.random() < .5 ? -1 : 1) };
   const loop = t => { if (!lk || !pg()) return; lkFrame(t); lk.raf = requestAnimationFrame(loop); };
   lk.raf = requestAnimationFrame(loop); lkRestore(); lkRender();
 }
-function lkSnap(){   // a live run is kept exactly as it is (like Minesweeper / Day Trader) when you back out or the app is closed
+function lkSnap(){
+  if (train) return;   // a training run is not kept   // a live run is kept exactly as it is (like Minesweeper / Day Trader) when you back out or the app is closed
   if (!lk || !lk.run) return; const o = D(); if (!o.sv) o.sv = {};
   o.sv.lock = { lvl:lk.lvl, zc:lk.zc, ring:lk.ring, zw:lk.zw, needle:lk.needle, dir:lk.dir, speed:lk.speed, ringSpd:lk.ringSpd }; save();
 }
@@ -72,15 +73,15 @@ function lockPick(){
   lkRender();
 }
 function lkEnd(leaving){
-  const L = lk.lvl, g = lkGold(L), x = lkBug(L); lk.run = false; lk.over = true;
+  const L = lk.lvl, g = train ? 0 : lkGold(L), x = train ? 0 : lkBug(L); lk.run = false; lk.over = true;
   const o = D(); o.best.lock = Math.max(o.best.lock || 0, L); if (o.sv) delete o.sv.lock;
   if (g && !CAP_TEST_FREEZE){ netToday(); o.pn = Math.min(1e9, o.pn + g); }   // counts toward the daily profit limit, but NOT toward the Den's won / lost totals (those are for gambling only)
   o.b += x; save();
   let paid = false; const pay = () => { if (!paid){ paid = true; if (g) goldDelta(g, 'lock'); balSync(); if (!leaving) setTimeout(release, 350); } };   // the gold always lands (even if you leave while the coins fly)
   const release = () => { if (lk && lk.hold){ lk.hold = false; if (lk.over && !lk.run && pg()) bar(); } };
   if (!leaving) lk.hold = true;   // the Start button stays locked until the coins have landed, so a double tap on PICK can't start the next run
-  const rs = $('#lkRs'), quiet = leaving || reduced() || !rs || !rs.animate || !g;
-  if (quiet) pay(); else { lkPopup(rs, L, g, x); fly($('#lkRail .c') || rs, g, pay);   // the coins leave the current ladder row
+  const rs = $('#lkRs'), quiet = leaving || reduced() || !rs || !rs.animate || (!g && !(train && L > 0));
+  if (quiet) pay(); else { lkPopup(rs, L, g, x); if (g) fly($('#lkRail .c') || rs, g, pay); else pay();   // the coins leave the current ladder row
     setTimeout(pay, 2200); }
   if (!leaving){ lkRender();
     const s = $('#lkRs'); if (s && s.animate && !reduced()) s.animate([{ transform:'translateX(0)' }, { transform:'translateX(-7px)' }, { transform:'translateX(7px)' }, { transform:'none' }], { duration:280 });
@@ -88,18 +89,20 @@ function lkEnd(leaving){
 }
 /* the payout after a miss: a big gold number counts up over the ring, then the coins fly up into the balance */
 function lkPopup(rs, L, g, b){
-  const ov = document.createElement('div'); ov.className = 'lk-pop'; ov.innerHTML = `<small>LEVEL ${L} CLEARED</small><b>${env.coin()}<span>+0</span></b>${b ? `<i>${env.gem()}+${b}</i>` : ''}`; rs.appendChild(ov);
-  const big = ov.querySelector('b'), num = big.querySelector('span'), lab = ov.querySelector('small');
+  const ov = document.createElement('div'); ov.className = 'lk-pop'; ov.innerHTML = `<small>LEVEL ${L} ${train ? 'REACHED' : 'CLEARED'}</small>${train ? '' : `<b>${env.coin()}<span>+0</span></b>`}${b ? `<i>${env.gem()}+${b}</i>` : ''}`; rs.appendChild(ov);
+  const big = ov.querySelector('b') || document.createElement('b'), num = big.querySelector('span') || document.createElement('span'), lab = ov.querySelector('small');
   lab.animate([{ opacity:0 }, { opacity:1 }], { duration:300, fill:'both' }); lab.animate([{ opacity:1 }, { opacity:0 }], { duration:300, delay:1500, fill:'both' });
   ov.querySelectorAll('i').forEach(e => { e.animate([{ opacity:0 }, { opacity:1 }], { duration:300, delay:700, fill:'both' }); e.animate([{ opacity:1 }, { opacity:0 }], { duration:300, delay:1500, fill:'both' }); });
   big.animate([{ opacity:0, transform:'scale(.6)' }, { opacity:1, transform:'scale(1.1)', offset:.3 }, { opacity:1, transform:'scale(1)', offset:.5 }, { opacity:1, transform:'scale(1)', offset:.8 }, { opacity:0, transform:'scale(.7)' }], { duration:1800, delay:200, easing:'ease-out', fill:'both' });
   setTimeout(() => tween(0, g, 700, v => { num.textContent = '+' + Math.round(v); return big.isConnected; }), 300);
+  if (train){ lab.getAnimations().forEach(a => a.cancel()); lab.animate([{ opacity:0 }, { opacity:1, offset:.2 }, { opacity:1, offset:.75 }, { opacity:0 }], { duration:1800, fill:'both' }); }
   setTimeout(() => ov.remove(), 2300);
 }
 function lkFrame(t){
   const dt = Math.min(.05, (t - lk.last) / 1000); lk.last = t;
+  // the idle spin stops after a miss (lk.over): needle and ring stay where they stopped, so you can see how close you were
   if (lk.run){ lk.needle = lkNorm(lk.needle + lk.dir * lk.speed * dt); lk.ring = lkNorm(lk.ring + lk.ringSpd * dt); }
-  else if (lk.idle && !reduced()){ lk.needle = lkNorm(lk.needle + lk.dir * lk.idle.speed * dt); lk.ring = lkNorm(lk.ring + lk.idle.ring * dt); }
+  else if (lk.idle && !lk.over && !reduced()){ lk.needle = lkNorm(lk.needle + lk.dir * lk.idle.speed * dt); lk.ring = lkNorm(lk.ring + lk.idle.ring * dt); }
   if (lk.za < 1) lk.za = Math.min(1, lk.za + dt / .42); if (lk.oz){ lk.oz.t -= dt * 4.5; if (lk.oz.t <= 0) lk.oz = null; }
   if (lk.fx > 0) lk.fx = Math.max(0, lk.fx - dt * 2.4); if (lk.miss > 0) lk.miss = Math.max(0, lk.miss - dt * 1.6);
   const tg = lkHeat(lk.lvl / LK_HEAT), k = 1 - Math.exp(-dt * 3); lk.HR = lk.HR.map((v, i) => v + (tg[i] - v) * k);
@@ -129,7 +132,7 @@ function lkRender(){
   if (!lk) return; const L = lk.lvl, set = (id, v) => { const e = $('#' + id); if (e) e.innerHTML = v; };
   const lost = lk.over && !lk.run && lk.missPx != null; set('lkLv', L); set('lkBl', lost ? 'MISSED BY' : 'BEST'); set('lkBest', lost ? lk.missPx + 'px' : Math.max(D().best.lock || 0, L));
   const bb = $('#lkBest'); if (bb) bb.style.color = lost ? 'rgb(' + lk.HR.map(Math.round).join(',') + ')' : '';
-  const cur = Math.min(L, 19), hi = Math.min(19, Math.max(1, cur - 2) + 6), lo = Math.max(1, hi - 6), rows = [];   // levels 19 and up share one "19+" row (+10 each, the total keeps climbing)
+  const cur = Math.min(L, 19), hi = Math.min(19, Math.max(1, cur - 2) + 6), lo = Math.max(1, hi - 6), rows = [];   // levels 19 and up share one "19+" row (+7 each, the total keeps climbing)
   for (let n = lo; n <= hi; n++){ const t = n === 19 ? lkGold(Math.max(19, L)) : lkGold(n), hn = n === 19 ? Math.max(19, L) : n;
     rows.push(`<div class="${n < cur ? 'p' : n === cur ? 'c' : ''}${LK_MS.includes(n) ? ' m' : ''}" style="--rc:${lkHeat(hn / LK_HEAT, false).map(Math.round).join(',')}"><span>${n === 19 ? '19+' : n}</span><span>${lkPay(n, t)}</span></div>`); }
   set('lkRail', rows.join(''));
@@ -153,12 +156,21 @@ function lockBar(w, capped){
   if (lk && lk.run){ w.innerHTML = '<button class="den-cash lk-pick" id="lPick" type="button">PICK</button>'; if (!reduced()) lkCircuit(w); return; }
   if (capped){ w.innerHTML = '<div class="den-go off"><span>DAILY LIMIT REACHED</span></div>'; return; }
   const free = freeReady(), noTk = tickets() <= 0 && !free;
-  w.innerHTML = `<div class="den-go${noTk ? ' short' : ''}${lk && lk.hold ? ' hold' : ''}" id="lGo"><button class="den-mid" id="lPlay" type="button"><span class="t${noTk || free ? ' red' : ''}">${free ? chipSh() + '0' : chip() + '1'}</span></button></div>`;
+  const ar = d => `<button class="den-ar" data-d="${d}" type="button" aria-label="Training mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'}"/></svg></button>`;
+  const off = noTk && !train;   // training is free, so it is never "short"
+  w.innerHTML = `<div class="den-go${off ? ' short' : ''}${train ? ' train' : ''}${lk && lk.hold ? ' hold' : ''}" id="lGo">${ar(-1)}<button class="den-mid" id="lPlay" type="button"><span class="t${off || (free && !train) ? ' red' : ''}">${train ? 'TRAINING' : free ? chipSh() + '0' : chip() + '1'}</span></button>${ar(1)}</div>`;
+}
+/* Training: either arrow flips it. The ladder rewards count down to 0 together (and back up when you leave) */
+function lkTrainSet(){
+  if (!lk || lk.run || lk.hold) return; train = !train; lkRender();
+  document.querySelectorAll('#lkRail [data-t]').forEach(e => { const t = +e.dataset.t, a = train ? t : 0, b = train ? 0 : t;
+    if (reduced() || !t) return; e.textContent = a; tween(a, b, 650, v => { e.textContent = Math.round(v); return e.isConnected; }); });
+  bar();
 }
 document.addEventListener('pointerdown', e => {
   if (game() !== 'lock' || !pg() || !pg().contains(e.target) || !lk || !lk.run) return;
   if (e.target.closest('#lkRs, #lPick')){ e.preventDefault(); lockPick(); }
 });
 addEventListener('keydown', e => { if (e.code === 'Space' && game() === 'lock' && lk && lk.run){ e.preventDefault(); lockPick(); } });
-  return { snap:lkSnap, body:lockBody, init:lockInit, stop:lockStop, start:lockStart, held:() => !!(lk && lk.hold), bar:lockBar, get:() => lk, pick:lockPick };
+  return { train:lkTrainSet, training:() => train, snap:lkSnap, body:lockBody, init:lockInit, stop:lockStop, start:lockStart, held:() => !!(lk && lk.hold), bar:lockBar, get:() => lk, pick:lockPick };
 };

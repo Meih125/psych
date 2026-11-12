@@ -12,8 +12,8 @@
 .in-card{position:relative;line-height:0;transition:transform .25s ease;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .in-card img{-webkit-user-drag:none;pointer-events:none}
 .in-glare{border-radius:8px;z-index:1}
-.in-wrap .in-name,.in-wrap .in-flavor,.in-wrap .in-meta{transition:opacity .2s}
-#inspect.art .in-name,#inspect.art .in-flavor,#inspect.art .in-meta,#inspect.art .in-glare{opacity:0}
+.in-wrap .in-name,.in-wrap .in-stars,.in-wrap .in-flavor,.in-wrap .in-meta{transition:opacity .2s}
+#inspect.art .in-name,#inspect.art .in-stars,#inspect.art .in-flavor,#inspect.art .in-meta,#inspect.art .in-glare{opacity:0}
 #inspect.art .in-card{transform:scale(1.14)}
 /* holo inspect (UR, SSR, J) */
 .in-card.holo.hot{transition:transform .08s}
@@ -27,8 +27,8 @@ html:has(#inspect.open),html:has(#inspect.open) body{overflow:hidden;overscroll-
 .inspect{touch-action:none;overscroll-behavior:contain}
 /* card view grows out of the tapped tile: no pop-in, the words fade in after it */
 .inspect.zoom .in-wrap{animation:none}
-.inspect.zoom :is(.in-name,.in-flavor,.in-meta){animation:invFade .3s ease-out .18s both}
-.inspect.closing :is(.in-name,.in-flavor,.in-meta){opacity:0 !important;transition:opacity .12s}
+.inspect.zoom :is(.in-name,.in-stars,.in-flavor,.in-meta){animation:invFade .3s ease-out .18s both}
+.inspect.closing :is(.in-name,.in-stars,.in-flavor,.in-meta){opacity:0 !important;transition:opacity .12s}
 .inspect.closing{pointer-events:none}
 /* card view under Reduce effects: UR / SSR keep the sweeping glare */
 .reduce-fx .in-glare::after{animation:goldGlare 7s ease-in-out .7s infinite !important}
@@ -36,7 +36,7 @@ html:has(#inspect.open),html:has(#inspect.open) body{overflow:hidden;overscroll-
 .in-eye{margin-top:4px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.22);border-radius:50%;background:rgba(255,255,255,.05);color:var(--bone-dim);transition:opacity .2s}
 .in-eye svg{width:20px;height:20px}
 #inspect.art .in-eye{opacity:0;pointer-events:none}
-#inspect.art :is(.in-name,.in-flavor,.in-meta,.in-eye,.in-glare,.in-foil){animation:none !important;opacity:0 !important}
+#inspect.art :is(.in-name,.in-stars,.in-flavor,.in-meta,.in-eye,.in-glare,.in-foil){animation:none !important;opacity:0 !important}
 /* beats the card's fade-in animation (it kept the text visible when the card had grown out of a tile) */
 /* SR and R glare in the card view: same sweep, 2 seconds longer pause (9s cycle) */
 .in-glare.in-slow::after{animation:inGlareSlow 9s ease-in-out .7s infinite}
@@ -45,3 +45,5 @@ html:has(#inspect.open),html:has(#inspect.open) body{overflow:hidden;overscroll-
 #inspect.locked .in-wrap.land .in-card{transform:rotate(90deg) scale(var(--rs,1)) !important}
 .reduce-fx #inspect .in-wrap.land .in-card{transition:none}
 @keyframes inGlareSlow{0%{transform:translateX(-160%) skewX(-18deg)}17.1%,100%{transform:translateX(280%) skewX(-18deg)}}
+
+.in-stars{display:flex;justify-content:center;gap:8px;margin:5px 0 4px}

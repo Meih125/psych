@@ -45,7 +45,7 @@ function stepsHud(){
     const paidU = Math.floor(d.paid / q.chunk);
     const undo = paidU > 0 ? `<button class="hx-undo" data-act="dayundo" data-q="${q.id}" data-day="${k}">Undo</button>` : UNDO_OFF;
     const rw = d.units ? qbRew(d.xp, d.gold) : d.paid ? qbRew(d.totalXp, d.totalGold, true) : qbRew(0, 0, true);
-    return `<div class="sh-row2 sh-row3"><div><b>${lab}</b><small>${fmt(d.steps)} steps</small></div>${rw}${btn}${undo}</div>`;
+    return `<div class="sh-row2 sh-row3"><div><b>${lab}</b><small>${fmt(d.steps)} ${pl(d.steps, 'step')}</small></div>${rw}${btn}${undo}</div>`;
   }).join('') : '';
   const all = Object.values(V).reduce((a, b) => a + (+b || 0), 0);
   const allKm = Object.entries(V).reduce((a, [k, v]) => a + (D[k] || (+v || 0) * STRIDE_M), 0) / 1000;
@@ -59,6 +59,6 @@ function stepsHud(){
       ${q && (q.goalXp || q.goalGold) ? `<div class="hud-note"><i class="g"></i>Goal hit · tap to claim <i class="gr"></i>Claimed <i class="rd"></i>Goal</div>` : ''}</div>
     ${q ? `<div class="hud"><div class="hud-bar"><span>// RECORD</span><span class="hud-rate">${rewPair(q.xpPer, q.goldPer, fmt)}PER ${fmt(q.chunk)} STEPS</span></div>${rows}</div>` : `<div class="empty">Post a Steps quest to start earning rewards for walking.</div>`}
     <div class="hud"><div class="hud-bar"><span>// ALL-TIME</span></div>
-      <div class="sh-row2"><div><b data-act="stepsexact">${stepsExact ? fmt(all) : bigNum(all)} steps</b></div><span class="sh-rw" data-act="distunit">${S.distUnit === 'mi' ? fmt(Math.round(allKm / 1.609344 * 100) / 100) + ' mi' : fmt(Math.round(allKm * 100) / 100) + ' km'}</span></div></div>
+      <div class="sh-row2"><div><b data-act="stepsexact">${stepsExact ? fmt(all) : bigNum(all)} ${pl(all, 'step')}</b></div><span class="sh-rw" data-act="distunit">${S.distUnit === 'mi' ? fmt(Math.round(allKm / 1.609344 * 100) / 100) + ' mi' : fmt(Math.round(allKm * 100) / 100) + ' km'}</span></div></div>
   </div>`;
 }

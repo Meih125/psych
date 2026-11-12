@@ -282,6 +282,7 @@ function initRender(){
     });
     const busy = arDrag || document.querySelector('.modal.open') || document.activeElement?.closest?.('.rec-input, [data-tallyin]');
     if (expired && !busy) render();
+    if (S.tab === 'quests' && !busy) stkTick();
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !arDrag) render(); });
 }

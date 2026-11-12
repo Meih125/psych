@@ -1,7 +1,7 @@
 /* Reward pop-ups in the #pack overlay (daily login, birthday) and the shared "tap to continue" hints.
    Open: the card pops in (growing out of `from` when given), the amount sparkles; a tap runs onTap.
    Close: it shrinks away, the overlay clears, then `then()` pays out. popBusy blocks taps while it moves. */
-const HINT = { next:'Tap to continue', open:'Tap to open', all:'Double-tap anywhere to reveal all' };
+const HINT = { next:'Tap to continue', open:'Tap to open', all:'Double-tap to reveal all' };
 const hintHtml = (txt = HINT.next, cls = 'pk-hint') => `<div class="${cls}">${txt}</div>`;
 let popBusy = false;
 function popupOpen(html, { from = null, onTap } = {}){

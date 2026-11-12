@@ -67,7 +67,6 @@
 .oa-f{transform:rotateY(180deg);background:#06080d}
 .oa-c.r-common .oa-b{box-shadow:0 6px 14px rgba(0,0,0,.7)}
 .oa-c.flipped .oa-f{box-shadow:0 0 14px 3px rgba(var(--rc),.6)}
-.oa-c.flipped.r-common .oa-f{box-shadow:0 6px 14px rgba(0,0,0,.7)}
 .oa-tag{position:absolute;left:0;right:0;top:-8px;z-index:3;text-align:center;font:800 11px var(--f-title);letter-spacing:1px;color:#ffe08a;text-shadow:0 0 6px #000}
 .oa2{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;padding:calc(18px + var(--safe-area-inset-top,env(safe-area-inset-top,0px))) 14px calc(16px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))}
 .oa-stage{touch-action:none;position:relative;width:min(56vw,230px);aspect-ratio:480/672;margin:auto auto 0;flex:none}
@@ -153,7 +152,6 @@
 .pk-sh{display:flex;align-items:center;gap:8px;margin:0 2px 6px}
 .pk-sh>b{flex:1;min-width:0;font:700 13px var(--f-num);color:var(--sc);display:flex;align-items:baseline;gap:5px;white-space:nowrap}
 .pk-sh>b em{font-style:normal;font-size:16px}
-.pk-sh>b small .nx{color:#f5c542}
 .pk-row{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
 .pk-row{padding-right:4px;padding-top:4px}
 .open-all .oa-n{font-style:normal}

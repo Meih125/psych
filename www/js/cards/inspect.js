@@ -5,7 +5,7 @@ function inspectCard(id, isScene, isLand){
   $('#inspect').classList.remove('art', 'locked');
   if (/^HD_DUO\d/.test(id)){   // a joined Duo picture
     const k = +id.slice(6), pr = CARDS.filter(c => c.set === 'Duo').sort((a, b) => a.id.localeCompare(b.id)).slice(k * 2 - 2, k * 2), ov = $('#inspect');
-    ov.innerHTML = `<div class="in-wrap land"><div class="in-card"><img src="${cardImg(id)}" alt=""></div><div class="in-name">${pr.map(c => esc(c.name)).join(' &amp; ')}</div><div class="in-meta"><b style="color:${RARITY.rare.color}">R</b> · Duo · Owned ×${ownedCard(pr[0].id)} / ×${ownedCard(pr[1].id)}</div>${EYE_SVG}</div>`;
+    ov.innerHTML = `<div class="in-wrap land"><div class="in-card"><img src="${cardImg(id)}" alt=""></div><div class="in-name">${pr.map(c => esc(c.name)).join(' &amp; ')}</div><div class="in-stars">${pr.map(c => starBar(cardLv(c.id))).join('')}</div><div class="in-meta"><b style="color:${RARITY.rare.color}">R</b> · Duo · Owned ×${ownedCard(pr[0].id)} / ×${ownedCard(pr[1].id)}</div>${EYE_SVG}</div>`;
     ov.classList.add('open'); inspectZoom(ov); return;
   }
   const sd = isScene ? sceneDefById(id) : null, c = isScene ? (sd && sd.list.find(x => x.id === id)) : CARD_BY_ID[id]; if (!c) return;
@@ -14,6 +14,7 @@ function inspectCard(id, isScene, isLand){
   ov.innerHTML = `<div class="in-wrap${isScene || isLand ? ' land' : ''}${isScene ? ' sc' : ''}">
     <div class="in-card${holo ? ' holo' : ''}"><img src="${isLand ? landImg(id) : cardImg(id)}" alt="">${holo ? '<span class="in-foil"></span>' : !isScene && (top3 || (!S.reduceFx && (c.rarity === 'epic' || c.rarity === 'rare'))) ? `<span class="pk-glare in-glare${c.rarity === 'epic' || c.rarity === 'rare' ? ' in-slow' : ''}"></span>` : ''}</div>
     <div class="in-name">${esc(c.name)}</div>
+    ${isScene ? '' : `<div class="in-stars">${starBar(cardLv(id))}</div>`}
     ${isScene ? `<div class="in-meta">${sd.one}</div>` : `${flavorOf(id) ? `<p class="in-flavor">${esc(flavorOf(id))}</p>` : ''}<div class="in-meta">${rarBadge(c)} · ${esc(setLabel(c.set))}${c.hero ? ' · ' + esc(c.hero) : ''} · Owned ×${ownedCard(id)} · Collected ×${cardTotal(id)}</div>`}
     ${EYE_SVG}
   </div>`;

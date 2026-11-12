@@ -36,5 +36,6 @@ initWidgetsScreen();
 initBirthday();
 initKinds();
 
+if (!S.lvSwept) { lvSweep(); save(); }   // old spare copies level up right away; their screen shows with the first pack
 render();
 tickStart();

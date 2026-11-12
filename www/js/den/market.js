@@ -142,7 +142,7 @@ window.makeMarket = env => {
     if (poor()){ shakeBal(); return; }
     const i = +c.dataset.i, m = stock(), id = m.ids[k], gn = gen;
     c.dataset.res = res + 1; fl++; D().b = Math.max(0, D().b - 1); shown = Math.max(0, shown - 1); setBal();
-    if (res + 1 >= BM_NEED){ m.got[k] = 1; m.fill[k] = 0; gainCard(id); } else m.fill[k] = res + 1;   // saved at the tap; the picture catches up when the gem lands
+    if (res + 1 >= BM_NEED){ m.got[k] = 1; m.fill[k] = 0; gainCard(id); lvSchedule(1800, 'Shop purchase'); } else m.fill[k] = res + 1;   // saved at the tap; the picture catches up when the gem lands
     save(); if (typeof render === 'function') try { render(); } catch (e) {}
     const g = slotG(c, res);
     arcFly(fr.querySelector('.bm-bal svg.g3'), g.querySelector('svg'), () => {

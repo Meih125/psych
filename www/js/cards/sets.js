@@ -10,14 +10,43 @@ const SET_BONUS = { 'Artist Series':1200, 'Special':1200, 'SSR':600, 'Gilded':45
 const SCENE_REWARD = 500;
 const SCENE_PAY = {};   // a bonus-card set that pays more than the default
 const scenePay = k => SCENE_PAY[k] || SCENE_REWARD;
-// A set can be claimed again and again: the first time needs one of every card,
-// each later claim needs ×2 of every card and uses one copy of each (×2 → ×1, ×3 → ×2 ...).
-const setTimes = key => +S.setClaims[key] || 0;   // how many times this set has been claimed (old saves stored true = once)
-// next claim of a set: its reward; repeat UR / SSR claims pay double (their duplicates are much rarer)
+// ---- Card levels (stars) ----
+// Every card has a level, LV 1-16 (5 stars: gold, then red, then purple). Spare copies turn into levels by themselves
+// (gainCard). S.lv[id] holds the level; a missing entry means the start level of the card's rarity.
+const LV_MAX = 16;
+const lvTier = r => r === 'ultimate' ? 2 : r === 'legendary' ? 1 : 0;   // UR 2, SSR 1, the rest 0 (the Joker counts as common)
+const startLvOf = (r, joker) => joker ? 1 : [1, 6, 11][lvTier(r)];
+const startLv = c => c ? startLvOf(c.rarity, c.joker) : 1;
+const cardLv = id => { const v = S.lv && S.lv[id]; return v >= 1 && v <= LV_MAX ? v : startLv(CARD_BY_ID[id]); };
+// spare copies needed to reach level `to`: base 1 / 2 / 3 for LV 2-6 / 7-11 / 12-16 (minus 1 for SSR, 2 for UR, never under 1).
+// The purple stars (LV 12-16) climb: n, n+1, n+1, n+2, n+2 (UR: n, n+1, n+1, n+1, n+2), so C/R/SR 3 4 4 5 5, SSR 2 3 3 4 4, UR 1 2 2 2 3.
+const LV_TOP = [[0, 1, 1, 2, 2], [0, 1, 1, 2, 2], [0, 1, 1, 1, 2]];   // extra copies on the five purple stars, by tier (C, SSR, UR)
+const lvCost = (c, to) => { const t = c.joker ? 0 : lvTier(c.rarity), n = Math.max(1, (to <= 6 ? 1 : to <= 11 ? 2 : 3) - t); return to <= 11 ? n : n + LV_TOP[t][to - 12]; };
+const lvColor = lv => lv <= 1 ? 't0' : lv <= 6 ? '' : lv <= 11 ? 'tr' : 'tp';
+// A set is claimed again and again, each claim raising the set's own level (its set stars):
+// the first claim needs every card, each later one needs every card at the set's next level. No copies are used up.
+// S.setClaims[key] = how many times it was claimed (old saves stored true = once).
+const setTimes = key => +S.setClaims[key] || 0;
+const setStartLv = key => { const l = keyCards(key)[0]; return l ? startLvOf(l.rarity, l.joker) : 1; };
+const setMaxClaims = key => LV_MAX - setStartLv(key) + 1;   // 16 for C / R / SR, 11 for SSR, 6 for UR
+const setLv = key => setStartLv(key) + Math.max(0, setTimes(key) - 1);   // the level shown by the set stars (after the first claim)
+// how many cards count towards the next claim: owned before the first claim, then cards at the set's next level or more
+function setCount(key){
+  const list = keyCards(key), t = setTimes(key);
+  return t ? list.filter(c => ownedCard(c.id) && cardLv(c.id) >= setLv(key) + 1).length : list.filter(c => ownedCard(c.id)).length;
+}
+// reward multiplier of a claim = the colour of the star it fills (the first claim is x1)
+const SET_MULT = [{ g:1, r:2, p:3 }, { g:1, r:2, p:4 }, { g:2, r:2, p:2 }];   // C / R / SR, SSR, UR
+function setMult(key){
+  const t = setTimes(key); if (!t) return 1;
+  const lv = setStartLv(key) + t, m = SET_MULT[lvTier((keyCards(key)[0] || {}).rarity)];   // the level the next claim reaches
+  return lv <= 6 ? m.g : lv <= 11 ? m.r : m.p;
+}
+// next claim of a set: its reward, times the star colour it will fill
 function setPay(set){
-  if (set.startsWith('Poker:')) return POKER_SUIT_PAY;
+  if (set.startsWith('Poker:')) return POKER_SUIT_PAY * setMult(set);
   const list = keyCards(set), r = list.length ? list[0].rarity : 'common', base = SET_BONUS[set] || SET_REWARD[r];
-  return setTimes(set) && (r === 'ultimate' || r === 'legendary') ? base * 2 : base;
+  return base * setMult(set);
 }
 // Poker is claimed per suit (13 cards): ids R01-13 Spades, R14-26 Hearts, R27-39 Clubs, R40-52 Diamonds.
 const POKER_SUITS = [['Poker:H','Hearts','♥','#ff5a6e',14],['Poker:D','Diamonds','♦','#ff8a5c',40],['Poker:S','Spades','♠','#cfe0ff',1],['Poker:C','Clubs','♣','#9fe3b0',27]];
@@ -29,12 +58,11 @@ const claimKeyOf = c => pokerKeyOf(c) || c.set;
 const keyCards = key => key.startsWith('Poker:') ? CARDS.filter(c => pokerKeyOf(c) === key) : CARDS.filter(c => c.set === key);
 function setReady(set){
   if (set === 'Poker') return POKER_SUITS.some(x => setReady(x[0]));
-  const list = keyCards(set), need = setTimes(set) ? 2 : 1;
-  return list.length > 0 && list.every(c => ownedCard(c.id) >= need);
+  const list = keyCards(set);
+  return list.length > 0 && setTimes(set) < setMaxClaims(set) && setCount(set) === list.length;
 }
 function claimBtn(key, done, rw, repeat){
-  const times = setTimes(key), again = repeat && times > 0;
-  if (times && !(again && done)) return `<button class="set-claim got" disabled>Claimed</button>`;
+  if (setTimes(key) && !(repeat && done)) return `<button class="set-claim got" disabled>Claimed</button>`;
   return `<button class="set-claim${done ? ' ready' : ''}" ${done ? `data-act="setclaim" data-set="${esc(key)}"` : 'disabled'}>Claim</button>`;
 }
 // claim reward under the progress bar (dimmed after a claim until the next is ready)
@@ -52,11 +80,30 @@ function recordNew(key, id){
   if (!S.newest || typeof S.newest !== 'object') S.newest = {};
   S.newest[key] = [id, ...(S.newest[key] || []).filter(x => x !== id)].slice(0, 3);
 }
+// cards that levelled up (or got a copy at max level) since the level-up screen last showed: id -> { from, to }
+const lvLog = {};
+// The one way a card copy comes in (packs, shop, events, rewards): add it, then turn spare copies into levels.
 function gainCard(id){
+  if (!S.lvSwept) lvSweep();   // (normally done at launch; also covers a restored backup)
   if (!S.cardsGot) S.cardsGot = {};
   if (!cardTotal(id) && CARD_BY_ID[id]) recordNew(CARD_BY_ID[id].set, id);
   S.cardsGot[id] = cardTotal(id) + 1;
   S.cards[id] = ownedCard(id) + 1;
+  lvApply(id);
+}
+// turn a card's spare copies into levels (and log it); a card already at max level that got a copy is logged too
+function lvApply(id, gained){
+  const c = CARD_BY_ID[id]; if (!c) return;
+  const from = cardLv(id); let lv = from, spare = ownedCard(id) - 1;   // the first copy is the card itself
+  while (lv < LV_MAX && spare >= lvCost(c, lv + 1)){ spare -= lvCost(c, lv + 1); lv++; }
+  if (lv !== from){ if (!S.lv || typeof S.lv !== 'object') S.lv = {}; S.lv[id] = lv; S.cards[id] = spare + 1; }
+  if (lv !== from || (gained !== false && from === LV_MAX)){ const e = lvLog[id]; if (e) e.to = lv; else lvLog[id] = { from, to:lv }; }
+}
+// one time only: old saves hold spare copies that never turned into levels
+function lvSweep(){
+  S.lvSwept = true;
+  if (!S.cardsGot) S.cardsGot = {};
+  Object.keys(S.cards).forEach(id => { if (ownedCard(id) > 1){ if (S.cardsGot[id] == null) S.cardsGot[id] = cardTotal(id); lvApply(id, false); } });
 }
 function claimSet(set, el){
   const sdc = sceneDefOf(set);
@@ -70,8 +117,8 @@ function claimSet(set, el){
   if (!list.length || !setReady(set)) return;
   buyUndo = null;
   const n = setPay(set), times = setTimes(set);
-  if (times) list.forEach(c => S.cards[c.id] = ownedCard(c.id) - 1);   // repeat claims use up one copy of each card
-  S.setClaims[set] = times + 1;
+  list.forEach(c => { if (!S.cardsGot) S.cardsGot = {}; if (S.cardsGot[c.id] == null) S.cardsGot[c.id] = cardTotal(c.id); });   // keep the "collected" count exact (old saves estimate it from claims)
+  S.setClaims[set] = times + 1; setPop = { key:set, all:times === 0 };   // the set stars pop (all five on the first claim, then the new one)
   earnTag = { k:'set:' + set, n:setLabel(set), kind:'set' };
   grant({ xp:n, gold:n }, el.getBoundingClientRect(), null, null, 1.6);
 }

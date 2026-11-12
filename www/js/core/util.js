@@ -14,6 +14,8 @@ function rewPair(xp, gold, num = fmtShort){
 function rewardsHtml(xp, gold, extra = ''){
   return `<div class="rewards${+xp === +gold ? ' same' : ''}">${extra}${rewPair(xp, gold)}</div>`;
 }
+// the unit word after a number: 1 card, 2 cards (own plural for irregular words: pl(n, 'entry', 'entries'))
+const pl = (n, one, many = one + 's') => n === 1 ? one : many;
 const cd = (until, pre = '', post = '') => `<span class="cd" data-until="${until}" data-pre="${esc(pre)}" data-post="${esc(post)}">${esc(pre)}${fmtLeft(until - now())}${esc(post)}</span>`;
 // under 10,000 in full (1,280); above, 2 decimals rounded down: 12.34k, 5.55M, 1.20B, 3.00T
 function fmtShort(v){

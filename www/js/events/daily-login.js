@@ -95,7 +95,7 @@ function dlClose(pop, rw){
   const tkIc = pop.querySelector('.dl-tk svg'), tkFrom = tkIc && tkIc.getBoundingClientRect(), tkGot = window.PsychDen ? PsychDen.add(DL_TICKETS) : 0;   // tickets: saved now, flown up once the pop-up has closed
   popupClose(pop, () => {
     if (rw.kind === 'gold'){ celebrate.swirl = true; earnTag = { k:'daily', n:'Daily reward', kind:'daily', part:'day ' + dlStreak() }; grant({ xp:rw.xp || 0, gold:rw.gold }, from); }   // coins to the purse, gems to the XP bar
-    else { save(); render(); }
+    else { save(); render(); if (rw.kind === 'card') lvSchedule(700, 'Event reward'); }
     renderDaily(true);
     if (tkGot){ if (tkFrom) PsychDen.fly(tkFrom, tkGot); else PsychDen.land(tkGot); }
     const b = $('#dlBtn').getBoundingClientRect(), t = flameTier(dlStreak());

@@ -9,6 +9,7 @@ function pageSlide(d){
 let lastBackPress = 0;
 function handleBack(){
   if (window.PsychDen && PsychDen.back()) return;   // the Gambling Den (den.js): game -> Den -> closed
+  if (lvShown){ lvShown.go(); return; }   // level-up screen: back = CONTINUE
   if ($('#inspect').classList.contains('open')) return closeInspect();
   if (opening){   // a finished pack (or the Open all summary) closes like its Done button; mid-reveal waits
     if (opening.done) return afterReveal();

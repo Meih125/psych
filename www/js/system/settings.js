@@ -1,7 +1,7 @@
 /* Settings sheet: sync, toggles, vacation, reset. */
 function resetProgress(){
   S.den = S.den && typeof S.den === 'object' ? { d:S.den.d, t:S.den.t } : null;   // Den stats, best scores and a half-played round start over; today's ticket count stays (no free refill)
-  S.xp = 0; S.gold = 0; S.steps = {}; S.dist = {}; S.today = null; S.inv = {}; S.pity = {}; S.cards = {}; S.scenes = {}; S.setClaims = {}; S.opened = {}; S.cardsGot = {}; S.jokerOpen = false; S.rewardedLevel = 1;
+  S.xp = 0; S.gold = 0; S.steps = {}; S.dist = {}; S.today = null; S.inv = {}; S.pity = {}; S.cards = {}; S.scenes = {}; S.setClaims = {}; S.opened = {}; S.cardsGot = {}; S.lv = {}; S.jokerOpen = false; S.rewardedLevel = 1;
   if (S.daily) S.daily = { at:S.daily.at, streak:0 };   // the login streak starts over (today's reward stays taken)
   S.quests.forEach(q => {
     q.count = 0; q.undo = null; q.streak = 0; q.bestStreak = 0; q.lastBoth = 0; q.streakUndo = null;

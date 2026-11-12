@@ -171,6 +171,7 @@ function afterReveal(){
   if (o.jokerPop){ o.jokerPop = false; o.done = false; return showJokerUnlock(); }
   if (o.tix){ o.tixN = o.tix; o.tix = 0; o.done = false; return showPackTicket(); }   // first pack of the day: a Den ticket
   if (o.tixN && window.PsychDen){ const ic = $('#pack .ptk-ic'); if (ic) PsychDen.fly(ic.getBoundingClientRect(), o.tixN); else PsychDen.land(o.tixN); o.tixN = 0; }
+  if (lvHas()){ o.done = false; lvOpen({ stats:o.all ? lvStats(o) : '' }, closeOpening); return; }   // last step: the cards that levelled up
   closeOpening();
 }
 // first pack of the day: a ticket pop-up; tapping sends it to the header
@@ -369,7 +370,7 @@ function oaSummary(){
   const o = opening; if (!o) return;
   o.cards.forEach((_, i) => o.flipped.add(i)); o.summary = true;
   const ov = $('#pack');
-  ov.innerHTML = `<div class="oa"><div class="oa-h"><b>${fmt(o.cards.length / o.item.cards)} ${esc(o.item.name)}s</b><span>${o.cards.length} cards${oaGroups(o).length < o.cards.length ? ' · ' + oaGroups(o).length + ' unique · ' + (o.cards.length - oaGroups(o).length) + ' duplicates' : ' · all unique'}</span></div>
+  ov.innerHTML = `<div class="oa"><div class="oa-h"><b>${fmt(o.cards.length / o.item.cards)} ${esc(o.item.name)}s</b><span>${o.cards.length} ${pl(o.cards.length, 'card')}${oaGroups(o).length < o.cards.length ? ' · ' + oaGroups(o).length + ' unique · ' + (o.cards.length - oaGroups(o).length) + ' ' + pl(o.cards.length - oaGroups(o).length, 'duplicate') : ' · all unique'}</span></div>
     <div class="oa-grid">${oaGroups(o).map(g => oaCardHTML(g.c, g.i).replace('class="oa-c', 'class="oa-c flipped').replace('</button>', g.n > 1 ? `<span class="oa-q">×${g.n}</span></button>` : '</button>')).join('')}</div>  
     <div class="oa-foot">${hintHtml()}</div></div>`;
   ov.querySelectorAll('.oa-c').forEach(b => { const c = o.cards[+b.dataset.i]; { const tg = b.querySelector('.oa-tag'); tg.classList.toggle('nw', !!o.fresh[c.id]); tg.innerHTML = o.fresh[c.id] ? 'NEW' : ''; } b.addEventListener('click', e => { e.stopPropagation(); inspectCard(c.id); }); });

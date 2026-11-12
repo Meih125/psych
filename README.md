@@ -29,8 +29,16 @@
 
 | Update | Released | What changed |
 |:---:|:---:|:---:|
-| **[v1.5.1](https://github.com/Meih125/psych/releases/tag/v1.5.1)** (latest) | Nov 10, 2026 | **[Patch notes](docs/patch-notes/v1.5.1.md)** |
+| **[v1.5.2](https://github.com/Meih125/psych/releases/tag/v1.5.2)** (latest) | Nov 12, 2026 | **[Patch notes](docs/patch-notes/v1.5.2.md)** |
+| [v1.5.1](https://github.com/Meih125/psych/releases/tag/v1.5.1) | Nov 10, 2026 | [Patch notes](docs/patch-notes/v1.5.1.md) |
 | [v1.5.0](https://github.com/Meih125/psych/releases/tag/v1.5.0) | Nov 10, 2026 | [Patch notes](docs/patch-notes/v1.5.0.md) |
+
+<details>
+<summary><b>See older versions</b></summary>
+
+
+| Update | Released | What changed |
+|:---:|:---:|:---:|
 | [v1.4.1](https://github.com/Meih125/psych/releases/tag/v1.4.1) | Nov 8, 2026 | [Patch notes](docs/patch-notes/v1.4.1.md) |
 | [v1.4.0](https://github.com/Meih125/psych/releases/tag/v1.4.0) | Nov 8, 2026 | [Patch notes](docs/patch-notes/v1.4.0.md) |
 | [v1.3.1](https://github.com/Meih125/psych/releases/tag/v1.3.1) | Nov 5, 2026 | [Patch notes](docs/patch-notes/v1.3.1.md) |
@@ -40,6 +48,8 @@
 | [v1.1.2](https://github.com/Meih125/psych/releases/tag/v1.1.2) | Oct 28, 2026 | [Patch notes](docs/patch-notes/v1.1.2.md) |
 | [v1.1.1](https://github.com/Meih125/psych/releases/tag/v1.1.1) | Oct 28, 2026 | [Patch notes](docs/patch-notes/v1.1.1.md) |
 | [v1.1.0](https://github.com/Meih125/psych/releases/tag/v1.1.0) | Oct 27, 2026 | [Patch notes](docs/patch-notes/v1.1.0.md) |
+
+</details>
 
 </div>
 
@@ -93,3 +103,4 @@ BUILD.md        how to build the APK
 Fan-made, personal project. Card art belongs to its original creators: *Lord of the Mysteries* (Tarot pack) and *Mobile Legends: Bang Bang* (Land of Dawn and Hand of Destiny packs, including the hero voice lines used as card text). Psych isn't affiliated with or endorsed by either.
 
 Fonts: Montserrat, Inter, JetBrains Mono and Lora, all under the SIL Open Font License.
+

@@ -3,6 +3,17 @@
    A note: k = new | chg | fix (the orb colour), t = title, d = the grey line under it, snip = 1 shows a snippet card
    (img = a file in img/notes/, how = its numbered steps). Notes show in the order written. */
 const PATCH_NOTES = [
+{"v":"1.5.2","date":"Nov 12","tag":"Card stars and Lockpick training","notes":[
+{"k":"new","t":"Added card levels and stars","d":"Every card has a level from 1 to 16. Extra copies level them up.","snip":1,"img":"v152-added-card-levels-and-stars.jpg","how":[]},
+{"k":"new","t":"Added the Level up screen","d":"Shows every card that levelled up after gaining cards.","snip":1,"how":[]},
+{"k":"new","t":"Added set stars","d":"Each set claim raises the set's level. Higher stars pay more.","snip":0,"how":[]},
+{"k":"new","t":"Added Lockpick Training","d":"Tap < or > on Start. Free, no reward, best level still counts.","snip":0,"how":[]},
+{"k":"new","t":"Added a step streak flame on Quests","d":"Plus a banner when your streak ends tonight.","snip":0,"how":[]},
+{"k":"chg","t":"Changed the Collection level mark","d":"A star bar on the bottom edge of each card.","snip":0,"how":[]},
+{"k":"chg","t":"Adjusted Market prices","d":"C 20, R 35, SR 75, SSR 140, UR 220.","snip":0,"how":[]},
+{"k":"chg","t":"Adjusted Lockpick rewards","d":"","snip":0,"how":[]},
+{"k":"fix","t":"Fixed Lockpick spinning after a miss","d":"The needle and ring now stay where they stopped.","snip":0,"how":[]}
+]},
 {"v":"1.5.1","date":"Nov 10","tag":"Patch notes and step goal tickets","notes":[
 {"k":"new","t":"Added Patch notes in Settings","d":"Every version, with snippets.","snip":0,"how":[]},
 {"k":"chg","t":"Made half-size Tally tiles tidier","d":"Carried over sits on the right.","snip":0,"how":[]},

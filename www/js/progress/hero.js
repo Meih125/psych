@@ -79,7 +79,7 @@ function questHero(q){
   } else if (q.kind === 'counter'){
     tier = -3; k = 'Times done'; big = fmt(q.count || 0); unit = ''; sub = `Today ${counterToday(q)}`; art = `<div class="hx-ic">${qbIcon(q)}</div>`;
   } else {   // tally
-    tier = -2; k = 'Total'; big = fmtU(q, q.total || 0); unit = ''; sub = q.carry ? `${fmtU(q, q.carry)} carried over` : `${fmt(logs.length)} entries`;
+    tier = -2; k = 'Total'; big = fmtU(q, q.total || 0); unit = ''; sub = q.carry ? `${fmtU(q, q.carry)} carried over` : `${fmt(logs.length)} ${pl(logs.length, 'entry', 'entries')}`;
     art = `<div class="hx-ic">${qbIcon(q)}</div>`;
   }
   const tc = tier === -1 ? ['#ff7a7a', '255,122,122'] : tier === -2 ? ['#ffc94a', '255,201,74'] : tier === -3 ? ['#4dd0a0', '77,208,160'] : tierCol(tier);   // recurring / tally = their type colour, streaks = flame colour

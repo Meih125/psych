@@ -1,0 +1,29 @@
+/* Card stars: the star bar (5 stars = a level), the Collection level badge, and the star-up animation.
+   Level colours: gold LV 2-6, red LV 7-11, purple LV 12-16 (LV 1 = five empty stars). Only transform / opacity move. */
+.sbar{--sz:9px;--gp:2.5px;--bc:#ffd58a;--gc:255,190,70;display:inline-flex;align-items:center;gap:var(--gp);padding:calc(var(--sz)*.36) calc(var(--sz)*.62);border:1px solid var(--bc);border-radius:calc(var(--sz)*.78);background:rgba(10,6,10,.94);box-shadow:0 0 9px rgba(var(--gc),.5),inset 0 0 8px rgba(var(--gc),.16);position:relative;vertical-align:middle}
+.sbar.tr{--bc:#ffc3b8;--gc:255,80,60}.sbar.tp{--bc:#ff9af4;--gc:255,40,240}.sbar.t0{--bc:rgba(255,213,138,.5);--gc:255,190,70}
+.sbar.mid{--sz:14px;--gp:4px;border-width:1.5px}.sbar.big{--sz:26px;--gp:7px;border-width:1.5px}
+.sbar.hs{--sz:7px;--gp:2px}
+.sst{position:relative;width:var(--sz);height:var(--sz);flex:none}
+.sst svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.sst.g svg{filter:drop-shadow(0 0 3px rgba(255,200,70,.8))}
+.sst.r svg{filter:drop-shadow(0 0 3.5px rgba(255,40,45,1)) drop-shadow(1px 1px 1.5px rgba(255,140,50,.8))}
+.sst.p svg{filter:drop-shadow(0 0 4.5px rgba(255,20,245,1))}
+/* star-up: the star grows out of nothing with a white flash (a white copy fading), a ring and six sparkles */
+.sst .fl,.sst .shock,.sst .spk{display:none}
+.sst.pop svg:not(.fl){animation:stPop .7s cubic-bezier(.2,.9,.3,1.3)}
+.sst.pop .fl{display:block;filter:brightness(0) invert(1);opacity:0;animation:stFlash .7s ease-out}
+.sst.pop .shock{display:block;position:absolute;left:50%;top:50%;width:var(--sz);height:var(--sz);margin:calc(var(--sz)/-2) 0 0 calc(var(--sz)/-2);border-radius:50%;border:2px solid #fff;opacity:0;pointer-events:none;animation:stRing .8s ease-out}
+.sst.pop .spk{display:block;position:absolute;left:50%;top:50%;width:3px;height:3px;margin:-1.5px;border-radius:50%;background:#fff;opacity:0;pointer-events:none;animation:stSpk .8s ease-out}
+@keyframes stPop{0%{transform:scale(.1) rotate(-70deg);opacity:0}50%{transform:scale(1.8) rotate(12deg);opacity:1}100%{transform:scale(1)}}
+@keyframes stFlash{0%{opacity:0;transform:scale(.1) rotate(-70deg)}50%{opacity:.9;transform:scale(1.8) rotate(12deg)}100%{opacity:0;transform:scale(1)}}
+@keyframes stRing{0%{opacity:.9;transform:scale(.4)}100%{opacity:0;transform:scale(3.6)}}
+@keyframes stSpk{0%{opacity:1;transform:translate(0,0)}100%{opacity:0;transform:translate(calc(var(--dx)*1px),calc(var(--dy)*1px))}}
+.reduce-fx .sst.pop svg,.reduce-fx .sst.pop .shock,.reduce-fx .sst.pop .spk,.reduce-fx .sst.pop .fl{animation:none!important}
+.reduce-fx .sst .fl,.reduce-fx .sst .shock,.reduce-fx .sst .spk{display:none!important}
+.reduce-fx .sst.pop svg:not(.fl){opacity:1}
+/* the level strip on a Collection tile: the star bar inside the card, centred on its bottom edge, on a fade (no number).
+   --bk = tile size factor (.85 normal, big tile x1.35, Poker .7) */
+.lvs{--bk:.85;position:absolute;left:3px;right:3px;bottom:2px;height:calc(22px*var(--bk));display:flex;align-items:center;justify-content:center;z-index:4;pointer-events:none;background:linear-gradient(to top,rgba(6,10,12,.94),rgba(6,10,12,.6) 65%,rgba(6,10,12,0));border-radius:0 0 3px 3px}
+.lvs .sbar{--sz:calc(7.5px*var(--bk));--gp:calc(4px*var(--bk));border-width:calc(1px*var(--bk))}
+.lvs .sst.g svg{filter:drop-shadow(0 0 5px rgba(255,210,80,1))}

@@ -41,7 +41,6 @@
 .cc-tt{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
 .cc-tt b{text-transform:uppercase}
 .cc-bar{position:relative;display:block;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
-.cc-bar i.gold{background:#f5c542}
 .cc-fold{margin:10px 12px 0;border:1px solid var(--line)}
 .cc-hd{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 12px;}
 .cc-pv{display:flex;width:56px}
@@ -112,10 +111,6 @@
 .fc.fb{right:14%;top:6%;transform:rotate(6deg)}
 .fc:not(.lk):not(.off){box-shadow:-6px 0 18px 2px rgba(var(--g1),.6),6px 0 18px 2px rgba(var(--g2),.55)}
 .fc.lk b{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-55deg);white-space:nowrap;font:800 28cqw system-ui;letter-spacing:.06em;color:transparent;-webkit-text-stroke:1.3px rgba(200,205,210,.3);pointer-events:none}
-.col-fan .fq{position:absolute;top:auto;bottom:2px;min-width:0;font-size:11px;padding:0 6px;border-radius:9px;background:rgba(8,12,16,.88);border:1px solid rgba(255,255,255,.28);color:var(--bone);z-index:3}
-.col-fan .fq-l{left:2px;right:auto}
-.col-fan .fq-r{right:2px;left:auto}
-.cc-mid small .nx{color:#ffc94a;margin-left:6px;text-shadow:0 0 6px rgba(255,201,74,.45)}
 /* set claim row (V2): small fixed button, the pay under the bar */
 .cc-hd .set-claim{width:84px;justify-content:center;padding:9px 0;text-align:center;line-height:1.2;flex:none}
 .set-claim.got{font-style:normal;color:#b8cbc9;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04)}
@@ -125,9 +120,6 @@
 .pk-sh .set-claim{flex:none;width:72px;height:26px;font-size:11px;padding:0}
 .pkc{position:relative}
 .pkc .ct{width:100%;display:block;position:relative;z-index:1}
-.pkc.s1::before,.pkc.s2::before,.pkc.s2::after{content:"";position:absolute;left:0;right:0;top:0;bottom:0;background:#2c3a40;border:1px solid rgba(255,255,255,.28);transform:translate(2px,-2px);z-index:0}
-.pkc.s2::after{transform:translate(4px,-4px);background:#223036}
-.pkc.s2::before{transform:translate(2px,-2px)}
 .pkc i{position:absolute;left:2px;top:1px;z-index:3;font:800 10px system-ui;font-style:normal;text-shadow:0 0 3px #000,0 0 3px #000;pointer-events:none}
 .cc-pay{margin-top:6px}
 .pk-sh .cc-pay{margin:0}
@@ -275,13 +267,8 @@
 .cc-hd{position:relative;background:linear-gradient(90deg,color-mix(in srgb,var(--c) 16%,transparent),transparent 45%)}
 .cc-hd::before{content:none}
 .cc-pv img{outline:1px solid color-mix(in srgb,var(--c) 65%,#000)}
-.cc-mid .cc-bar2{height:3px;margin-top:3px}
-.cc-bar i.gold{left:0}
-.cc-mid small .nx.dim{opacity:.4;text-shadow:none}
-.cc-bar2.dim i.gold{opacity:.4}
 .cc-br + .cc-br{margin-top:4px}
 .cc-n{flex:none;min-width:34px;text-align:right;font:700 11px/1 var(--f-num);color:#9db2b0}
-.cc-n.nx{color:#ffc94a}
 .cc-n.dim{opacity:.4}
 .cc-mid b small{color:#9db2b0;margin-left:6px}
 .cc-nm{display:flex;align-items:baseline;gap:8px}
@@ -290,7 +277,6 @@
 .cc-bars{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
 .cc-bars .cc-bar{flex:none;width:100%}
 .cc-mid .cc-bars .cc-bar{height:var(--bh1,4px);margin-top:0}
-.cc-mid .cc-bars .cc-bar2{height:var(--bh2,2px)}
 .cc-bars .cc-bar i{top:0;bottom:0;height:auto}
 /* All packs overview: one rarity strip (each block sized by how many cards that rarity has) + a column per rarity, on a soft cyan wash */
 .cc-over{background:linear-gradient(120deg,rgba(46,230,214,.14),rgba(6,14,16,.88) 55%) !important;border-color:rgba(46,230,214,.4) !important;gap:0 !important}
@@ -328,3 +314,19 @@
 @keyframes nmOut{to{transform:translateX(calc(var(--d) * 110%));opacity:0}}
 @keyframes nmIn{from{transform:translateX(calc(var(--d) * 110%));opacity:0}}
 @keyframes ccShine{0%,35%{transform:translateX(-130%)}80%,100%{transform:translateX(330%)}}
+
+/* set header: the count sits right after the name (grey; gold once the set has been claimed), the set stars hang off the cover */
+.cc-nm{align-items:center}
+.cc-nm b{flex:0 1 auto}
+.cc-nm .cc-n{flex:none;min-width:0;text-align:left;font:600 12px var(--f-num);color:var(--bone-dim);letter-spacing:.3px}
+.cc-nm .cc-n.gold,.pk-sh small.gold{color:#ffc94a;text-shadow:0 0 6px rgba(255,201,74,.35)}
+.cc-pv{position:relative}
+.pvst{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);z-index:9;pointer-events:none}
+.cc-fold,.cc-hd{overflow:visible}
+.pk-sh>b .sbar{margin:0 3px;flex:none;align-self:center}
+/* level strip placements (the look is in stars.css) */
+.ct.big .lvs{--bk:1.15}
+.pkc .lvs .sbar{--gp:calc(2.6px*var(--bk))}
+.pkc .lvs{--bk:.7;left:1px;right:1px;bottom:1px}
+.duo-one .lvs{left:3px;right:calc(50% + 2px)}.duo-one .lvs.qr{left:calc(50% + 2px);right:3px}
+.col-fan .lvs.fq{width:46%;left:auto;right:auto}.col-fan .lvs.fq-l{left:2px}.col-fan .lvs.fq-r{right:2px}

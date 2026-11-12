@@ -466,3 +466,4 @@ svg.den-ic{width:1em;height:1em;vertical-align:-.15em}
 .den-lmid #lNum.idle{animation:curBlink 1.1s steps(1) infinite}
 @keyframes curBlink{50%{opacity:0}}
 .reduce-fx .den-lmid #lNum.idle{animation:none}
+.den-go.train .den-mid .t{font-size:15px;letter-spacing:.16em}
