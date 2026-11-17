@@ -70,7 +70,7 @@
     b('Hide bar', () => { bar.style.display = 'none'; document.body.style.paddingTop = ''; });   // until reload: to see the page without the test bar on top
     b('Reset', () => { write(STORE_KEY, null); write(OFF_KEY, null); location.reload(); });
     b('+1000G', () => { S.gold += 1000; save(); render(); });
-    b('+Packs', () => { S.inv.tarot = (S.inv.tarot || 0) + 1; S.inv.mlbb = (S.inv.mlbb || 0) + 1; S.inv.hod = (S.inv.hod || 0) + 1; save(); render(); });
+    b('+Packs', () => { S.inv.tarot = (S.inv.tarot || 0) + 1; S.inv.mlbb = (S.inv.mlbb || 0) + 1; S.inv.hod = (S.inv.hod || 0) + 1; S.inv.glory = (S.inv.glory || 0) + 1; save(); render(); });
     // scene test: every deck that has scenes gives a new one each time (wraps rollDeck from js/cards/cards.js), and a way to lose them again
     const SC_KEY = 'psych.demo.scenes100', sc100 = read(SC_KEY) === '1';
     if (sc100 && typeof rollDeck === 'function'){
@@ -85,13 +85,22 @@
     b(jk100 ? '100% Joker ✓' : '100% Joker (ignore condition)', () => { write(JK_KEY, jk100 ? null : '1'); location.reload(); });
     if (typeof rollDeck === 'function'){
       const orig2 = rollDeck;
-      window.rollDeck = function(item){ const r = orig2(item); if (window.__forceId && item.deck === 'hod'){ const c = CARDS.find(x => x.id === window.__forceId); if (c){ r.cards[0] = c; } window.__forceId = null; } return r; };
+      window.rollDeck = function(item){ const r = orig2(item); if (window.__forceId && item.deck === (window.__forceId.startsWith('GL_') ? 'glory' : 'hod')){ const c = CARDS.find(x => x.id === window.__forceId); if (c){ r.cards[0] = c; } window.__forceId = null; } return r; };
     }
     b('Poker 51/52', () => {
       const L = CARDS.filter(c => c.set === 'Poker' && !c.joker); const miss = L[Math.floor(Math.random() * L.length)];
       L.forEach(c => { if (c !== miss){ if (!ownedCard(c.id)) gainCard(c.id); } else { S.cards[c.id] = 0; if (S.cardsGot) S.cardsGot[c.id] = 0; } });
       S.jokerOpen = false; S.inv.hod = (S.inv.hod || 0) + 1; window.__forceId = miss.id; save(); render();
     });
+    // Glory Collection: Golden Poker 51/52 + both single Jokers owned (Twins locked), one Glory pack added that holds the missing card
+    b('GC Poker 51/52', () => {
+      const L = CARDS.filter(c => c.set === 'Golden Poker'); const miss = L[Math.floor(Math.random() * L.length)];
+      L.forEach(c => { if (c !== miss){ if (!ownedCard(c.id)) gainCard(c.id); } else { S.cards[c.id] = 0; if (S.cardsGot) S.cardsGot[c.id] = 0; } });
+      GL_SINGLES.forEach(i => { if (!ownedCard(i)) gainCard(i); });
+      S.jokerOpenG = false; GL_TWINS.forEach(i => { S.cards[i] = 0; if (S.cardsGot) S.cardsGot[i] = 0; });
+      S.inv.glory = (S.inv.glory || 0) + 1; window.__forceId = miss.id; save(); render();
+    });
+    b('GC Lock Jokers', () => { S.jokerOpenG = false; GL_TWINS.forEach(i => { S.cards[i] = 0; if (S.cardsGot) S.cardsGot[i] = 0; }); save(); render(); });
     b('Lock Jokers', () => { S.jokerOpen = false; ['HD_R53', 'HD_R54'].forEach(i => { S.cards[i] = 0; if (S.cardsGot) S.cardsGot[i] = 0; }); save(); render(); });
     // Step goal bonus tests: gold columns waiting this week, or only in last week (the ‹ arrow glows gold), or none
     const stepQ = () => S.quests.find(q => q.kind === 'steps');

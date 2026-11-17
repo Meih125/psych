@@ -27,6 +27,24 @@ function backOk(q, key){
   const from = q.created > 0 ? q.created : isFinite(first) ? first : now();
   return key >= dayKey(from);
 }
+// period-limited quests (weekly, every N days, biweekly, monthly): one claim per period, so a past day can't be back-claimed if its period already has one
+function backFrom(q){
+  const first = [...(q.log || []), ...(q.kind === 'pair' ? listItems(q).flatMap(r => r.log || []) : [])].reduce((m, e) => Math.min(m, e.t), Infinity);
+  return q.created > 0 ? q.created : isFinite(first) ? first : now();
+}
+function periodStart(q, t){
+  const d = cycleDays(q);
+  if (d === MONTHLY) return monthStart(t);
+  if (d === 7) return weekStart(t);
+  if (d === 14) return biStart(t);
+  const a = startOfDay(backFrom(q));   // N-day: blocks counted from the day the quest was created
+  return addDays(a, Math.floor(Math.round((startOfDay(t) - a) / 864e5) / d) * d);
+}
+function periodClaimed(q, key){
+  if (cycleDays(q) <= 1) return false;
+  const t = new Date(key + 'T00:00').getTime(), ps = periodStart(q, t);
+  return [...(q.log || []), ...(q.kind === 'pair' ? listItems(q).flatMap(r => r.log || []) : [])].some(e => periodStart(q, e.t) === ps);
+}
 function bkMissing(q, o){ return listKeys(q).filter(k => !(o && o['p_' + k])); }
 function listBackHtml(q, o, label){
   const miss = bkMissing(q, o), id = q.id + '|' + selDay, sel = bkSel[id] || (bkSel[id] = new Set()), n = miss.filter(k => sel.has(k)).length;
@@ -38,10 +56,10 @@ function listBackHtml(q, o, label){
 function dayInfo(q, map){
   if (!selDay) return '';
   const o = map[selDay], label = dayLabel(new Date(selDay + 'T00:00'));
-  if (q.kind === 'pair' && backOk(q, selDay) && bkMissing(q, o).length) return listBackHtml(q, o, label);
-  if (!o){   // a past day nobody claimed: "Claimed?" gives that day's reward and reconnects the streak
-    const can = backOk(q, selDay) && ['standard', 'counter', 'scaling'].includes(q.kind);
-    return `<div class="dayinfo di-row"><span><b>${label}</b> · nothing claimed</span>${can ? `<button class="di-claim" data-act="backclaim" data-q="${q.id}" data-day="${selDay}">Claimed?</button>` : ''}</div>`; }
+  if (q.kind === 'pair' && backOk(q, selDay) && !periodClaimed(q, selDay) && bkMissing(q, o).length) return listBackHtml(q, o, label);
+  if (!o){   // a past day nobody claimed: "Claim?" gives that day's reward and reconnects the streak
+    const can = backOk(q, selDay) && ['standard', 'counter', 'scaling'].includes(q.kind), done = can && periodClaimed(q, selDay);
+    return `<div class="dayinfo di-row"><span><b>${label}</b> · nothing claimed</span>${can ? `<button class="di-claim" data-act="backclaim" data-q="${q.id}" data-day="${selDay}"${done ? ' disabled' : ''}>Claim?</button>` : ''}</div>`; }
   let what = q.kind === 'pair' ? listKeys(q).filter(k => o['p_' + k]).map(k => esc(itemOf(q, k).name)).join(', ') + (o.bonus ? ' · bonus earned' : '')
     : q.kind === 'avoid' && o.slip && !o.n ? '<span style="color:#ff8a7f">Slipped</span>' : q.kind === 'avoid' && o.auto && o.auto === o.n ? 'Auto-claimed' : q.kind === 'scaling' || q.kind === 'counter' ? `Claimed ${o.n}×` : q.kind === 'tally' ? `Logged ${fmtU(q, o.v)}${o.n > 1 ? ` in ${o.n} entries` : ''}` : 'Completed';
   return `<div class="dayinfo"><b>${label}</b> · ${what}${rewardsHtml(o.xp, o.gold)}</div>`;

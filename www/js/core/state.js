@@ -59,6 +59,7 @@ function sanitizeState(){
   delete S.mktShut;
   if ('pzOrder' in S) S.pzOrder = Array.isArray(S.pzOrder) ? S.pzOrder.filter(x => typeof x === 'string').slice(0, 64) : [];   // puzzle piece order (a list, not an object)
   if (obj(S.cover)) for (const k in S.cover){ if (!Array.isArray(S.cover[k])) delete S.cover[k]; else S.cover[k] = S.cover[k].filter(x => typeof x === 'string').slice(0, 3); }
+  if ('recentHi' in S) S.recentHi = Array.isArray(S.recentHi) ? S.recentHi.filter(x => typeof x === 'string').slice(0, 12) : [];
   if (obj(S.newest)) for (const k in S.newest){ if (!Array.isArray(S.newest[k])) delete S.newest[k]; else S.newest[k] = S.newest[k].filter(x => typeof x === 'string').slice(0, 3); }
   if (obj(S.order)) for (const k in S.order){ if (!Array.isArray(S.order[k])) delete S.order[k]; else S.order[k] = S.order[k].filter(x => typeof x === 'string').slice(0, 400); }
   if (obj(S.big)) for (const k in S.big){ if (S.big[k] !== 1 && S.big[k] !== 2) delete S.big[k]; }

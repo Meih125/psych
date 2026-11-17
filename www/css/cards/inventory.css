@@ -8,6 +8,7 @@
 .inv-dots{display:flex;justify-content:center;margin:14px 0 0}
 .inv-dots button{width:7px;height:7px;padding:0;border:0;border-radius:4px;background:rgba(210,240,236,.22);transition:width .2s,background .2s}
 .inv.th-mlbb .inv-dots button.on{--dot:#7c5cff}
+.inv.th-glory .inv-dots button.on{--dot:#ff6fb5}
 .inv-stack.in-r{animation:invInR .46s cubic-bezier(.22,.8,.3,1),deckFloat 4.5s ease-in-out .46s infinite}
 .inv-stack.in-l{animation:invInL .46s cubic-bezier(.22,.8,.3,1),deckFloat 4.5s ease-in-out .46s infinite}
 /* deck arrows: tall thin teal chevrons, the whole side strip is the tap area */
@@ -24,6 +25,7 @@
 .dka{position:relative;overflow:visible;margin:0 !important;padding:6px 14px 10px !important}
 .dka.th-tarot{--ac:#ff6b1a;--acr:255,107,26;--g1:#ffd2b0;--g3:#b8430f}
 .dka.th-mlbb{--ac:#7c5cff;--acr:124,92,255;--g1:#ddd3ff;--g3:#3b4bd8}
+.dka.th-glory{--ac:#ff6fb5;--acr:255,111,181;--g1:#ffd0e6;--g3:#c2297a}
 .dka-ghost{position:absolute;top:70px;width:150px;aspect-ratio:480/672;object-fit:cover;border-radius:9px;opacity:0;filter:blur(1px) grayscale(.4);pointer-events:none}
 .dka-ghost.l{left:-110px;transform:perspective(600px) rotateY(30deg)}
 .dka-ghost.r{right:-110px;transform:perspective(600px) rotateY(-30deg)}
@@ -44,6 +46,7 @@
 .open-all[hidden]{display:none}
 .open-all.th-tarot{--acr:255,107,26}
 .open-all.th-mlbb{--acr:124,92,255}
+.open-all.th-glory{--acr:255,111,181}
 .dka-stats span{font:600 10.5px var(--f-num);letter-spacing:1px;color:var(--ac)}
 .dka-stats span::before{content:'// '}
 /* pack cover shine: a wide band slides across (transform) */
@@ -51,7 +54,9 @@
 .dka-holo::before{content:'';position:absolute;top:0;bottom:0;left:-100%;width:300%;background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.35) 47%,rgba(124,200,255,.25) 50%,transparent 58%);animation:dkaHolo 5s ease-in-out infinite;will-change:transform}
 /* Land of Dawn deck: purple-blue instead of orange */
 .inv.th-mlbb .inv-layer.top:not(.dim){background:linear-gradient(135deg,#ddd3ff,#7c5cff 50%,#3b4bd8);box-shadow:0 0 12px 3px rgba(124,92,255,.4),0 14px 30px rgba(0,0,0,.6) !important}
+.inv.th-glory .inv-layer.top:not(.dim){background:linear-gradient(135deg,#ffd0e6,#ff6fb5 50%,#c2297a);box-shadow:0 0 12px 3px rgba(255,111,181,.4),0 14px 30px rgba(0,0,0,.6) !important}
 .inv.th-mlbb:not(.none) .inv-hint{color:#b3a6ff}
+.inv.th-glory:not(.none) .inv-hint{color:#ffb3d6}
 /* top card: a solid orange frame like the Shop deck (no wide halo) */
 .inv.none .inv-layer.top{box-shadow:0 12px 28px rgba(0,0,0,.55) !important}
 /* top card frame = the Shop deck's frame: light gold-peach at the top-left corner fading through orange to deep rust */
@@ -91,6 +96,7 @@ html.busy :is(.inv-stack,.dka-holo,.em-spin,.em-flap,.em-shock,.sh-latest,.cc-ch
 .nbw .inv-stack{animation:none !important;will-change:transform}
 .nbw .dka-holo{animation:none}
 .nbw.th-mlbb .inv-layer.top:not(.dim){background:linear-gradient(135deg,#ddd3ff,#7c5cff 50%,#3b4bd8);box-shadow:0 0 12px 3px rgba(124,92,255,.4),0 14px 30px rgba(0,0,0,.6) !important}
+.nbw.th-glory .inv-layer.top:not(.dim){background:linear-gradient(135deg,#ffd0e6,#ff6fb5 50%,#c2297a);box-shadow:0 0 12px 3px rgba(255,111,181,.4),0 14px 30px rgba(0,0,0,.6) !important}
 .nbw.th-hod .inv-layer.top:not(.dim){background:linear-gradient(135deg,#ffe2a0,#ffb83a 50%,#b8741a);box-shadow:0 0 12px 3px rgba(255,184,58,.4),0 14px 30px rgba(0,0,0,.6) !important}
 .nbw.none .inv-stack{filter:grayscale(1) brightness(.225)}
 .nbw.none .inv-layer.top{box-shadow:0 12px 28px rgba(0,0,0,.55) !important}

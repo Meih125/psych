@@ -10,6 +10,9 @@ const SHOP = [
     rates:[ { r:'ultimate', pct:'1.1%' }, { r:'legendary', pct:'4%' }, { r:'epic', pct:'10%' }, { r:'rare', pct:'25%', note:'1+ guaranteed' } ] },
   { id:'hod', deck:'hod', fan:['HD_UR05', 'HD_SP05', 'HD_UR12', 'HD_SP01', 'HD_UR02', 'HD_UR01'], pop:['HD_UR03', 'HD_SP02', 'HD_PR02', 'HD_PR03', 'HD_UR06', 'HD_SP03'], pbg:['HD_UR07', 'HD_SP04', 'HD_UR05'], name:'Hand of Destiny Pack', desc:'Fate deals the cards. You only choose to play.', price:100, cards:5, pity:10,
     odds:{ ultimate:1.1, legendary:4, epic:10, rare:25 },
+    rates:[ { r:'ultimate', pct:'1.1%' }, { r:'legendary', pct:'4%' }, { r:'epic', pct:'10%' }, { r:'rare', pct:'25%', note:'1+ guaranteed' } ] },
+  { id:'glory', deck:'glory', fan:['GL_UGR01', 'GL_ZR02', 'GL_UR03', 'GL_UGR05', 'GL_ZR05', 'GL_UR05'], pop:['GL_UGR02', 'GL_ZR01', 'GL_UR01', 'GL_UGR07', 'GL_ZR03', 'GL_SPX02'], pbg:['GL_UGR04', 'GL_ZR04', 'GL_UR02'], name:'Glory Collection Pack', desc:'Ten years of heroes, under one moon.', price:100, cards:5, pity:10,
+    odds:{ ultimate:1.1, legendary:4, epic:10, rare:25 },
     rates:[ { r:'ultimate', pct:'1.1%' }, { r:'legendary', pct:'4%' }, { r:'epic', pct:'10%' }, { r:'rare', pct:'25%', note:'1+ guaranteed' } ] }
 ];
 function infoHTML(it){

@@ -19,10 +19,10 @@ function tallyMeter(q, pv){
   return { base, end:pv.units ? 1 : Math.min(1, (carry + pv.v) / c) };
 }
 function tallyMeterHtml(q, pv, fr){
-  const m = tallyMeter(q, pv), cl = x => Math.max(0, Math.min(1, x)), A = '#ffc94a', B = 'rgba(255,201,74,.4)', C = 'rgba(255,255,255,.08)';
+  const m = fr ? { base:fr.base, end:fr.base } : tallyMeter(q, pv), cl = x => Math.max(0, Math.min(1, x)), A = '#ffc94a', B = 'rgba(255,201,74,.4)', C = 'rgba(255,255,255,.08)';
   return Array.from({ length:10 }, (_, i) => {
     const F = cl(m.base * 10 - i) * 100, P = Math.max(F, cl(m.end * 10 - i) * 100);
-    return `<i${fr && F > 0 ? ' class="pop"' : ''} style="--i:${i};background:linear-gradient(90deg,${A} 0%,${A} ${F}%,${B} ${F}%,${B} ${P}%,${C} ${P}%,${C} 100%)"></i>`;
+    return `<i style="--i:${i};background:linear-gradient(90deg,${A} 0%,${A} ${F}%,${B} ${F}%,${B} ${P}%,${C} ${P}%,${C} 100%)"></i>`;
   }).join('');
 }
 let tlFrom = null;   // set when an entry is added: the tile it came from animates its total and meter once
@@ -77,6 +77,12 @@ function tallyLaps(id, fr){
     tween(1, 0, 900, (left, k) => { rew.innerHTML = rewardsHtml(Math.round(fr.xp * left), Math.round(fr.gold * left)).replace('class="rewards"', `class="rewards"${k < 1 ? '' : ' style="opacity:.45"'}`); });
     setTimeout(() => { pop.classList.add('out'); note.style.opacity = 1; }, 700); setTimeout(() => { pop.remove(); flash.remove(); }, 1100);
   })();
+}
+// an entry that does not fill a chunk: the bar was drawn at its OLD level, and the new part fills in from there (like the XP bar)
+function tallyFillTo(id, from, to, ms){
+  const total = document.querySelector(`.tl-total[data-qid="${id}"]`), card = total && total.closest('.tally-card'); if (!card) return;
+  const segs = [...card.querySelectorAll('.tl-meter i')];
+  tween(from, to, ms, (v, k) => { tallyPaint(segs, k >= 1 ? to : v); }, { ease: k => 1 - Math.pow(1 - k, 2.2) });
 }
 function tallyCountUp(id, from, to, D = 650){
   const el = document.querySelector(`.tl-total[data-qid="${id}"]`), q = byId(id); if (!el || !q) return;

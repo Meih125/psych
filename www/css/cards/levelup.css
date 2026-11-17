@@ -30,3 +30,4 @@
 .lu-btn{flex:none;width:100%;padding:14px 0 calc(22px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));visibility:hidden}
 .lvu.rdy .lu-btn{visibility:visible}
 .reduce-fx .lvu,.reduce-fx .lu-c.on{animation:none}
+.lu-img.r-jokerw img{box-shadow:0 0 8px 1px rgba(255,255,255,.7),0 0 18px 4px rgba(255,42,74,.8)}

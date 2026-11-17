@@ -1,14 +1,15 @@
 /* Collection rewards: set completion, poker suits, puzzle. */
 /* ---- Collection ---- */
 // each collection is its own group; new ones (other decks) get added here
-const COLLECTIONS = [{ id:'tarot', name:'Lord of Mysteries', sets:setsOf('tarot'), sceneKey:'__scenes' }, { id:'mlbb', name:'MLBB', sets:setsOf('mlbb') }, { id:'hod', name:'Hand of Destiny', sets:setsOf('hod'), sceneKey:'__realms' }];
+const COLLECTIONS = [{ id:'tarot', name:'Lord of Mysteries', sets:setsOf('tarot'), sceneKey:'__scenes' }, { id:'mlbb', name:'MLBB', sets:setsOf('mlbb') }, { id:'hod', name:'Hand of Destiny', sets:setsOf('hod'), sceneKey:'__realms' }, { id:'glory', name:'Glory Collection', sets:setsOf('glory').map(k => k === 'Joker (GC)' ? 'Twin Jokers' : k === 'Twin Jokers' ? 'Joker (GC)' : k), sceneKey:'__glory', sceneFirst:true }];
 // finishing a whole set pays this much XP and gold (by the set's rarity)
 const SET_REWARD = { common:20, rare:35, epic:50, legendary:100, ultimate:200 };
 const SET_BONUS = { 'Artist Series':1200, 'Special':1200, 'SSR':600, 'Gilded':450, 'Promo':350, 'Joker':150,
   'Prestige':1000, 'Cards of Blasphemy':450, 'Legends':350, 'Regions':750, 'Starlight':500, 'Angels':500, 'Deity':500, 'Puzzle':500,
-  'SR':250, 'Tarot Club':250, 'Shiny':200, 'Duo':300, 'Chibi':300, 'Poker':200, 'Objects':200, 'Pathways':200, 'Classic':200, 'Origin':200 };   // what each set pays (XP and gold)   // sets with their own reward
+  'SR':250, 'Tarot Club':250, 'Shiny':200, 'Duo':300, 'Chibi':300, 'Poker':200, 'Objects':200, 'Pathways':200, 'Classic':200, 'Origin':200,
+  'Cultivator Series':400, 'Ranker':350, 'Anniversary':300, 'We Are Hero':300, 'Ultimate':1000, 'Tarot (W)':500, 'Tarot (R)':500, 'Joker (GC)':150, 'Twin Jokers':150 };   // what each set pays (XP and gold)   // sets with their own reward
 const SCENE_REWARD = 500;
-const SCENE_PAY = {};   // a bonus-card set that pays more than the default
+const SCENE_PAY = { '__glory':200 };   // a bonus-card set that pays more than the default
 const scenePay = k => SCENE_PAY[k] || SCENE_REWARD;
 // ---- Card levels (stars) ----
 // Every card has a level, LV 1-16 (5 stars: gold, then red, then purple). Spare copies turn into levels by themselves
@@ -44,20 +45,24 @@ function setMult(key){
 }
 // next claim of a set: its reward, times the star colour it will fill
 function setPay(set){
-  if (set.startsWith('Poker:')) return POKER_SUIT_PAY * setMult(set);
+  if (pokerSetOf(set)) return POKER_SUIT_PAY * setMult(set);
   const list = keyCards(set), r = list.length ? list[0].rarity : 'common', base = SET_BONUS[set] || SET_REWARD[r];
   return base * setMult(set);
 }
 // Poker is claimed per suit (13 cards): ids R01-13 Spades, R14-26 Hearts, R27-39 Clubs, R40-52 Diamonds.
-const POKER_SUITS = [['Poker:H','Hearts','♥','#ff5a6e',14],['Poker:D','Diamonds','♦','#ff8a5c',40],['Poker:S','Spades','♠','#cfe0ff',1],['Poker:C','Clubs','♣','#9fe3b0',27]];
+const SUIT_DEF = [['H','Hearts','♥','#ff5a6e',14],['D','Diamonds','♦','#ff8a5c',40],['S','Spades','♠','#cfe0ff',1],['C','Clubs','♣','#9fe3b0',27]];
+const POKER_SETS = ['Poker', 'Golden Poker'];   // Golden Poker (Glory): ids GL_SR01-52, laid out the same way
+const POKER_OF = Object.fromEntries(POKER_SETS.map(s => [s, SUIT_DEF.map(x => [s + ':' + x[0], ...x.slice(1)])]));
+const POKER_SUITS = POKER_OF.Poker;
+const pokerSetOf = key => POKER_SETS.find(s => key.startsWith(s + ':'));
 const POKER_SUIT_PAY = 75;
 const RANKS13 = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-function pokerIdx(c){ return c.set === 'Poker' && /^HD_R\d+$/.test(c.id) ? +c.id.slice(4) - 1 : -1; }
-const pokerKeyOf = c => { const i = pokerIdx(c); return i < 0 ? null : POKER_SUITS.find(x => i >= x[4] - 1 && i < x[4] + 12)[0]; };
+function pokerIdx(c){ return c.set === 'Poker' && /^HD_R\d+$/.test(c.id) ? +c.id.slice(4) - 1 : c.set === 'Golden Poker' && /^GL_SR\d+$/.test(c.id) ? +c.id.slice(5) - 1 : -1; }
+const pokerKeyOf = c => { const i = pokerIdx(c); return i < 0 ? null : POKER_OF[c.set].find(x => i >= x[4] - 1 && i < x[4] + 12)[0]; };
 const claimKeyOf = c => pokerKeyOf(c) || c.set;
-const keyCards = key => key.startsWith('Poker:') ? CARDS.filter(c => pokerKeyOf(c) === key) : CARDS.filter(c => c.set === key);
+const keyCards = key => pokerSetOf(key) ? CARDS.filter(c => pokerKeyOf(c) === key) : CARDS.filter(c => c.set === key);
 function setReady(set){
-  if (set === 'Poker') return POKER_SUITS.some(x => setReady(x[0]));
+  if (POKER_SETS.includes(set)) return POKER_OF[set].some(x => setReady(x[0]));
   const list = keyCards(set);
   return list.length > 0 && setTimes(set) < setMaxClaims(set) && setCount(set) === list.length;
 }
@@ -86,7 +91,7 @@ const lvLog = {};
 function gainCard(id){
   if (!S.lvSwept) lvSweep();   // (normally done at launch; also covers a restored backup)
   if (!S.cardsGot) S.cardsGot = {};
-  if (!cardTotal(id) && CARD_BY_ID[id]) recordNew(CARD_BY_ID[id].set, id);
+  if (!cardTotal(id) && CARD_BY_ID[id]){ recordNew(CARD_BY_ID[id].set, id); const hc = CARD_BY_ID[id]; if (!hc.joker && (hc.rarity === 'ultimate' || hc.rarity === 'legendary')) S.recentHi = [id, ...(S.recentHi || []).filter(x => x !== id)].slice(0, 12); }   // the 'All' tile shows the newest UR / SSR finds
   S.cardsGot[id] = cardTotal(id) + 1;
   S.cards[id] = ownedCard(id) + 1;
   lvApply(id);
@@ -110,7 +115,7 @@ function claimSet(set, el){
   if (sdc){
     if (S.setClaims[set] || !sdc.list.every(sc => S.scenes[sc.id])) return;
     S.setClaims[set] = true;
-    earnTag = { k:'scenes:' + set, n:'All ' + sdc.name.toLowerCase() + 's' };
+    earnTag = { k:'scenes:' + set, n:'All ' + (sdc.pl || sdc.name.toLowerCase() + 's') };
     return grant({ xp:scenePay(set), gold:scenePay(set) }, el.getBoundingClientRect(), null, null, 1.6);
   }
   const list = keyCards(set);

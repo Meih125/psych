@@ -243,6 +243,7 @@ function pageAnchor(){
   if (!sel) return null; const ref = document.querySelector('#panel ' + sel); return ref ? { sel, top:ref.getBoundingClientRect().top } : null;
 }
 function anchorShift(a){ try { const el = document.querySelector('#panel ' + a.sel); return el ? Math.round(el.getBoundingClientRect().top - a.top) : 0; } catch(e){ return 0; } }
+function tabsPx(){ const n = document.querySelector('.tabs'); if (n && n.offsetHeight) document.documentElement.style.setProperty('--tabs-h', n.offsetHeight + 'px'); }   // the solid strip behind the floating tab bar is as tall as the bar
 function barPx(){ const d = window.devicePixelRatio || 1, r = document.documentElement.style; r.setProperty('--bh1', Math.max(1, Math.round(4 * d)) / d + 'px'); r.setProperty('--bh2', Math.max(1, Math.round(2 * d)) / d + 'px'); }   // collection bars: whole device pixels, so every row draws them equally thick
 // Redraws everything from S. A failing step is logged and the rest still draws, so one bad quest can't blank the app.
 function render(){
@@ -270,8 +271,9 @@ function initRender(){
   ['load','error'].forEach(t => document.addEventListener(t, e => { const i = e.target; if (i && i.tagName === 'IMG' && i.classList.contains('fi')) i.classList.add('ld'); }, true));
   addEventListener('resize', () => tabHl(false));
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => tabHl(false));
-  barPx();
-  addEventListener('resize', barPx);
+  barPx(); tabsPx();
+  addEventListener('resize', () => { barPx(); tabsPx(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(tabsPx);
   // Live countdowns to the second; redraw the board when any of them runs out
   every(1, () => {
     const t = now(); let expired = false;

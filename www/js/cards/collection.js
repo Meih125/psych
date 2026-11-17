@@ -16,7 +16,7 @@ function colInfo(set){
   }
   const list = CARDS.filter(c => c.set === set), n = list.length, r = list[0].rarity;
   const got = list.filter(c => ownedCard(c.id)).length, times = setTimes(set), cnt = setCount(set);   // cnt: cards owned (before the first claim) or at the set's next level (after it)
-  return { name:set === 'Joker' && !jokersOpen() ? 'Joker (Locked)' : setLabel(set), list, rar:r, col:set === 'Joker' ? '#b04bff' : RARITY[r].color, got, cnt, times, n, f1:times ? 1 : got / n, f2:times ? cnt / n : 0, ready:setReady(set) };
+  return { name:setLabel(set), list, rar:r, col:JOKER_SETS.includes(set) ? (set === 'Joker' ? '#b04bff' : '#ff4a5c') : RARITY[r].color, got, cnt, times, n, f1:times ? 1 : got / n, f2:times ? cnt / n : 0, ready:setReady(set) };
 }
 // category header pictures: up to 3 chosen (S.cover[set]), else the 3 newest found, else card backs
 function coverOk(k, id){   // is this picture still something the player has?
@@ -124,21 +124,26 @@ function colSwitch(to, fdir){
 function renderCollection(){
   const packs = COLLECTIONS.filter(g => colGroup === 'all' || colGroup === g.id);
   const keys = [];
-  packs.forEach(g => { g.sets.forEach(s => keys.push(s)); if (g.sceneKey) keys.push(g.sceneKey); });
+  packs.forEach(g => { if (g.sceneKey && g.sceneFirst) keys.push(g.sceneKey); g.sets.forEach(s => keys.push(s)); if (g.sceneKey && !g.sceneFirst) keys.push(g.sceneKey); });   // Glory's Promo pictures sit on top
   if (colGroup === 'all'){   // all packs: rarest sets first, scenes last
-    const rk = k => sceneDefOf(k) ? 99 : RARITY_ORDER.indexOf((CARDS.find(c => c.set === k) || {}).rarity);
+    const rk = k => sceneDefOf(k) ? (sceneDefOf(k).fixed ? -1 : 99) : RARITY_ORDER.indexOf((CARDS.find(c => c.set === k) || {}).rarity);
     keys.sort((a, b) => rk(a) - rk(b));
+    const gi = keys.indexOf('__glory'), gl = keys.indexOf('Gilded');   // Glory's Promo pictures sit right under Gilded here
+    if (gi >= 0 && gl >= 0){ keys.splice(gi, 1); keys.splice(keys.indexOf('Gilded') + 1, 0, '__glory'); }
   }
   colSets = (colSets || []).filter(k => keys.includes(k)); if (!colInit){ colInit = true; colOpen = S.colOpen && typeof S.colOpen === 'object' && !Array.isArray(S.colOpen) ? { ...S.colOpen } : {}; } colOpen = colOpen || {};   // drop picks from a pack that is no longer shown (the app can draw before these vars are set)
   const tile = colTile;
   // pack picker: one tile per pack with its card back and how many you have
-  const pkCol = { all:'200,220,218', tarot:'255,107,26', mlbb:'124,92,255', hod:'255,184,58' };
+  const pkCol = { all:'200,220,218', tarot:'255,107,26', mlbb:'124,92,255', hod:'255,184,58', glory:'255,111,181' };
+  // 'All' tile: the newest UR / SSR cards you found (as many as fit the width; the rest wrap out of sight); older saves fall back to the UR / SSR you own
+  const hiArt = () => { const own = id => ownedCard(id) > 0 && CARD_BY_ID[id], seen = new Set(); const ids = [...(S.recentHi || []).filter(own), ...CARDS.filter(c => !c.joker && (c.rarity === 'ultimate' || c.rarity === 'legendary') && ownedCard(c.id)).map(c => c.id).reverse()].filter(id => !seen.has(id) && seen.add(id)).slice(0, 8);
+    return `<span class="pk-allart">${ids.map((id, i) => `<span class="hc" style="--i:${i};--z:${20 - i}"><img loading="eager" decoding="async" src="${cardImg(id)}" alt=""></span>`).join('')}</span>`; };
   const pkTile = (id, name) => {
     const L = CARDS.filter(c => id === 'all' || COLLECTIONS.find(g => g.id === id).sets.includes(c.set));
-    const art = id === 'all' ? COLLECTIONS.map(g => `<img src="${cardImg(DECKS[g.id].back)}" alt="">`).join('') : `<img class="v-ur" src="${cardImg(DECKS[id].backUR)}" alt=""><img class="v-n" src="${cardImg(DECKS[id].back)}" alt="">`;   // V: UR back behind, normal back in front
+    const art = id === 'all' ? hiArt() : `<img class="v-ur" src="${cardImg(DECKS[id].backUR)}" alt=""><img class="v-n" src="${cardImg(DECKS[id].back)}" alt="">`;   // V: UR back behind, normal back in front
     return `<button class="pk-tile${colGroup === id ? ' on' : ''}" style="--r:${pkCol[id] || '200,220,218'}" data-act="colg" data-g="${id}">${art}<b>${esc(name)}</b><small>${L.filter(c => ownedCard(c.id)).length}/${L.length}</small></button>`;
   };
-  let html = `<div class="pk-tiles">${pkTile('all', 'All')}${COLLECTIONS.map(g => pkTile(g.id, g.id === "mlbb" ? "Land of Dawn" : g.id === "hod" ? "Hand of Destiny" : g.name)).join('')}</div>`;
+  let html = `<div class="pk-tiles col-pk">${pkTile('all', 'All')}${COLLECTIONS.map(g => pkTile(g.id, g.id === "mlbb" ? "Land of Dawn" : g.id === "hod" ? "Hand of Destiny" : g.name)).join('')}</div>`;
   // search bar (magnifying glass in the title row): results replace the sets while something is typed
   if (colSearch) html += `<div id="ccRes">${colQ ? colSearchHTML(colQ) : ''}</div>`;
   html += `<div id="ccMain"${colSearch && colQ ? ' hidden' : ''}>`;
@@ -157,29 +162,32 @@ function renderCollection(){
     const I = colInfo(k), open = colOpen[k] !== false;
     const sd = sceneDefOf(k), scene = !!sd, duo = k === 'Duo', wide = scene || duo;
     const prev = headIds(k, I, sd, duo), noneOwned = !prev.length;
-    const bkDeck = scene ? (k === '__realms' ? 'hod' : 'tarot') : (I.list[0].deck || 'tarot'), bkUR = !scene && I.rar === 'ultimate';
+    const bkDeck = scene ? (k === '__realms' ? 'hod' : k === '__glory' ? 'glory' : 'tarot') : (I.list[0].deck || 'tarot'), bkUR = scene ? k === '__glory' : I.rar === 'ultimate';
     const pay = scene ? scenePay(k) : setPay(k);
-    const poker = k === 'Poker';
+    const poker = POKER_SETS.includes(k);
     const claim = poker ? '' : scene ? claimBtn(k, I.got === I.n, pay) : claimBtn(k, I.ready, pay, true);
     const payHtml = poker ? '' : claimPay2(pay, !I.ready);
     const times = setTimes(k), stars = !scene && !poker && times > 0;   // set stars appear with the first claim
     const pop = stars && setPop && setPop.key === k ? (setPop.all ? 'all' : starAt(setLv(k))) : undefined; if (stars && setPop && setPop.key === k) setPop = null;
     const cnt = scene ? I.got : poker ? I.got : I.cnt;
-    html += `<section class="cc-fold${open ? ' open' : ''}${I.ready ? ' ready' : ''}" style="--c:${I.col};--rows:${open ? (k === 'Puzzle' ? (pzGrid ? 3 : 1) : duo ? Math.ceil(I.n / 2) * 1.5 : FAN_SET[k] ? 1.5 : k === 'Poker' ? 4 : Math.ceil(I.n / 3) + 0) : 0}">
+    html += `<section class="cc-fold${open ? ' open' : ''}${I.ready ? ' ready' : ''}" style="--c:${I.col};--rows:${open ? (k === 'Puzzle' ? (pzGrid ? 3 : 1) : duo ? Math.ceil(I.n / 2) * 1.5 : FAN_SET[k] ? 1.5 : k === 'Ranker' ? 3.4 : poker ? 4 : scene && sd.fixed ? 1.5 : Math.ceil(I.n / 3) + 0) : 0}">
       <div class="cc-hd">
         <div class="cc-pv${wide && !noneOwned ? ' land' : ''} n${noneOwned ? 3 : prev.length}"${noneOwned ? '' : ` data-act="cover" data-set="${esc(k)}"`}>${noneOwned ? [0, 1, 2].map(() => `<img class="bk" src="${cardImg(DECKS[bkDeck][bkUR ? 'backUR' : 'back'])}" alt="">`).join('') : prev.map((id, i) => `<img${/^HD_DUO\d/.test(id) ? ' class="dj"' : ''} src="${cardImg(id)}" style="z-index:${prev.length - i}" alt="">`).join('')}${stars ? `<span class="pvst">${starBar(setLv(k), { size:'hs', pop })}</span>` : ''}</div>
         <div class="cc-mid" data-act="colfold" data-set="${esc(k)}"><div class="cc-nm"><b>${esc(I.name)}</b><span class="cc-n${times && !scene ? ' gold' : ''}">${cnt}/${I.n}</span></div><div class="cc-br"><div class="cc-bars"><div class="cc-bar"><i style="width:${I.f1 * 100}%"></i></div></div></div></div>
         ${poker ? '' : `<div class="cc-act">${claim}${payHtml}</div>`}
       </div>
-      ${open ? `<div class="cc-bd">${scene
+      ${open ? `<div class="cc-bd">${scene && sd.fixed
+        ? glFan(sd)
+        : scene
         ? `<div class="col-scenes pbd">${sd.list.map((sc, i) => {   // pin board: framed pictures, two per line, a little crooked and uneven
             const se = SCENE_EDGE[sc.id] || ['#4fe6d8', '#8fb', '#f5c542'], st = `style="--e1:${se[0]};--e2:${se[1]};--e3:${se[2]};--r:${((i * 37) % 7 - 3) * .9}deg;--ty:${((i * 53) % 5 - 2) * 3}px;--tx:${((i * 29) % 5 - 2) * 2}px"`, nm = sc.name.replace(/^Chapter \d+:\s*/, '');
             return S.scenes[sc.id]
             ? `<button class="cs pb" ${st} data-act="inspect" data-id="${sc.id}" data-scene="1"><img loading="lazy" decoding="async" src="${cardImg(sc.id)}" alt="${esc(sc.name)}"><span>${esc(nm)}</span></button>`
             : `<div class="cs pb locked" ${st}><i></i><span>???</span></div>`; }).join('')}</div>`
         : duo ? duoGrid(I.list)
-        : FAN_SET[k] ? fanGrid(I.list, k)
-        : poker ? pokerSuits(I.list)
+        : k === 'Ranker' ? `<div class="col-grid rk-2">${I.list.map(tile).join('')}</div>`
+        : FAN_SET[k] ? fanOne(I.list, k)
+        : poker ? pokerSuits(I.list, k)
         : k === 'Puzzle' ? (pzGrid ? `<div class="col-grid pz-grid">${[...I.list].sort((a, b) => a.id.localeCompare(b.id)).map(tile).join('')}</div><button class="pz-pic" data-act="pzview">Show the picture</button>` : puzzleStrip(I.list))
         : `<div class="col-grid">${orderedList(k, I.list).map(tile).join('')}</div>`}</div>` : ''}
     </section>`;
@@ -216,9 +224,9 @@ function duoGrid(list){
       : `<div class="duo">${p.map(one).join('')}</div>`; }).join('')}</div>`;
 }
 // Two-card categories (Promo, Joker) overlap like a small fan.
-const FAN_SET = { Joker:['165,60,255', '235,30,70'], Promo:['235,60,50', '255,184,58'] };
-function fanGrid(list, k){
-  const [g1, g2] = FAN_SET[k], locked = k === 'Joker' && !jokersOpen();
+const FAN_SET = { Joker:['165,60,255', '235,30,70'], 'Joker (GC)':['255,42,74', '255,255,255'], 'Twin Jokers':['255,42,74', '255,255,255'], Promo:['235,60,50', '255,184,58'] };
+function fanOne(list, k){
+  const [g1, g2] = FAN_SET[k], locked = list.some(c => !jokerOpenOf(c));
   const one = (c, cls) => {
     const n = ownedCard(c.id), img = `<img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt="${n ? esc(c.name) : ''}">`;
     if (locked) return `<div class="fc ${cls} lk">${img}<b>LOCKED</b></div>`;
@@ -226,7 +234,13 @@ function fanGrid(list, k){
   };
   // the level badges sit in the two bottom corners of the category, not on the cards
   const corner = (c, side) => locked || !ownedCard(c.id) ? '' : lvStrip(cardLv(c.id), `fq fq-${side}`);
-  return `<div class="col-fan" style="--g1:${g1};--g2:${g2}">${list.map((c, i) => one(c, i ? 'fb' : 'fa')).join('')}${list[0] ? corner(list[0], 'l') : ''}${list[1] ? corner(list[1], 'r') : ''}</div>${locked ? '<div class="jk-note c"><span>Finish the Poker set to unlock.</span></div>' : ''}`;
+  return `<div class="col-fan" style="--g1:${g1};--g2:${g2}">${list.map((c, i) => one(c, i ? 'fb' : 'fa')).join('')}${list[0] ? corner(list[0], 'l') : ''}${list[1] ? corner(list[1], 'r') : ''}</div>${locked ? `<div class="jk-note c${k === 'Joker' ? '' : ' gc'}"><span>${k === 'Joker' ? 'Finish the Poker set to unlock.' : 'Finish Golden Poker and Joker (GC) to unlock.'}</span></div>` : ''}`;
+}
+// Glory Promo: two sideways pictures crossing each other like the Hand of Destiny Promo fan; not found yet = faded, claimed once, no stars
+function glFan(sd){
+  const one = (sc, cls) => { const n = S.scenes[sc.id], img = `<img loading="lazy" decoding="async" src="${cardImg(sc.id)}" alt="${n ? esc(sc.name) : ''}">`;
+    return n ? `<button class="fc ${cls}" data-act="inspect" data-id="${sc.id}" data-scene="1">${img}</button>` : `<div class="fc ${cls} off">${img}</div>`; };
+  return `<div class="col-fan gl-fan" style="--g1:235,60,50;--g2:255,110,130">${sd.list.map((sc, i) => one(sc, i ? 'fb' : 'fa')).join('')}</div>`;
 }
 // Poker: one line per suit, each a small set of its own (set stars, count, claim)
 function pokerTile(c){
@@ -234,8 +248,8 @@ function pokerTile(c){
   const img = `<img src="${cardImg(c.id)}" alt="${n ? esc(c.name) : ''}">`;
   return `<div class="pkc">${n ? `<button class="ct r-${c.rarity}" data-act="inspect" data-id="${c.id}">${img}</button>` : `<div class="ct locked r-${c.rarity}">${img}</div>`}<i>${rk}</i>${n ? lvStrip(cardLv(c.id)) : ''}</div>`;
 }
-function pokerSuits(list){
-  return `<div class="pk-suits">${POKER_SUITS.map(([key, name, sym, col]) => {
+function pokerSuits(list, set){
+  return `<div class="pk-suits">${POKER_OF[set || 'Poker'].map(([key, name, sym, col]) => {
     const L = keyCards(key), t = setTimes(key), ready = setReady(key), cnt = setCount(key);
     const pop = t && setPop && setPop.key === key ? (setPop.all ? 'all' : starAt(setLv(key))) : undefined; if (setPop && setPop.key === key) setPop = null;
     const st = t ? starBar(setLv(key), { size:'hs', pop }) : '';
@@ -250,7 +264,7 @@ function orderedList(k, list){
   return list.map((c, n) => [c, n]).sort((a, b) => pos(a[0].id) - pos(b[0].id) || a[1] - b[1]).map(x => x[0]);
 }
 function colTile(c){
-  if (c.joker && !jokersOpen()) return `<div class="ct locked jl r-common"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt=""><b>LOCKED</b></div>`;
+  if (!jokerOpenOf(c)) return `<div class="ct locked jl r-common"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt=""><b>LOCKED</b></div>`;
   const n = ownedCard(c.id);
   return n
     ? `<button class="ct${S.big && S.big[c.id] ? (S.big[c.id] === 2 ? ' big br' : ' big') : ''} r-${c.rarity}${CARD_EDGE[c.id] && (c.rarity === 'ultimate' || c.rarity === 'legendary') ? ' edge' : ''}"${edgeStyle(c.id)} data-act="inspect" data-id="${c.id}"><img loading="lazy" decoding="async" src="${cardImg(c.id)}" alt="${esc(c.name)}">${lvStrip(cardLv(c.id))}</button>`
@@ -259,7 +273,7 @@ function colTile(c){
 // lower-case, no accents, curly quotes made straight: "Soryu" finds "Sōryū", "its" finds "it's"
 const searchNorm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’‘`]/g, "'").replace(/[“”]/g, '"');
 function cardSearchText(c){
-  const pack = c.deck === 'mlbb' ? 'land of dawn mlbb' : c.deck === 'hod' ? 'hand of destiny hod' : 'tarot';
+  const pack = c.deck === 'mlbb' ? 'land of dawn mlbb' : c.deck === 'hod' ? 'hand of destiny hod' : c.deck === 'glory' ? 'glory collection' : 'tarot';
   return searchNorm([c.name, c.hero, setLabel(c.set), c.joker ? 'J joker' : RARITY[c.rarity].name, pack, ownedCard(c.id) ? flavorOf(c.id) : ''].join('   '));
 }
 function colSearchHTML(q){
@@ -271,7 +285,7 @@ function colSearchHTML(q){
   if (!hits.length) return `<p class="cc-none">No cards match “${esc(q)}”.</p>`;
   const own = hits.filter(c => ownedCard(c.id)).length;
   return `<div class="cc-count">${hits.length} ${hits.length === 1 ? 'card' : 'cards'} · ${own} owned</div>
-    <div class="col-grid cc-hits">${hits.map(c => `<div class="cc-hit${ownedCard(c.id) ? '' : ' off'}">${colTile(c)}<b>${esc(c.name)}</b><small${c.joker ? ' class="jr"' : ` style="color:${RARITY[c.rarity].color}"`}>${c.joker ? 'J' : RARITY[c.rarity].name}${c.hero && c.hero !== c.name ? ' · ' + esc(c.hero) : ' · ' + esc(setLabel(c.set))}</small></div>`).join('')}</div>`;
+    <div class="col-grid cc-hits">${hits.map(c => `<div class="cc-hit${ownedCard(c.id) ? '' : ' off'}">${colTile(c)}<b>${esc(c.name)}</b><small${c.joker ? ` class="jr${c.deck === 'glory' ? ' gc' : ''}"` : ` style="color:${RARITY[c.rarity].color}"`}>${c.joker ? 'J' : RARITY[c.rarity].name}${c.hero && c.hero !== c.name ? ' · ' + esc(c.hero) : ' · ' + esc(setLabel(c.set))}</small></div>`).join('')}</div>`;
 }
 function colSearchUpdate(){
   const res = $('#ccRes'), main = $('#ccMain'); if (!res) return;

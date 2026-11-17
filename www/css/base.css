@@ -286,8 +286,10 @@ body::after{content:'';position:fixed;left:0;right:0;bottom:0;height:var(--safe-
 .ep-hd svg{width:13px;height:13px;justify-self:end}
 /* Below the tab bar: the page fades out under it, so tiles don't show in the gap between the tab bar and the bottom */
 body::before{content:'';position:fixed;left:0;right:0;bottom:0;z-index:5;pointer-events:none;
-  height:calc(var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)) + 46px);
-  background:linear-gradient(to top,#060d0e calc(var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)) + 24px),rgba(6,13,14,0))}
+  --bar-top:calc(var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)) + 10px + var(--tabs-h,68px));
+  height:calc(var(--bar-top) + 14px);
+  background:linear-gradient(to top,#060d0e var(--bar-top),rgba(6,13,14,0))}
+/* (the solid part reaches the top of the floating tab bar, so nothing shows in the gaps on its left, right and under it) */
 .list-add b{font:700 18px/1 var(--f-body);color:#2ee6d6}
 .bd-stk .q i{font:800 30px var(--f-title);font-style:normal;color:rgba(255,255,255,.85);text-shadow:0 0 14px rgba(240,138,36,.9)}
 .bd-pop .dl-amt b{font-size:38px}

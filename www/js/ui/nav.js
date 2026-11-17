@@ -50,7 +50,7 @@ function updateFab(){
 function initNav(){
   document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
     const from = TAB_ORDER.indexOf(S.tab);
-    S.tab = b.dataset.tab; arranging = false; if (S.tab === 'progress') weekOffset = 0; save(); render(); window.scrollTo({ top:0 });
+    S.tab = b.dataset.tab; arranging = false; if (S.tab === 'progress'){ weekOffset = 0; if (goalWaiting(firstSteps())) S.pview = 'steps'; } save(); render(); window.scrollTo({ top:0 });
     pageSlide(TAB_ORDER.indexOf(S.tab) - from);
   }));
   // swipe the tab bar sideways to change tab (loops: past the last one comes the first)

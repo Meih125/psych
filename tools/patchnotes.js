@@ -38,7 +38,9 @@ function editor(from){
 }
 
 function readState(file){
-  const m = fs.readFileSync(file, 'utf8').match(/<script id="pn-state" type="application\/json">([\s\S]*?)<\/script>/);
+  const raw = fs.readFileSync(file, 'utf8');
+  if (/^\s*\{/.test(raw)){ const o = JSON.parse(raw); return { versions:o.versions, images:o.images || {} }; }   // the text the tool's "Copy notes" button gives
+  const m = raw.match(/<script id="pn-state" type="application\/json">([\s\S]*?)<\/script>/);
   if (!m) throw new Error('That file has no notes inside. Is it the tool file?');
   return JSON.parse(m[1]);
 }

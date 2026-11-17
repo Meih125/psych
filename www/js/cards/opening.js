@@ -4,7 +4,8 @@ let opening = null, packClear = 0;
 // where each card sits: 3 on top, 2 below, slightly tilted (rollDeck shuffles which card goes where)
 const PACK_SLOTS = [ { x:18, y:.66, r:-7 }, { x:50, y:.52, r:0 }, { x:82, y:.66, r:7 }, { x:34, y:1.82, r:-3 }, { x:66, y:1.82, r:3 } ];
 // the label under a card, like Hearthstone's class name
-const SET_LABEL = { 'Poker:H':'Hearts', 'Poker:D':'Diamonds', 'Poker:S':'Spades', 'Poker:C':'Clubs', 'SSR':'Signature', 'SR':'Beyonder', 'Cards of Blasphemy':'Card of Blasphemy', 'Angels':'Angel', 'Objects':'Artifact', 'Pathways':'Pathway', 'Promo':'Promo', 'Deity':'Deity', 'Puzzle':'Puzzle', 'Tarot Club':'Tarot Club', 'Legends':'Legend', 'Gilded':'Gilded', 'Regions':'Region', 'Duo':'Duo', 'Poker':'Poker', 'Joker':'Joker' };
+const SET_LABEL = { 'Poker:H':'Hearts', 'Poker:D':'Diamonds', 'Poker:S':'Spades', 'Poker:C':'Clubs', 'SSR':'Signature', 'SR':'Beyonder', 'Cards of Blasphemy':'Card of Blasphemy', 'Angels':'Angel', 'Objects':'Artifact', 'Pathways':'Pathway', 'Promo':'Promo', 'Deity':'Deity', 'Puzzle':'Puzzle', 'Tarot Club':'Tarot Club', 'Legends':'Legend', 'Gilded':'Gilded', 'Regions':'Region', 'Duo':'Duo', 'Poker':'Poker', 'Joker':'Joker',
+  'Golden Poker:H':'Hearts', 'Golden Poker:D':'Diamonds', 'Golden Poker:S':'Spades', 'Golden Poker:C':'Clubs' };
 const setLabel = set => SET_LABEL[set] || set;
 function openDeck(id){
   const item = SHOP.find(x => x.id === id);
@@ -13,14 +14,16 @@ function openDeck(id){
   S.inv[id] = packCount(id) - 1;
   S.opened[id] = (S.opened[id] || 0) + 1;
   const res = rollDeck(item);
+  const promos = gloryPromos(item, (S.opened[id] || 1) - 1, S.opened[id] || 1);   // Glory: the 10th pack brings one Promo picture, the 20th the other
+  promos.forEach(sc => { S.scenes[sc.id] = true; recordNew('__glory', sc.id); });
   const fresh = {};
   res.cards.forEach(c => { if (!ownedCard(c.id) && !fresh[c.id]) fresh[c.id] = true; gainCard(c.id); });
   const jokerPop = checkJokers();
   if (res.scene){ S.scenes[res.scene.id] = true; recordNew(sceneDefById(res.scene.id).key, res.scene.id); }
   save();
-  opening = { item, ...res, fresh, flipped:new Set(), done:false, jokerPop, tix:window.PsychDen ? PsychDen.packFirst() : 0 };
+  opening = { item, ...res, fresh, flipped:new Set(), done:false, jokerPop, sceneList:promos.length ? promos : undefined, tix:window.PsychDen ? PsychDen.packFirst() : 0 };
   // fully decode the art before showing the pack, so flipping never stalls
-  const ids = [...res.cards.map(c => c.id), deckOf(item).back, deckOf(item).backUR, ...(res.scene ? [res.scene.id] : [])];
+  const ids = [...res.cards.map(c => c.id), deckOf(item).back, deckOf(item).backUR, ...(res.scene ? [res.scene.id] : []), ...promos.map(sc => sc.id)];
   opening.imgs = ids.map(id => { const im = new Image(); im.src = cardImg(id); return im; });
   const mine = opening;   // show it only if this pack is still the one being opened (it may have been closed meanwhile)
   Promise.all(opening.imgs.map(im => im.decode().catch(() => {}))).then(() => { if (opening === mine) showOpening(); });
@@ -82,6 +85,7 @@ var RV_PAL = {
   epic:['190,110,255','225,170,255','250,235,255','140,70,220'],
   legendary:['255,160,60','255,205,120','255,245,225','240,110,30'],
   joker:['170,70,255','235,40,70','255,225,240','120,40,200'],
+  jokerw:['255,50,80','255,255,255','255,225,230','200,20,50'],
   ultimate:['255,70,60','255,200,90','255,245,230','255,120,40']
 };
 /* rarity pop-up lettering: hand-drawn angular U/R/S in chrome (no font needed) */
@@ -114,12 +118,12 @@ function rvLayer(cls, html = ''){ const el = document.createElement('div'); el.c
 function revealFX(btn, r, lite){
   const rect = btn.getBoundingClientRect(), [x, y] = rectMid(rect);
   if (r === 'common'){ FX.burst(x, y, .6); return; }
-  if (r === 'joker') FX.burstC(x, y, .1, RV_PAL.joker);
+  if (r === 'joker' || r === 'jokerw') FX.burstC(x, y, .1, RV_PAL[r]);
   const pal = RV_PAL[r];
   btn.classList.add('rv-pop', 'rv-' + r);
-  const TAGC = { epic:['#c07bff', '#6b2fd6'], legendary:['#ff9a2e', '#c2410c'], ultimate:['#ff4a3d', '#ffb02e'], joker:['#b04bff', '#e0153b'] };
-  const tag = (txt, big) => { const t = rvLayer('rv-tag rv-t-' + r + (big ? ' big' : ''), rarityLogo(txt, ...TAGC[r], 'rl' + Math.random().toString(36).slice(2, 7))); t.style.left = (r === 'joker' ? Math.min(Math.max(x, 100), innerWidth - 100) : x) + 'px'; t.style.top = (rect.top - 6) + 'px'; setTimeout(() => t.remove(), 1600); };
-  if (lite || S.reduceFx){ FX.burstC(x, y, r === 'rare' ? .8 : 1.2, pal); if (!lite && r !== 'rare') tag(r === 'epic' ? 'SR' : r === 'legendary' ? 'SSR' : r === 'joker' ? 'JOKER' : 'UR', r !== 'epic'); return; }   // reveal-all / reduced effects: a small coloured burst (+ the rarity tag)
+  const TAGC = { epic:['#c07bff', '#6b2fd6'], legendary:['#ff9a2e', '#c2410c'], ultimate:['#ff4a3d', '#ffb02e'], joker:['#b04bff', '#e0153b'], jokerw:['#ff2a4a', '#ffffff'] };
+  const tag = (txt, big) => { const t = rvLayer('rv-tag rv-t-' + r + (big ? ' big' : ''), rarityLogo(txt, ...TAGC[r], 'rl' + Math.random().toString(36).slice(2, 7))); t.style.left = (r.startsWith('joker') ? Math.min(Math.max(x, 100), innerWidth - 100) : x) + 'px'; t.style.top = (rect.top - 6) + 'px'; setTimeout(() => t.remove(), 1600); };
+  if (lite || S.reduceFx){ FX.burstC(x, y, r === 'rare' ? .8 : 1.2, pal); if (!lite && r !== 'rare') tag(r === 'epic' ? 'SR' : r === 'legendary' ? 'SSR' : r.startsWith('joker') ? 'JOKER' : 'UR', r !== 'epic'); return; }   // reveal-all / reduced effects: a small coloured burst (+ the rarity tag)
   if (r === 'rare'){ FX.burstC(x, y, 1.1, pal); return; }
   if (r === 'epic'){
     FX.burstC(x, y, 1.6, pal); FX.ringC(x, y, 130, .8, 3, pal[1], .12); FX.glints(rect.left - 20, rect.top - 20, rect.width + 40, rect.height + 40, 8);
@@ -128,10 +132,10 @@ function revealFX(btn, r, lite){
   const dim = r === 'ultimate' ? rvLayer('rv-dim') : null;   // UR: the room goes dark first
   const rays = rvLayer('rv-rays rv-r-' + r); rays.style.left = x + 'px'; rays.style.top = y + 'px';
   const glow = rvLayer('rv-glow rv-g-' + r); glow.style.setProperty('--x', x + 'px'); glow.style.setProperty('--y', y + 'px');
-  if (r === 'legendary' || r === 'joker'){
+  if (r === 'legendary' || r.startsWith('joker')){
     FX.burstC(x, y, 2.2, pal); FX.ringC(x, y, 160, .9, 4, pal[0]); FX.ringC(x, y, 220, 1, 2.5, pal[1], .18);
     FX.fountain(x, y, 18); FX.glints(rect.left - 30, rect.top - 30, rect.width + 60, rect.height + 60, 8);
-    tag(r === 'joker' ? 'JOKER' : 'SSR', true);
+    tag(r.startsWith('joker') ? 'JOKER' : 'SSR', true);
     setTimeout(() => { rays.remove(); glow.remove(); }, 2200);
     return;
   }
@@ -168,7 +172,7 @@ function afterReveal(){
     if (o.sceneAt == null){ o.done = false; return showSceneStack(); }
     if (o.sceneAt < o.sceneList.length - 1){ o.done = false; return sceneStackNext(); }
   }
-  if (o.jokerPop){ o.jokerPop = false; o.done = false; return showJokerUnlock(); }
+  if (o.jokerPop){ const jd = o.jokerPop; o.jokerPop = false; o.done = false; return showJokerUnlock(jd); }
   if (o.tix){ o.tixN = o.tix; o.tix = 0; o.done = false; return showPackTicket(); }   // first pack of the day: a Den ticket
   if (o.tixN && window.PsychDen){ const ic = $('#pack .ptk-ic'); if (ic) PsychDen.fly(ic.getBoundingClientRect(), o.tixN); else PsychDen.land(o.tixN); o.tixN = 0; }
   if (lvHas()){ o.done = false; lvOpen({ stats:o.all ? lvStats(o) : '' }, closeOpening); return; }   // last step: the cards that levelled up
@@ -188,14 +192,14 @@ function showPackTicket(){
   packScreenFx('.ptk-ic', r => { FX.flash(...rectMid(r), 200, .6); FX.burst(...rectMid(r), 1.4); });
 }
 // the 52nd Poker card is in: the Jokers are open for collecting
-function showJokerUnlock(){
-  const ov = $('#pack'), o = opening, J = CARDS.filter(c => c.joker);
-  ov.innerHTML = `<div class="jku">
+function showJokerUnlock(deck){
+  const ov = $('#pack'), o = opening, J = CARDS.filter(c => c.joker && (!deck || c.deck === deck) && (deck !== 'glory' || GL_TWINS.includes(c.id)));
+  ov.innerHTML = `<div class="jku${deck === 'glory' ? ' gc' : ''}">
     <div class="jku-rays"></div><div class="jku-halo"></div>
-    <div class="jku-word">JOKERS</div><div class="jku-sub">Jokers are now unlocked for collecting</div>
+    <div class="jku-word">${deck === 'glory' ? 'TWIN JOKERS' : 'JOKERS'}</div><div class="jku-sub">${deck === 'glory' ? 'The Twin Jokers are now unlocked for collecting' : 'Jokers are now unlocked for collecting'}</div>
     <div class="jku-cards">${J.map(c => `<img src="${cardImg(c.id)}" alt="">`).join('')}</div>
     <div class="jku-flash"></div>${hintHtml()}</div>`;
-  packScreenFx('.jku-word', r => { FX.burstC(...rectMid(r), 2, RV_PAL.joker); FX.glints(r.left, r.top - 30, r.width, r.height + 60, 10); }, 450, 900);
+  packScreenFx('.jku-word', r => { FX.burstC(...rectMid(r), 2, RV_PAL[deck === 'glory' ? 'jokerw' : 'joker']); FX.glints(r.left, r.top - 30, r.width, r.height + 60, 10); }, 450, 900);
 }
 /* Open all with new scenes: like the single-pack "Scene Unlocked", but the scenes sit in a stack (the next ones
    peeking out behind on the left). Tap: the front one flies off to the right and the next slides forward. */
@@ -267,6 +271,7 @@ function openAll(id){
     if (res.scene){ S.scenes[res.scene.id] = true; recordNew(sceneDefById(res.scene.id).key, res.scene.id); scenes++; sceneList.push(res.scene); }
     cards = cards.concat(res.cards);
   }
+  gloryPromos(item, S.opened[id] - n, S.opened[id]).forEach(sc => { S.scenes[sc.id] = true; recordNew('__glory', sc.id); scenes++; sceneList.push(sc); });
   const jokerPop = checkJokers();
   save();
   cards.sort((a, b) => rarRank(a) - rarRank(b));   // the best first (the top of the stack), the lowest last

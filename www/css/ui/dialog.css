@@ -27,6 +27,7 @@
 #askArt:empty{display:none}
 .dialog.buy{--ac:#ff6b1a;--acr:255,107,26;--g1:#ffd2b0;--g3:#b8430f;text-align:center;border-color:rgba(var(--acr),.55) !important;background:radial-gradient(120% 70% at 50% 0%,rgba(var(--acr),.28),transparent 65%),rgba(14,22,26,.97) !important;box-shadow:0 0 30px rgba(var(--acr),.25),0 20px 50px rgba(0,0,0,.7) !important}
 .dialog.buy.th-mlbb{--ac:#7c5cff;--acr:124,92,255;--g1:#ddd3ff;--g3:#3b4bd8}
+.dialog.buy.th-glory{--ac:#ff6fb5;--acr:255,111,181;--g1:#ffd0e6;--g3:#c2297a}
 .ab-stack{position:relative;width:74px;aspect-ratio:480/672;margin:4px auto 16px}
 .dialog.buy h3{font-size:18px}
 .dialog.buy #askText{display:flex;flex-direction:column;align-items:center;gap:4px;margin:8px 0 16px}

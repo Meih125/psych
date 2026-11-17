@@ -30,6 +30,7 @@
 .sh{display:flex;flex-direction:column;padding:10px 14px 4px}
 .sh .th-tarot,.sh.th-tarot{--ac:#ff6b1a;--acr:255,107,26}
 .sh-ban.th-mlbb,.sh-row.th-mlbb,.u-r.th-mlbb,.pki.th-mlbb{--ac:#7c5cff;--acr:124,92,255;--g1:#ddd3ff;--g3:#3b4bd8}
+.sh-ban.th-glory,.sh-row.th-glory,.u-r.th-glory,.pki.th-glory{--ac:#ff6fb5;--acr:255,111,181;--g1:#ffd0e6;--g3:#c2297a}
 .sh-ban.th-tarot,.sh-row.th-tarot,.u-r.th-tarot,.pki.th-tarot{--ac:#ff6b1a;--acr:255,107,26;--g1:#ffd2b0;--g3:#b8430f}
 .sh-ban{position:relative;overflow:hidden;background:radial-gradient(90% 120% at 100% 0%,rgba(var(--acr),.55),transparent 60%),linear-gradient(160deg,#141a3a,#0b1214 70%)}
 .sh-ban-txt{position:absolute;left:16px;top:16px;bottom:16px;width:150px;z-index:3;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:11px}
@@ -196,6 +197,7 @@
 .sh .lt, .sh .sps { transition: opacity 0.2s; }
 .u-r.th-tarot { --ac: #ff6b1a; --acr: 255,107,26; --g1: #ffd2b0; --g3: #b8430f; }
 .u-r.th-mlbb { --ac: #7c5cff; --acr: 124,92,255; --g1: #ddd3ff; --g3: #3b4bd8; }
+.u-r.th-glory { --ac: #ff6fb5; --acr: 255,111,181; --g1: #ffd0e6; --g3: #c2297a; }
 .u-r.th-hod { --ac: #ffb83a; --acr: 255,184,58; --g1: #ffe2a0; --g3: #b8741a; }
 .sh .sh { padding-bottom: 12px; }
 .sh .sh-h { margin-top: 6px; }

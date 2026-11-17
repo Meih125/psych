@@ -110,6 +110,9 @@
 .fc.fa{left:14%;transform:rotate(-7deg)}
 .fc.fb{right:14%;top:6%;transform:rotate(6deg)}
 .fc:not(.lk):not(.off){box-shadow:-6px 0 18px 2px rgba(var(--g1),.6),6px 0 18px 2px rgba(var(--g2),.55)}
+.gl-fan{aspect-ratio:100/68}.gl-fan .fc{width:64%}.gl-fan .fc img{aspect-ratio:672/480}
+.gl-fan .fc.fa{left:2%;top:0;transform:rotate(-4deg)}.gl-fan .fc.fb{left:auto;right:2%;top:30%;transform:rotate(3.5deg)}
+.gl-fan .fc.off img{filter:grayscale(.7) brightness(.4);opacity:.75}
 .fc.lk b{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-55deg);white-space:nowrap;font:800 28cqw system-ui;letter-spacing:.06em;color:transparent;-webkit-text-stroke:1.3px rgba(200,205,210,.3);pointer-events:none}
 /* set claim row (V2): small fixed button, the pay under the bar */
 .cc-hd .set-claim{width:84px;justify-content:center;padding:9px 0;text-align:center;line-height:1.2;flex:none}
@@ -329,4 +332,8 @@
 .pkc .lvs .sbar{--gp:calc(2.6px*var(--bk))}
 .pkc .lvs{--bk:.7;left:1px;right:1px;bottom:1px}
 .duo-one .lvs{left:3px;right:calc(50% + 2px)}.duo-one .lvs.qr{left:calc(50% + 2px);right:3px}
-.col-fan .lvs.fq{width:46%;left:auto;right:auto}.col-fan .lvs.fq-l{left:2px}.col-fan .lvs.fq-r{right:2px}
+.col-fan .lvs.fq{background:none;width:46%;left:auto;right:auto}.col-fan .lvs.fq-l{left:2px}.col-fan .lvs.fq-r{right:2px}
+.jk-note.c.gc::before,.jk-note.c.gc::after{background:linear-gradient(90deg,transparent,#ff2a4a,#fff,transparent)}
+.jk-note.c.gc span{background:linear-gradient(90deg,#ff4a5c,#ffffff);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+.col-grid.rk-2{grid-template-columns:repeat(2,1fr);gap:8px}

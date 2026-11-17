@@ -55,11 +55,12 @@ function mktCell(m, i){
 // Reroll for Den tickets (1, 2, 3... per day); replaces unfrozen, unbought cards.
 function mktReroll(btn){
   const m = mktEnsure(), cost = m.rr + 1;
+  if (m.ids.every((id, i) => !id || m.bought[i])){ showToast('Market sold out'); return; }
   if (!window.PsychDen || PsychDen.count() < cost) return deny(btn);
   const keep = i => !m.ids[i] || m.bought[i] || m.fz === i, used = new Set(m.ids.filter((id, i) => id && keep(i))), seen = new Set(m.ids.filter(Boolean)), next = m.ids.slice();
   let changed = false;
   for (let i = 0; i < 3; i++){ if (keep(i)) continue; const id = mktRoll(seen); if (id){ next[i] = id; seen.add(id); used.add(id); changed = true; } }
-  if (!changed){ showToast('No other cards to find'); return; }
+  if (!changed) return;
   PsychDen.spend(cost); m.ids = next; m.rr = cost; save(); render();
 }
 // the Market row (a ticket) with up to three cards folding out of it

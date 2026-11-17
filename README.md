@@ -29,7 +29,8 @@
 
 | Update | Released | What changed |
 |:---:|:---:|:---:|
-| **[v1.5.2](https://github.com/Meih125/psych/releases/tag/v1.5.2)** (latest) | Nov 12, 2026 | **[Patch notes](docs/patch-notes/v1.5.2.md)** |
+| **[v1.6.0](https://github.com/Meih125/psych/releases/tag/v1.6.0)** (latest) | Nov 17, 2026 | **[Patch notes](docs/patch-notes/v1.6.0.md)** |
+| [v1.5.2](https://github.com/Meih125/psych/releases/tag/v1.5.2) | Nov 12, 2026 | [Patch notes](docs/patch-notes/v1.5.2.md) |
 | [v1.5.1](https://github.com/Meih125/psych/releases/tag/v1.5.1) | Nov 10, 2026 | [Patch notes](docs/patch-notes/v1.5.1.md) |
 | [v1.5.0](https://github.com/Meih125/psych/releases/tag/v1.5.0) | Nov 10, 2026 | [Patch notes](docs/patch-notes/v1.5.0.md) |
 
@@ -100,7 +101,7 @@ BUILD.md        how to build the APK
 
 ## Credits
 
-Fan-made, personal project. Card art belongs to its original creators: *Lord of the Mysteries* (Tarot pack) and *Mobile Legends: Bang Bang* (Land of Dawn and Hand of Destiny packs, including the hero voice lines used as card text). Psych isn't affiliated with or endorsed by either.
+Fan-made, personal project. Card art belongs to its original creators: *Lord of the Mysteries* (Tarot pack) and *Mobile Legends: Bang Bang* (Land of Dawn, Hand of Destiny and Glory Collection packs, including the hero voice lines used as card text). Psych isn't affiliated with or endorsed by either.
 
 Fonts: Montserrat, Inter, JetBrains Mono and Lora, all under the SIL Open Font License.
 

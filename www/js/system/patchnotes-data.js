@@ -3,6 +3,14 @@
    A note: k = new | chg | fix (the orb colour), t = title, d = the grey line under it, snip = 1 shows a snippet card
    (img = a file in img/notes/, how = its numbered steps). Notes show in the order written. */
 const PATCH_NOTES = [
+{"v":"1.6.0","date":"Nov 17","tag":"Glory Collection","notes":[
+{"k":"new","t":"Added the Glory Collection pack","d":"155 cards for Mobile Legends' 10th anniversary.","snip":1,"img":"v160-added-the-glory-collection-p.jpg","how":[]},
+{"k":"new","t":"Added card display to the All tile","d":"Showcases your latest URs and SSRs.","snip":1,"img":"v160-added-card-display-to-the-al-2.jpg","how":[]},
+{"k":"chg","t":"Changed back-claiming on Progress","d":"Claim? is disabled when the quest was already claimed in that reset period.","snip":0,"how":[]},
+{"k":"chg","t":"Changed Progress to open on the Steps tab when a claim is available","d":"Tap Progress while its dot is lit and it opens on the Steps tab.","snip":0,"how":[]},
+{"k":"chg","t":"Adjusted UR and SSR card borders","d":"Hand of Destiny and Glory Collection cards now get new borders in the Collection view.","snip":0,"how":[]},
+{"k":"fix","t":"Fixed the Tally bar animation","d":"","snip":0,"how":[]}
+]},
 {"v":"1.5.2","date":"Nov 12","tag":"Card stars and Lockpick training","notes":[
 {"k":"new","t":"Added card levels and stars","d":"Every card has a level from 1 to 16. Extra copies level them up.","snip":1,"img":"v152-added-card-levels-and-stars.jpg","how":[]},
 {"k":"new","t":"Added the Level up screen","d":"Shows every card that levelled up after gaining cards.","snip":1,"img":"v152-added-the-level-up-screen.jpg","how":[]},

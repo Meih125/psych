@@ -62,6 +62,7 @@
 .dot-hl{position:absolute;top:0;left:0;width:0;height:6px;border-radius:3px;background:#e9f2f0;pointer-events:none}
 .inv-dots .dot-hl{height:7px;border-radius:4px;background:var(--dot,#ff6b1a);box-shadow:0 0 8px var(--dot,#ff6b1a)}
 .inv.th-mlbb .inv-dots .dot-hl{--dot:#7c5cff}
+.inv.th-glory .inv-dots .dot-hl{--dot:#ff6fb5}
 .inv.th-hod .inv-dots .dot-hl{--dot:#ffb83a}
 .reduce-fx #panel img.fi{opacity:1}
 .reduce-fx .tab-hl,.reduce-fx .dot-hl{transition:none}

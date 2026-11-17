@@ -12,6 +12,7 @@ function inspectCard(id, isScene, isLand){
   const ov = $('#inspect');
   const top3 = !isScene && (c.rarity === 'ultimate' || c.rarity === 'legendary' || c.joker), holo = top3 && !S.reduceFx;   // Reduce effects: UR / SSR / J get the plain glare instead of the tilt; SR and R get nothing   // UR, SSR and J tilt with your finger and catch the light; SR and R keep the sweeping glare; C has neither
   ov.innerHTML = `<div class="in-wrap${isScene || isLand ? ' land' : ''}${isScene ? ' sc' : ''}">
+    ${(col => col && !isScene ? `<div class="in-deck">${esc(col.id === "mlbb" ? "Land of Dawn" : col.name)}</div>` : '')(COLLECTIONS.find(x => x.id === c.deck))}
     <div class="in-card${holo ? ' holo' : ''}"><img src="${isLand ? landImg(id) : cardImg(id)}" alt="">${holo ? '<span class="in-foil"></span>' : !isScene && (top3 || (!S.reduceFx && (c.rarity === 'epic' || c.rarity === 'rare'))) ? `<span class="pk-glare in-glare${c.rarity === 'epic' || c.rarity === 'rare' ? ' in-slow' : ''}"></span>` : ''}</div>
     <div class="in-name">${esc(c.name)}</div>
     ${isScene ? '' : `<div class="in-stars">${starBar(cardLv(id))}</div>`}

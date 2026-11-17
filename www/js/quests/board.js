@@ -227,7 +227,7 @@ function qbTally(q, wide){
   const mine = tlFrom && tlFrom.id === q.id ? tlFrom : null, fr = mine && !S.reduceFx ? mine : null;
   if (mine) tlFrom = null;   // used once
   const pv = tallyPreview(q, ''), total = q.total || 0, ph = 'Amount';
-  if (fr) requestAnimationFrame(() => { tallyCountUp(q.id, fr.total, total, fr.laps ? tallyLapsMs(fr.units) : fr.quick ? 450 : 650); if (fr.laps) tallyLaps(q.id, fr); });
+  if (fr) requestAnimationFrame(() => { tallyCountUp(q.id, fr.total, total, fr.laps ? tallyLapsMs(fr.units) : fr.quick ? 450 : 650); if (fr.laps) tallyLaps(q.id, fr); else if (!fr.quick) tallyFillTo(q.id, fr.base * 10, Math.min(1, (q.carry || 0) / (q.chunk || 1)) * 10, 650); });
   if (!wide){   // half: total + carry in the corner, amount box + ADD on one line, rewards and the step size under it
     const carry = q.carry ? `<span class="tl-cr">${CURRENCY.includes(unitOf(q)) ? fmtU(q, q.carry) : fmt(q.carry)} carried over</span>` : '';
     return `<article class="card qb-t tally-card tl-half">

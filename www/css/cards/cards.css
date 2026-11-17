@@ -9,3 +9,4 @@
 .jr{font-weight:700;-webkit-text-stroke:.7px #d63a78;font-family:inherit}
 .ep-nm small .rdot{width:7px;height:10px;margin:0 0 0 6px;vertical-align:-1px}
 .ur1 .rtag { font: 700 11px var(--f-title); flex: 0 0 auto; }
+.jr.gc{background:linear-gradient(90deg,#ff2a4a,#ffffff);-webkit-background-clip:text;background-clip:text;-webkit-text-stroke:.7px #ff6a80}

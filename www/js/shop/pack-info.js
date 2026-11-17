@@ -12,6 +12,7 @@ function closePackInfo(now){
 const PKI_FEAT = {
   hod:{ h:{ t:'DUO PAIRS', s:'Two cards join into one picture', v:'duo' }, b:{ t:'2 JOKERS', s:'Hidden somewhere in the deck', v:'jk' } },
   tarot:{ h:{ t:'PUZZLE PICTURE', s:'8 cards line up into 1 wide picture', v:'pz' }, b:{ t:'2 CHAPTERS', s:'Wide story scenes to unlock', v:'sc' } },
+  glory:{ h:{ t:'CULTIVATOR SERIES', s:'6 cards in Xianxia theme', v:'cult' }, b:{ t:'2 PROMOS', s:'Happy 10 years anniversary', v:'prm' } },
   mlbb:{ h:{ t:'ARTIST SERIES', s:'10 cards of featured art', v:'art' }, b:{ t:'HUGE PAYOUTS', s:'1,200 a set<br>4,500 for all', v:'tot' } }
 };
 const PKI_GEM = '<svg width="W" height="W" viewBox="0 0 32 32"><path d="M16 2.5l11 6.8v13.4L16 29.5 5 22.7V9.3z" fill="rgba(143,217,207,.25)" stroke="#8fd9cf" stroke-width="1.8" stroke-linejoin="round"/><path d="M5 9.3L16 16l11-6.7M16 16v13.5" fill="none" stroke="#8fd9cf" stroke-width="1.2"/></svg>';
@@ -31,10 +32,10 @@ function pkiVis(v, w, h, fx){
     const sl = Array.from({ length:8 }, (_, i) => `<div class="sl"><img src="${cardImg('SCR0' + (i + 1))}" alt=""></div>`).join('');
     return `<div class="pki-cin" style="width:${w}px;height:${h}px"><div class="pki-trk" style="--p:${(8 * (h - 14) * 480 / 672).toFixed(1)}px">${sl}${sl}</div><div class="cgl"></div></div>`;
   }
-  if (v === 'sc') return bx(
-    im(cardImg('SC16'), `left:${w * .02}px;top:${h * .28}px;width:${w * .62}px;border-radius:4px;box-shadow:0 5px 12px #000c;transform:rotate(-6deg);${bob(0, -6)}`, 'pki-fi pki-mv') +
-    im(cardImg('SC01'), `right:${w * .02}px;top:${h * .06}px;width:${w * .62}px;border-radius:4px;box-shadow:0 5px 12px #000c;transform:rotate(5deg);${bob(1, 5)}`, 'pki-fi pki-mv'));
-  if (v === 'art') return bx(['ML_AS01', 'ML_AS04', 'ML_AS08'].map((id, i) =>
+  if (v === 'sc' || v === 'prm') return bx(
+    im(cardImg(v === 'prm' ? 'GL_PR01' : 'SC16'), `left:${w * .02}px;top:${h * .28}px;width:${w * .62}px;border-radius:4px;box-shadow:0 5px 12px #000c;transform:rotate(-6deg);${bob(0, -6)}`, 'pki-fi pki-mv') +
+    im(cardImg(v === 'prm' ? 'GL_PR02' : 'SC01'), `right:${w * .02}px;top:${h * .06}px;width:${w * .62}px;border-radius:4px;box-shadow:0 5px 12px #000c;transform:rotate(5deg);${bob(1, 5)}`, 'pki-fi pki-mv'));
+  if (v === 'art' || v === 'cult') return bx((v === 'cult' ? ['GL_ZR01', 'GL_ZR05', 'GL_ZR02'] : ['ML_AS01', 'ML_AS04', 'ML_AS08']).map((id, i) =>
     im(cardImg(id), `left:${w * (.1 + i * .26)}px;top:${i === 1 ? 0 : h * .06}px;height:${h * .9}px;aspect-ratio:480/672;border-radius:4px;box-shadow:0 5px 12px #000c;transform:rotate(${(i - 1) * 8}deg);z-index:${i === 1 ? 2 : 1};${bob(i, (i - 1) * 8)}`, 'pki-fi pki-mv')).join(''));
   // payouts: see-through coin columns + XP cube heap, faint rain of coins and gems behind
   const coin = (cx, cy, R, t) => { const a = .87 * R, b = .55 * R; return `<g transform="translate(${cx} ${cy})"><path d="M${-a} ${-b / 2} L${-a} ${b / 2 + t} L0 ${b + t} L${a} ${b / 2 + t} L${a} ${-b / 2} L0 ${b} Z" fill="rgba(246,196,83,.22)" stroke="#f0b93a" stroke-width=".7"/><path d="M0 ${b} V${b + t}" stroke="#f0b93a" stroke-width=".6" opacity=".7"/><path d="M0 ${-b} L${a} ${-b / 2} L${a} ${b / 2} L0 ${b} L${-a} ${b / 2} L${-a} ${-b / 2}Z" fill="rgba(246,196,83,.16)" stroke="#f6c453" stroke-width="1"/><text y="${b * .5}" text-anchor="middle" font-family="Montserrat" font-weight="700" font-size="${R * .62}" fill="#f6c453" transform="scale(1 .62)" style="transform-origin:0 0">G</text></g>`; };
@@ -51,7 +52,7 @@ function pkiFeatHtml(deck, urSets, fx, st){
   const txt = urSets.map(r => r.n + ' ' + setLabel(r.set)).join(' · ');
   const sub = multi ? txt : setLabel(urSets[0].set), fs = Math.max(9, Math.min(11, Math.floor(300 / (txt.length * .62))));
   const ft = x => `<b class="pki-ft${x.v === 'jk' ? ' jk' : ''}">${x.t}</b><div class="pki-fs">${x.s}</div>`;
-  const HW = { pz:[224, 62], duo:[180, 76], art:[170, 64] }, BW = { jk:[96, 64], sc:[96, 60], tot:[108, 58] };
+  const HW = { pz:[224, 62], duo:[180, 76], art:[170, 64], cult:[170, 64] }, BW = { jk:[96, 64], sc:[96, 60], prm:[96, 60], tot:[108, 58] };
   const [hw, hh] = HW[f.h.v], [bw, bh] = BW[f.b.v];
   const soft = (cls, l, t, w, h, rot, inner) => `<div class="pki-soft ${cls}${st}" style="left:${l}px;top:${t}px;width:${w}px;height:${h}px;transform:rotate(${rot}deg)"><i class="pki-glow"></i><div class="pki-sin">${inner}</div></div>`;
   return `<i class="pki-ln${fx ? ' fl0' : ''}"></i>` +
@@ -124,7 +125,7 @@ function openPackInfo(id, from){
   const it = SHOP.find(x => x.id === id); if (!it) return; closePackInfo(true);
   const by = {};
   CARDS.filter(c => c.deck === it.deck).forEach(c => { (by[c.set] ||= { set:c.set, rar:c.rarity, n:0 }).n++; });
-  const urSets = Object.values(by).filter(r => r.rar === 'ultimate').sort((a, b) => a.n - b.n || a.set.localeCompare(b.set));
+  const urSets = Object.values(by).filter(r => r.rar === 'ultimate').sort((a, b) => it.deck === 'glory' ? 0 : a.n - b.n || a.set.localeCompare(b.set));   // Glory lists its sets in their own order (Cultivator Series first)
   const q = shopQty[id] || 1, nm = esc(it.name.replace(/ Pack$/, '')).toUpperCase(), fx = !S.reduceFx;
   const fan = it.pop.map((c, k) => { const d = k - 2.5; return `<img class="pki-fc${fx ? ' st' : ''}" src="${cardImg(c)}" alt="" style="left:calc(50% + ${(d * 50.16).toFixed(1)}px - 33px);top:${(322 + Math.abs(d) * 2).toFixed(1)}px;transform:rotate(${(d * 3.5).toFixed(1)}deg);z-index:${10 - Math.round(Math.abs(d) * 2)};--r:rotate(${(d * 3.5).toFixed(1)}deg)">`; }).join('');
   const stub = `<svg class="pki-stub" width="34" height="14" viewBox="0 0 34 14" fill="none" stroke="rgba(var(--acr),.95)" stroke-width="1.2"><path d="M0 7 H20 L26 1 H34"/><rect x="24" y="8.5" width="4" height="4" fill="rgba(var(--acr),.95)" stroke="none" transform="rotate(45 26 10.5)"/></svg>`;
